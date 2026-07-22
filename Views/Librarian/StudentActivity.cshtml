@@ -7,9 +7,10 @@
 }
 
 <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-    <div class="px-5 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
-        <h2 class="font-semibold text-gray-700">Student Activity Log</h2>
-        <form method="get" id="activityFilterForm" class="flex gap-2 flex-wrap">
+    <div class="px-5 py-4">
+        <div class="flex flex-wrap gap-3 items-center justify-between mb-4">
+            <h2 class="text-3xl font-bold" class="text-gray-900">Student Activity Log</h2>
+            <form method="get" id="activityFilterForm" class="flex gap-2 flex-wrap">
             <input type="date" name="date" value="@ViewBag.Date" onchange="document.getElementById('activityFilterForm').submit()"
                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
             <select name="logType" onchange="document.getElementById('activityFilterForm').submit()"
@@ -19,6 +20,8 @@
                 <option value="Book" selected="@(logType == "Book" ? "selected" : null)">Book Log</option>
             </select>
         </form>
+        </div>
+        <hr class="border-gray-200">
     </div>
 
     <div class="overflow-x-auto">
@@ -27,7 +30,7 @@
         {
             var sessions = ViewBag.ComputerSessions as List<ComputerSession> ?? new List<ComputerSession>();
             <table class="w-full text-sm">
-                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
                     <tr>
                         <th class="px-4 py-3 text-left">Stud/Emp ID</th>
                         <th class="px-4 py-3 text-left">Name</th>
@@ -71,7 +74,7 @@
         {
             var bookLogs = ViewBag.BookLogs as List<BookReservation> ?? new List<BookReservation>();
             <table class="w-full text-sm">
-                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
                     <tr>
                         <th class="px-4 py-3 text-left">Stud/Emp ID</th>
                         <th class="px-4 py-3 text-left">Last Name</th>
@@ -121,7 +124,7 @@
         else
         {
             <table class="w-full text-sm">
-                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
                     <tr>
                         <th class="px-4 py-3 text-left">Stud ID</th>
                         <th class="px-4 py-3 text-left">Last Name</th>
@@ -172,3 +175,12 @@
 
     </div>
 </div>
+
+@section Scripts {
+<script>
+// Reload log when any relevant event fires (RFID tap, computer session, book transaction)
+libraryConnection.on('LibraryEntryUpdated', function() { location.reload(); });
+libraryConnection.on('ComputerSessionUpdated', function() { location.reload(); });
+libraryConnection.on('BookTransactionUpdated', function() { location.reload(); });
+</script>
+}

@@ -7,54 +7,54 @@
 }
 
 <!-- Search + Filter Row -->
-<div class="flex flex-wrap gap-3 items-center justify-between mb-6">
-    <!-- Role Filter Buttons -->
-    <div class="flex gap-2">
-        @foreach (var r in new[] { "All", "Student", "Librarian", "Professor" })
+<form method="get" action="@Url.Action("UserInformation","MIS")" class="flex items-center gap-3 mb-6 w-full">
+    @{ var roles = new[] { "All", "Student", "Librarian", "Professor" }; }
+    <select name="roleFilter" onchange="this.form.submit()"
+            class="border border-gray-300 rounded-xl px-4 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
+        @foreach (var r in roles)
         {
-            var isActive = activeFilter == r;
-            <a href="@Url.Action("UserInformation","MIS", new { roleFilter = r, search = ViewBag.Search })"
-               class="px-5 py-2 rounded-xl text-sm font-medium transition @(isActive ? "text-white" : "border border-gray-300 text-gray-600 hover:bg-gray-50")"
-               style="@(isActive ? "background-color:#1B2B5E;" : "")">
-                @r
-            </a>
+            <option value="@r" selected="@(r == activeFilter)">@r</option>
         }
-    </div>
+    </select>
 
-    <!-- Search -->
-    <form method="get" action="@Url.Action("UserInformation","MIS")" class="flex gap-2">
-        <input type="hidden" name="roleFilter" value="@activeFilter" />
+    <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden flex-1 focus-within:ring-2 focus-within:ring-blue-400 bg-white">
         <input type="text" name="search" value="@ViewBag.Search"
                placeholder="Search by name, ID, email..."
-               class="border border-gray-300 rounded-xl px-4 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-400" />
-        <button type="submit"
-                class="px-5 py-2 text-white rounded-xl text-sm" style="background-color:#1B2B5E;">Search</button>
-        @if (!string.IsNullOrEmpty(ViewBag.Search as string))
-        {
-            <a href="@Url.Action("UserInformation","MIS", new { roleFilter = activeFilter })"
-               class="px-4 py-2 text-sm text-gray-500 border border-gray-300 rounded-xl hover:bg-gray-50">Clear</a>
-        }
-    </form>
-</div>
+               class="flex-1 px-4 py-2 text-sm focus:outline-none" />
+        <button type="submit" class="text-white px-4 py-2 text-sm hover:opacity-90 flex-shrink-0" style="background-color:#000147;">
+            Search
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(ViewBag.Search as string))
+    {
+        <a href="@Url.Action("UserInformation","MIS", new { roleFilter = activeFilter })"
+           class="text-gray-400 hover:text-gray-600 transition" title="Clear search">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </a>
+    }
+</form>
 
 <!-- Table -->
-<div class="bg-white rounded-2xl shadow overflow-hidden">
+<div class="bg-white rounded-2xl shadow overflow-hidden overflow-x-auto">
     <table class="w-full text-sm">
-        <thead class="text-white text-xs uppercase" style="background-color:#1B2B5E;">
+        <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
             <tr>
                 <th class="px-5 py-3 text-left">ID / Emp. No.</th>
                 <th class="px-5 py-3 text-left">Last Name</th>
                 <th class="px-5 py-3 text-left">First Name</th>
                 <th class="px-5 py-3 text-left">Role</th>
+                <th class="px-5 py-3 text-left">Section</th>
                 <th class="px-5 py-3 text-left">Email</th>
+                <th class="px-5 py-3 text-left">Phone No.</th>
                 <th class="px-5 py-3 text-left">Status</th>
-                <th class="px-5 py-3 text-left">Actions</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var user in Model)
             {
-                <tr class="border-b hover:bg-gray-50" data-role="@user.UserType">
+                <tr class="border-b hover:bg-blue-50 cursor-pointer transition"
+                    onclick="window.location='@Url.Action("Detail","MIS", new { id = user.Id })'">
                     <td class="px-5 py-3 text-gray-500 font-mono text-xs">
                         @(user.UserType == "Student" ? user.StudentNumber : user.EmployeeNumber)
                     </td>
@@ -68,49 +68,21 @@
                             @user.UserType
                         </span>
                     </td>
+                    <td class="px-5 py-3 text-gray-500">@(string.IsNullOrEmpty(user.Section) ? "—" : user.Section)</td>
                     <td class="px-5 py-3 text-gray-500">@user.Email</td>
+                    <td class="px-5 py-3 text-gray-500">@(string.IsNullOrEmpty(user.PhoneNumber) ? "—" : user.PhoneNumber)</td>
                     <td class="px-5 py-3">
                         @if (user.IsActive)
-                        {
-                            <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Active</span>
-                        }
+                        { <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Active</span> }
                         else
-                        {
-                            <span class="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full">Inactive</span>
-                        }
-                    </td>
-                    <td class="px-5 py-3">
-                        <div class="flex items-center gap-2">
-                            <a href="/MIS/Edit/@user.Id"
-                               class="text-xs px-3 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">Edit</a>
-
-                            <form method="post" asp-action="ToggleStatus" asp-controller="MIS">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="id" value="@user.Id" />
-                                <input type="hidden" name="returnAction" value="UserInformation" />
-                                <button type="submit"
-                                        class="text-xs px-3 py-1 rounded-lg border @(user.IsActive ? "border-yellow-300 text-yellow-600 hover:bg-yellow-50" : "border-green-300 text-green-600 hover:bg-green-50")">
-                                    @(user.IsActive ? "Deactivate" : "Activate")
-                                </button>
-                            </form>
-
-                            <form method="post" asp-action="ArchiveUser" asp-controller="MIS"
-                                  onsubmit="return confirm('Archive @user.FirstName @user.LastName?')">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="id" value="@user.Id" />
-                                <button type="submit"
-                                        class="text-xs px-3 py-1 rounded-lg border border-red-300 text-red-600 hover:bg-red-50">
-                                    Archive
-                                </button>
-                            </form>
-                        </div>
+                        { <span class="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full">Inactive</span> }
                     </td>
                 </tr>
             }
             @if (!Model.Any())
             {
                 <tr>
-                    <td colspan="7" class="px-5 py-12 text-center text-gray-400">
+                    <td colspan="8" class="px-5 py-12 text-center text-gray-400">
                         No accounts found.
                         <a href="@Url.Action("Registration","MIS")" class="text-blue-500 hover:underline ml-1">Register one →</a>
                     </td>

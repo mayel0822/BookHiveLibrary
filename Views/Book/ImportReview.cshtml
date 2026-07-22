@@ -12,14 +12,14 @@
             <p class="text-xs text-gray-400 mt-0.5">Add cover image and synopsis for each book, then save to the catalog.</p>
         </div>
         <a href="@Url.Action("Index","Book")"
-           class="px-4 py-2 text-sm text-white rounded-lg font-medium" style="background:#1e3a6e;">
+           class="px-4 py-2 text-sm text-white rounded-lg font-medium" style="background:#000147;">
             Done — Go to Book List
         </a>
     </div>
 
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
-            <thead style="background:#1e3a6e;">
+            <thead style="background:#23354D;">
                 <tr>
                     <th class="px-4 py-3 text-left text-white font-medium text-xs">Title</th>
                     <th class="px-4 py-3 text-left text-white font-medium text-xs">Author</th>
@@ -55,7 +55,7 @@
                         </td>
                         <td class="px-4 py-3 text-right">
                             <button onclick="openEditModal(@book.Id, '@Html.Raw(book.Title.Replace("'", "\\'"))', '@Html.Raw(book.CoverImageUrl)', '@Html.Raw(book.Description.Replace("'", "\\'"))')"
-                                    class="px-3 py-1.5 text-xs font-medium text-white rounded-lg" style="background:#1e3a6e;">
+                                    class="px-3 py-1.5 text-xs font-medium text-white rounded-lg" style="background:#000147;">
                                 Edit
                             </button>
                         </td>
@@ -69,7 +69,7 @@
 <!-- Edit Modal -->
 <div id="editModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl shadow-xl w-[520px] overflow-hidden">
-        <div class="px-6 py-4 flex items-center justify-between" style="background:#1e3a6e;">
+        <div class="px-6 py-4 flex items-center justify-between" style="background:#000147;">
             <div>
                 <h3 class="text-sm font-semibold text-white">Edit Book Details</h3>
                 <p class="text-xs text-white/60 mt-0.5" id="editBookTitle">—</p>
@@ -99,7 +99,7 @@
         <div class="px-6 py-4 border-t border-gray-100 flex gap-3">
             <button onclick="closeEditModal()" class="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">Cancel</button>
             <button onclick="saveBookDetails()" id="saveBtn"
-                    class="flex-1 py-2.5 text-white rounded-lg text-sm font-medium" style="background:#1e3a6e;">
+                    class="flex-1 py-2.5 text-white rounded-lg text-sm font-medium" style="background:#000147;">
                 Save
             </button>
         </div>

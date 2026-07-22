@@ -19,30 +19,41 @@
     };
 }
 
-<div class="flex items-center justify-between mb-6">
-    <h1 class="text-3xl font-bold text-gray-800">@role Accounts</h1>
-    <a href="/MIS/Create?role=@role"
-       class="@accentClass text-white px-5 py-2.5 rounded-xl text-sm hover:opacity-90">
-        + New @role
-    </a>
-</div>
+<!-- Back -->
+<a asp-controller="MIS" asp-action="Dashboard" class="inline-flex items-center mb-4 text-gray-600 hover:text-gray-900">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 14L4 9l5-5"/>
+        <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>
+    </svg>
+</a>
 
-<!-- Search -->
-<form method="get" class="mb-6 flex gap-3">
-    <input type="text" name="search" value="@ViewBag.Search"
-           placeholder="Search by name, email, ID number..."
-           class="border border-gray-300 rounded-xl px-4 py-2 w-80 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-    <button type="submit"
-            class="@accentClass text-white px-5 py-2 rounded-xl text-sm hover:opacity-90">
-        Search
-    </button>
-    @if (!string.IsNullOrEmpty(ViewBag.Search as string))
-    {
-        <a href="/MIS/@(role)s" class="px-5 py-2 text-sm text-gray-500 hover:underline">Clear</a>
-    }
+<h1 class="text-3xl font-bold text-gray-800 mb-6">@role Accounts</h1>
+
+<!-- Search + New Button -->
+<form method="get" class="mb-6">
+    <div class="flex items-center gap-3">
+        <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden w-96 focus-within:ring-2 focus-within:ring-indigo-400 bg-white">
+            <input type="text" name="search" value="@ViewBag.Search"
+                   placeholder="Search by name, email, ID number..."
+                   class="flex-1 px-4 py-2 text-sm focus:outline-none" />
+            <button type="submit" class="@accentClass text-white px-4 py-2 text-sm hover:opacity-90 flex-shrink-0">
+                Search
+            </button>
+        </div>
+        @if (!string.IsNullOrEmpty(ViewBag.Search as string))
+        {
+            <a href="/MIS/@(role)s" class="text-gray-400 hover:text-gray-600 transition" title="Clear search">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </a>
+        }
+        <a href="/MIS/Registration?tab=@role.ToLower()"
+           class="@accentClass text-white px-5 py-2 rounded-xl text-sm hover:opacity-90 flex-shrink-0 ml-auto">
+            + New @role
+        </a>
+    </div>
 </form>
 
-<div class="bg-white rounded-2xl shadow overflow-hidden">
+<div class="bg-white rounded-2xl shadow overflow-hidden overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="@accentClass text-white">
             <tr>
@@ -85,25 +96,32 @@
                             </a>
 
                             <!-- Toggle Active -->
-                            <form method="post" asp-action="ToggleStatus" asp-controller="MIS">
-                                <input type="hidden" name="id" value="@user.Id" />
-                                <input type="hidden" name="returnAction" value="@(role)s" />
-                                <button type="submit"
-                                        class="text-xs px-3 py-1 rounded-lg border @(user.IsActive ? "border-yellow-300 text-yellow-600 hover:bg-yellow-50" : "border-green-300 text-green-600 hover:bg-green-50")">
-                                    @(user.IsActive ? "Deactivate" : "Activate")
+                            @if (user.IsActive)
+                            {
+                                <button type="button"
+                                        onclick="openDeactivateModal('@user.Id', '@(role)s', '@Html.Raw((user.FirstName + " " + user.LastName).Trim().Replace("'", "\\'"))')"
+                                        class="text-xs px-3 py-1 rounded-lg border border-yellow-300 text-yellow-600 hover:bg-yellow-50">
+                                    Deactivate
                                 </button>
-                            </form>
+                            }
+                            else
+                            {
+                                <form method="post" asp-action="ToggleStatus" asp-controller="MIS">
+                                    <input type="hidden" name="id" value="@user.Id" />
+                                    <input type="hidden" name="returnAction" value="@(role)s" />
+                                    <button type="submit"
+                                            class="text-xs px-3 py-1 rounded-lg border border-green-300 text-green-600 hover:bg-green-50">
+                                        Activate
+                                    </button>
+                                </form>
+                            }
 
                             <!-- Delete -->
-                            <form method="post" asp-action="Delete" asp-controller="MIS"
-                                  onsubmit="return confirm('Delete @user.FirstName @user.LastName? This cannot be undone.')">
-                                <input type="hidden" name="id" value="@user.Id" />
-                                <input type="hidden" name="returnAction" value="@(role)s" />
-                                <button type="submit"
-                                        class="text-xs px-3 py-1 rounded-lg border border-red-300 text-red-600 hover:bg-red-50">
-                                    Delete
-                                </button>
-                            </form>
+                            <button type="button"
+                                    onclick="openDeleteModal('@user.Id', '@(role)s', '@Html.Raw((user.FirstName + " " + user.LastName).Trim().Replace("'", "\\'"))', '@user.UserName')"
+                                    class="text-xs px-3 py-1 rounded-lg border border-red-300 text-red-600 hover:bg-red-50">
+                                Delete
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -120,3 +138,144 @@
         </tbody>
     </table>
 </div>
+
+<!-- Deactivate Reason Modal -->
+<div id="deactivateModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100" style="background-color:#000147;">
+            <h3 class="text-sm font-semibold text-white">Deactivate Account</h3>
+        </div>
+        <div class="px-6 py-5">
+            <p class="text-sm text-gray-700 mb-4">You are about to deactivate <span id="deactivateUserName" class="font-semibold text-yellow-600"></span>'s account.</p>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Reason for deactivation <span class="text-red-500">*</span></label>
+            <div class="flex flex-col gap-2 mb-4">
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input type="radio" name="deactivateReasonChoice" value="Graduated" class="accent-[#000147]" />
+                    Graduated
+                </label>
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input type="radio" name="deactivateReasonChoice" value="No longer part of the institution" class="accent-[#000147]" />
+                    No longer part of the institution
+                </label>
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input type="radio" name="deactivateReasonChoice" value="other" class="accent-[#000147]" />
+                    Other
+                </label>
+            </div>
+            <textarea id="deactivateOtherText" rows="2" placeholder="Specify reason..."
+                      class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300 resize-none hidden"></textarea>
+            <p id="deactivateReasonError" class="text-red-500 text-xs mt-1 hidden">Please select a reason.</p>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+            <button type="button" onclick="closeDeactivateModal()"
+                    class="px-5 py-2 text-sm border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50">Cancel</button>
+            <button type="button" onclick="submitDeactivate()"
+                    class="px-5 py-2 text-sm text-white rounded-xl" style="background-color:#000147;">Deactivate</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden deactivate form -->
+<form id="deactivateForm" method="post" asp-action="ToggleStatus" asp-controller="MIS">
+    @Html.AntiForgeryToken()
+    <input type="hidden" id="deactivateUserId" name="id" />
+    <input type="hidden" id="deactivateReturnAction" name="returnAction" />
+    <input type="hidden" id="deactivateReasonInput" name="reason" />
+</form>
+
+<!-- Delete Reason Modal -->
+<div id="deleteModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100" style="background-color:#000147;">
+            <h3 class="text-sm font-semibold text-white">Delete Account</h3>
+        </div>
+        <div class="px-6 py-5">
+            <p class="text-sm text-gray-700 mb-1">You are about to delete <span id="deleteUserName" class="font-semibold text-red-600"></span>'s account.</p>
+            <p class="text-xs text-gray-400 mb-4">This action cannot be undone.</p>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Reason for deletion <span class="text-red-500">*</span></label>
+            <textarea id="deleteReason" rows="3" placeholder="Enter reason..."
+                      class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"></textarea>
+            <p id="deleteReasonError" class="text-red-500 text-xs mt-1 hidden">Please provide a reason.</p>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+            <button type="button" onclick="closeDeleteModal()"
+                    class="px-5 py-2 text-sm border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50">Cancel</button>
+            <button type="button" onclick="submitDelete()"
+                    class="px-5 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-xl">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden delete form -->
+<form id="deleteForm" method="post" action="/MIS/Delete">
+    @Html.AntiForgeryToken()
+    <input type="hidden" id="deleteUserId" name="id" />
+    <input type="hidden" id="deleteReturnAction" name="returnAction" />
+    <input type="hidden" id="deleteReasonInput" name="reason" />
+</form>
+
+@section Scripts {
+<script>
+function openDeactivateModal(userId, returnAction, fullName) {
+    document.getElementById('deactivateUserId').value = userId;
+    document.getElementById('deactivateReturnAction').value = returnAction;
+    document.getElementById('deactivateUserName').textContent = fullName;
+    document.querySelectorAll('input[name="deactivateReasonChoice"]').forEach(r => r.checked = false);
+    document.getElementById('deactivateOtherText').classList.add('hidden');
+    document.getElementById('deactivateOtherText').value = '';
+    document.getElementById('deactivateReasonError').classList.add('hidden');
+    document.getElementById('deactivateModal').classList.remove('hidden');
+}
+function closeDeactivateModal() {
+    document.getElementById('deactivateModal').classList.add('hidden');
+}
+function submitDeactivate() {
+    const selected = document.querySelector('input[name="deactivateReasonChoice"]:checked');
+    if (!selected) {
+        document.getElementById('deactivateReasonError').classList.remove('hidden');
+        return;
+    }
+    let reason = selected.value;
+    if (reason === 'other') {
+        reason = document.getElementById('deactivateOtherText').value.trim();
+        if (!reason) {
+            document.getElementById('deactivateReasonError').classList.remove('hidden');
+            return;
+        }
+    }
+    document.getElementById('deactivateReasonInput').value = reason;
+    document.getElementById('deactivateForm').submit();
+}
+document.querySelectorAll('input[name="deactivateReasonChoice"]').forEach(r => {
+    r.addEventListener('change', function() {
+        const other = document.getElementById('deactivateOtherText');
+        other.classList.toggle('hidden', this.value !== 'other');
+        document.getElementById('deactivateReasonError').classList.add('hidden');
+    });
+});
+document.getElementById('deactivateModal').addEventListener('click', function(e) {
+    if (e.target === this) closeDeactivateModal();
+});
+
+function openDeleteModal(userId, returnAction, fullName, username) {
+    document.getElementById('deleteUserId').value = userId;
+    document.getElementById('deleteReturnAction').value = returnAction;
+    document.getElementById('deleteUserName').textContent = fullName || username;
+    document.getElementById('deleteReason').value = '';
+    document.getElementById('deleteReasonError').classList.add('hidden');
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+}
+function submitDelete() {
+    const reason = document.getElementById('deleteReason').value.trim();
+    if (!reason) {
+        document.getElementById('deleteReasonError').classList.remove('hidden');
+        return;
+    }
+    document.getElementById('deleteReasonInput').value = reason;
+    document.getElementById('deleteForm').submit();
+}
+</script>
+}

@@ -5,100 +5,212 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - BookHive MIS</title>
     <link rel="stylesheet" href="~/css/output.css" asp-append-version="true" />
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
 </head>
 <body class="bg-gray-100">
+
+@{
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+}
+
+<!-- Sidebar backdrop -->
+<div id="sidebar-backdrop" class="fixed inset-0 bg-black/40 z-40 hidden" onclick="toggleSidebar()"></div>
 
 <div class="flex min-h-screen">
 
     <!-- Sidebar -->
-    <aside class="w-64 text-white flex flex-col fixed top-0 left-0 h-full overflow-y-auto z-10" style="background-color:#1B2B5E;">
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-[#000147] text-white flex flex-col shadow-xl transition-transform duration-300 -translate-x-full lg:translate-x-0">
 
-        <div class="h-20 flex items-center justify-center border-b border-blue-900 shrink-0">
-            <div class="text-center">
-                <h1 class="text-xl font-bold tracking-wide">BookHive</h1>
-                <p class="text-blue-300 text-xs">MIS Facilitator Portal</p>
-            </div>
+        <!-- Logo -->
+        <div class="h-20 flex items-center px-6 border-b border-white/10 flex-shrink-0">
+            <a href="/MIS/Dashboard" class="flex items-center justify-center w-full">
+                <span style="font-family:'Dancing Script',cursive;font-size:2rem;font-weight:800;color:white;line-height:1;display:block;text-align:center;">BookHive</span>
+            </a>
+            <button onclick="toggleSidebar()" class="ml-auto lg:hidden text-white/60 hover:text-white transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
         </div>
 
-        <nav class="flex-1 p-4 space-y-1 text-sm">
+        <p class="px-6 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-blue-300/60">MIS Facilitator</p>
+
+        <!-- Nav -->
+        <nav class="flex-1 px-4 py-2 space-y-1 text-sm overflow-y-auto">
 
             <a href="/MIS/Dashboard"
-               class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-blue-800 transition @(ViewContext.RouteData.Values["action"]?.ToString() == "Dashboard" ? "bg-blue-900 font-semibold" : "")">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6"/></svg>
+               class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-150
+                      @(currentAction == "Dashboard" ? "bg-white/20 text-white font-semibold ring-1 ring-white/10" : "text-blue-200 hover:bg-white/10 hover:text-white")">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6"/></svg>
                 Dashboard
             </a>
 
             <a href="/MIS/Registration"
-               class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-blue-800 transition @(ViewContext.RouteData.Values["action"]?.ToString() == "Registration" ? "bg-blue-900 font-semibold" : "")">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+               class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-150
+                      @(currentAction == "Registration" ? "bg-white/20 text-white font-semibold ring-1 ring-white/10" : "text-blue-200 hover:bg-white/10 hover:text-white")">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                 Registration
             </a>
 
             <a href="/MIS/UserInformation"
-               class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-blue-800 transition @(ViewContext.RouteData.Values["action"]?.ToString() == "UserInformation" ? "bg-blue-900 font-semibold" : "")">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+               class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-150
+                      @(currentAction == "UserInformation" ? "bg-white/20 text-white font-semibold ring-1 ring-white/10" : "text-blue-200 hover:bg-white/10 hover:text-white")">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 User Information
             </a>
 
             <a href="/MIS/ArchivedUsers"
-               class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-blue-800 transition @(ViewContext.RouteData.Values["action"]?.ToString() == "ArchivedUsers" ? "bg-blue-900 font-semibold" : "")">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+               class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-150
+                      @(currentAction == "ArchivedUsers" ? "bg-white/20 text-white font-semibold ring-1 ring-white/10" : "text-blue-200 hover:bg-white/10 hover:text-white")">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
                 Archived Users
             </a>
 
+
         </nav>
 
-        <div class="p-4 border-t border-blue-900">
-            <form method="post" action="/Account/Logout">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="flex items-center gap-2 text-sm text-blue-300 hover:text-white w-full">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                    Logout
-                </button>
-            </form>
-        </div>
 
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 ml-64 min-h-screen">
+    <div class="flex-1 flex flex-col min-h-screen overflow-hidden lg:ml-64">
 
-        <!-- Header -->
-        <div class="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
-            <div>
-                <h2 class="text-xl font-bold text-gray-800">@ViewData["Title"]</h2>
-                <p class="text-xs text-gray-400">MIS Facilitator Portal — STI San Jose Del Monte</p>
-            </div>
+        <!-- Top Header -->
+        <header class="bg-white border-b border-gray-200 flex items-center justify-between px-6 py-3 shadow-sm flex-shrink-0">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold" style="background-color:#1B2B5E;">
-                    MF
+                <!-- Mobile hamburger -->
+                <button onclick="toggleSidebar()" class="lg:hidden text-gray-500 hover:text-gray-700 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <div class="mt-1">
+                    <h2 class="text-base font-semibold text-gray-800">@ViewData["Title"]</h2>
+                    <p class="text-xs text-gray-400 hidden sm:block">MIS Facilitator Portal — STI San Jose Del Monte</p>
                 </div>
             </div>
-        </div>
 
-        <div class="p-8">
+            <!-- Header right: icons + profile -->
+            <div class="flex items-center gap-4">
+
+            <!-- Messages -->
+            <a href="@Url.Action("Index","Message")" class="relative flex items-center text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <span id="msgBadge" class="hidden absolute -top-1 -right-1 w-4 h-4 text-white text-[10px] font-bold rounded-full flex items-center justify-center" style="background:#e53e3e;"></span>
+            </a>
+
+            <!-- Notification Bell (static for now) -->
+            <div class="relative flex items-center text-gray-500">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            </div>
+
+            <!-- Profile -->
+            <div class="relative" id="mis-profile-wrapper">
+                <button onclick="toggleMISProfile()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 focus:outline-none transition">
+                    <span class="text-sm font-medium text-gray-700 hidden sm:inline">@ViewBag.CurrentUserFullName</span>
+                    <div class="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background-color:#000147;">
+                        @if (!string.IsNullOrEmpty(ViewBag.CurrentUserPic as string))
+                        {
+                            <img src="@ViewBag.CurrentUserPic" class="w-full h-full object-cover" />
+                        }
+                        else
+                        {
+                            @(User.Identity?.Name?.Length > 0 ? User.Identity.Name[0].ToString().ToUpper() : "M")
+                        }
+                    </div>
+                </button>
+
+                <!-- Profile Dropdown -->
+                <div id="mis-profile-panel" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
+                    <!-- User info section -->
+                    <div class="px-4 py-4 border-b border-gray-100 flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-white text-lg font-bold flex-shrink-0" style="background-color:#000147;">
+                            @if (!string.IsNullOrEmpty(ViewBag.CurrentUserPic as string))
+                            {
+                                <img src="@ViewBag.CurrentUserPic" class="w-full h-full object-cover" />
+                            }
+                            else
+                            {
+                                @(User.Identity?.Name?.Length > 0 ? User.Identity.Name[0].ToString().ToUpper() : "M")
+                            }
+                        </div>
+                        <div class="min-w-0">
+                            <a href="/MIS/Profile" class="text-sm font-semibold text-gray-900 hover:underline truncate block">@ViewBag.CurrentUserFullName</a>
+                            <p class="text-xs text-gray-400 truncate">@ViewBag.CurrentUserEmail</p>
+                            <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold mt-1 inline-block">MIS Facilitator</span>
+                        </div>
+                    </div>
+                    <!-- Sign Out -->
+                    <form method="post" action="/Account/Logout" class="px-2 py-2">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                            Sign Out
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            </div><!-- end header icons wrapper -->
+        </header>
+
+        <!-- Alerts -->
+        <div class="px-8 pt-4">
             @if (TempData["Success"] != null)
             {
-                <div class="mb-5 bg-green-100 border border-green-300 text-green-800 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                <div class="mb-4 bg-green-100 border border-green-300 text-green-800 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     @TempData["Success"]
                 </div>
             }
             @if (TempData["Error"] != null)
             {
-                <div class="mb-5 bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div class="mb-4 bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     @TempData["Error"]
                 </div>
             }
-
-            @RenderBody()
         </div>
 
-    </main>
+        <!-- Page Content -->
+        <main class="flex-1 px-8 pb-8">
+            @RenderBody()
+        </main>
 
+    </div>
 </div>
 
+<script>
+function toggleSidebar() {
+    const s = document.getElementById('sidebar');
+    const b = document.getElementById('sidebar-backdrop');
+    const isHidden = s.classList.contains('-translate-x-full');
+    s.classList.toggle('-translate-x-full', !isHidden);
+    // Only show backdrop on mobile
+    if (window.innerWidth < 1024) {
+        b.classList.toggle('hidden', !isHidden);
+    }
+}
+function toggleMISProfile() {
+    document.getElementById('mis-profile-panel').classList.toggle('hidden');
+}
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#mis-profile-wrapper'))
+        document.getElementById('mis-profile-panel')?.classList.add('hidden');
+});
+
+async function loadMISUnreadCount() {
+    try {
+        const r = await fetch('/Message/UnreadCount');
+        const d = await r.json();
+        const badge = document.getElementById('msgBadge');
+        if (!badge) return;
+        if (d.count > 0) { badge.textContent = d.count > 9 ? '9+' : d.count; badge.classList.remove('hidden'); }
+        else { badge.classList.add('hidden'); }
+    } catch {}
+}
+loadMISUnreadCount();
+setInterval(loadMISUnreadCount, 30000);
+</script>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

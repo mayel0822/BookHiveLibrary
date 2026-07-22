@@ -1,7 +1,9 @@
 using BookHiveLibrary.Data;
+using BookHiveLibrary.Hubs;
 using BookHiveLibrary.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookHiveLibrary.Controllers
@@ -10,11 +12,20 @@ namespace BookHiveLibrary.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IHubContext<LibraryHub> _hub;
 
-        public ComputerController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public ComputerController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IHubContext<LibraryHub> hub)
         {
             _context = context;
             _userManager = userManager;
+            _hub = hub;
+        }
+
+        private async Task PushComputerEvent(string eventName, object payload)
+        {
+            var librarians = await _userManager.GetUsersInRoleAsync("Librarian");
+            foreach (var lib in librarians)
+                await _hub.Clients.Group($"user-{lib.Id}").SendAsync(eventName, payload);
         }
 
         private async Task LoadComputerStats()
@@ -71,8 +82,8 @@ namespace BookHiveLibrary.Controllers
             var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RFIDNumber == rfid);
             if (user == null)
                 return Json(new { found = false, message = "RFID card not registered." });
-            if (!user.IsActive)
-                return Json(new { found = false, message = "This account is deactivated." });
+            if (!user.IsActive || string.IsNullOrEmpty(user.Section))
+                return Json(new { found = false, message = "Your account is still not activated. Please activate it with the librarian." });
 
             var sectionRecord = await _context.Sections
                 .FirstOrDefaultAsync(s => s.SectionName == user.Section);
@@ -141,6 +152,7 @@ namespace BookHiveLibrary.Controllers
 
             computer.IsAvailable = false;
             await _context.SaveChangesAsync();
+            await PushComputerEvent("ComputerSessionUpdated", new { action = "Started", computerId });
             TempData["Success"] = "Session started.";
             return RedirectToAction("Transaction");
         }
@@ -160,6 +172,7 @@ namespace BookHiveLibrary.Controllers
                 session.ComputerUnit.IsAvailable = true;
 
             await _context.SaveChangesAsync();
+            await PushComputerEvent("ComputerSessionUpdated", new { action = "Ended", computerId = session.ComputerUnitId });
             return Json(new { success = true, computerId = session.ComputerUnitId });
         }
 
@@ -230,6 +243,7 @@ namespace BookHiveLibrary.Controllers
                 session.ComputerUnit.IsAvailable = true;
 
             await _context.SaveChangesAsync();
+            await PushComputerEvent("ComputerSessionUpdated", new { action = "Ended", computerId = session.ComputerUnitId });
             TempData["Success"] = "Session ended.";
             return RedirectToAction("Transaction");
         }

@@ -1,7 +1,9 @@
 using BookHiveLibrary.Data;
+using BookHiveLibrary.Hubs;
 using BookHiveLibrary.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookHiveLibrary.Controllers
@@ -11,24 +13,46 @@ namespace BookHiveLibrary.Controllers
         private const int MaxBooksPerUser = 3;
         private const int BorrowDays = 2;
         private const int ReservationWindowHours = 3;
+        private static readonly TimeSpan LibraryOpenTime  = new TimeSpan(8, 0, 0);
         private static readonly TimeSpan LibraryCloseTime = new TimeSpan(16, 30, 0);
 
         private static DateTime CalculateDueDate() =>
             DateTime.Today.AddDays(BorrowDays).Date + LibraryCloseTime;
 
+        private static DateTime CalculatePickupDeadline()
+        {
+            var now = DateTime.Now;
+            var openToday = DateTime.Today + LibraryOpenTime;
+            var start = now < openToday ? openToday : now;
+            return start.AddHours(ReservationWindowHours);
+        }
+
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly BookHiveLibrary.Services.EmailService _emailService;
         private readonly BookHiveLibrary.Services.SmsService _smsService;
+        private readonly IHubContext<LibraryHub> _hub;
 
         public BorrowController(ApplicationDbContext context, UserManager<ApplicationUser> userManager,
             BookHiveLibrary.Services.EmailService emailService,
-            BookHiveLibrary.Services.SmsService smsService)
+            BookHiveLibrary.Services.SmsService smsService,
+            IHubContext<LibraryHub> hub)
         {
             _context = context;
             _userManager = userManager;
             _emailService = emailService;
             _smsService = smsService;
+            _hub = hub;
+        }
+
+        // Helper: push a book transaction event to all librarians + optionally a specific student
+        private async Task PushBookEvent(string eventName, object payload, string? studentUserId = null)
+        {
+            var librarians = await _userManager.GetUsersInRoleAsync("Librarian");
+            foreach (var lib in librarians)
+                await _hub.Clients.Group($"user-{lib.Id}").SendAsync(eventName, payload);
+            if (studentUserId != null)
+                await _hub.Clients.Group($"user-{studentUserId}").SendAsync(eventName, payload);
         }
 
         private async Task LoadBorrowFormData()
@@ -56,6 +80,25 @@ namespace BookHiveLibrary.Controllers
                 exp.LibrarianRemarks = "Auto-voided: not picked up within 3 hours.";
             }
             if (expiredReservations.Any())
+                await _context.SaveChangesAsync();
+
+            // Auto-mark books as Overdue when due date has passed
+            var overdueBooks = await _context.BookReservations
+                .Where(r => r.Status == "PickedUp" && r.DueDate < DateTime.Now)
+                .ToListAsync();
+            foreach (var overdue in overdueBooks)
+                overdue.Status = "Overdue";
+            if (overdueBooks.Any())
+                await _context.SaveChangesAsync();
+
+            // Auto-clear ReturnedLate records 3 days after return
+            var lateClearCutoff = DateTime.Now.AddDays(-3);
+            var clearedLate = await _context.BookReservations
+                .Where(r => r.Status == "ReturnedLate" && r.ActualReturnDate < lateClearCutoff)
+                .ToListAsync();
+            foreach (var r in clearedLate)
+                r.Status = "Returned";
+            if (clearedLate.Any())
                 await _context.SaveChangesAsync();
 
             // Pending reservations panel
@@ -92,7 +135,7 @@ namespace BookHiveLibrary.Controllers
             var borrowedBooks = await _context.BookReservations
                 .Include(r => r.User)
                 .Include(r => r.Book)
-                .Where(r => r.Status == "PickedUp" || r.Status == "Overdue" || r.Status == "Approved")
+                .Where(r => r.Status == "PickedUp" || r.Status == "Overdue" || r.Status == "Approved" || r.Status == "ReturnedLate")
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
@@ -131,6 +174,12 @@ namespace BookHiveLibrary.Controllers
                 return RedirectToAction("Index");
             }
 
+            if (book.IsRoomUseOnly)
+            {
+                TempData["Error"] = "This book is for room use only and cannot be borrowed outside the library.";
+                return RedirectToAction("Index");
+            }
+
             book.AvailableQuantity -= 1;
 
             _context.BookReservations.Add(new BookReservation
@@ -144,6 +193,7 @@ namespace BookHiveLibrary.Controllers
             });
 
             await _context.SaveChangesAsync();
+            await PushBookEvent("BookTransactionUpdated", new { action = "PickedUp", book = book.Title, user = $"{user.FirstName} {user.LastName}" }, userId);
             TempData["Success"] = $"Book \"{book.Title}\" borrowed by {user.FirstName} {user.LastName}. Due in {BorrowDays} days.";
             return RedirectToAction("Index");
         }
@@ -222,8 +272,8 @@ namespace BookHiveLibrary.Controllers
             if (user == null)
                 return Json(new { found = false, message = "RFID card not registered." });
 
-            if (!user.IsActive)
-                return Json(new { found = false, message = "This account is deactivated." });
+            if (!user.IsActive || string.IsNullOrEmpty(user.Section))
+                return Json(new { found = false, message = "Your account is still not activated. Please activate it with the librarian." });
 
             var sectionRecord = await _context.Sections
                 .FirstOrDefaultAsync(s => s.SectionName == user.Section);
@@ -249,6 +299,8 @@ namespace BookHiveLibrary.Controllers
             var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RFIDNumber == rfid);
             if (user == null)
                 return Json(new { found = false, message = "RFID card not registered." });
+            if (!user.IsActive)
+                return Json(new { found = false, message = "This account has been deactivated. Please contact MIS." });
 
             var reservation = await _context.BookReservations
                 .Include(r => r.Book)
@@ -304,7 +356,7 @@ namespace BookHiveLibrary.Controllers
                 UserId = userId!,
                 BookId = bookId,
                 Status = "Pending",
-                PickupDeadline = DateTime.Now.AddHours(ReservationWindowHours),
+                PickupDeadline = CalculatePickupDeadline(),
                 ReservationDate = DateTime.Now
             });
 
@@ -366,6 +418,7 @@ namespace BookHiveLibrary.Controllers
                 reservation.Book.AvailableQuantity = Math.Max(0, reservation.Book.AvailableQuantity - 1);
 
             await _context.SaveChangesAsync();
+            await PushBookEvent("BookTransactionUpdated", new { action = "PickedUp", book = reservation.Book?.Title, user = reservation.UserId }, reservation.UserId);
             TempData["Success"] = $"Book granted. Due date: {reservation.DueDate:MMM dd, yyyy}.";
             return RedirectToAction("Index");
         }
@@ -381,6 +434,7 @@ namespace BookHiveLibrary.Controllers
             reservation.LibrarianRemarks = remarks ?? "";
 
             await _context.SaveChangesAsync();
+            await PushBookEvent("BookTransactionUpdated", new { action = "Denied" }, reservation.UserId);
             TempData["Success"] = "Reservation denied.";
             return RedirectToAction("Index");
         }
@@ -405,6 +459,7 @@ namespace BookHiveLibrary.Controllers
                 reservation.Book.AvailableQuantity = Math.Max(0, reservation.Book.AvailableQuantity - 1);
 
             await _context.SaveChangesAsync();
+            await PushBookEvent("BookTransactionUpdated", new { action = "PickedUp", book = reservation.Book?.Title }, reservation.UserId);
             TempData["Success"] = $"Book picked up. Due date: {reservation.DueDate:MMM dd, yyyy}.";
             return RedirectToAction("Index", new { tab = "Active" });
         }
@@ -419,15 +474,32 @@ namespace BookHiveLibrary.Controllers
 
             if (reservation == null) return NotFound();
 
-            reservation.Status = "Returned";
+            reservation.Status = reservation.Status == "Overdue" ? "ReturnedLate" : "Returned";
             reservation.ActualReturnDate = DateTime.Now;
 
             if (reservation.Book != null)
                 reservation.Book.AvailableQuantity = Math.Min(reservation.Book.TotalQuantity, reservation.Book.AvailableQuantity + 1);
 
             await _context.SaveChangesAsync();
-            TempData["Success"] = "Book returned successfully.";
+            await PushBookEvent("BookTransactionUpdated", new { action = "Returned", book = reservation.Book?.Title }, reservation.UserId);
+            TempData["Success"] = reservation.Status == "ReturnedLate"
+                ? "Book returned late. The record will be cleared after 3 days."
+                : "Book returned successfully.";
             return RedirectToAction("Index", new { tab = "Active" });
+        }
+
+        // Acknowledge late return — librarian dismisses the ReturnedLate record
+        [HttpPost]
+        public async Task<IActionResult> AcknowledgeLateReturn(int id)
+        {
+            var reservation = await _context.BookReservations.FindAsync(id);
+            if (reservation == null) return NotFound();
+
+            reservation.Status = "Returned";
+            await _context.SaveChangesAsync();
+            await PushBookEvent("BookTransactionUpdated", new { action = "Returned" }, reservation.UserId);
+            TempData["Success"] = "Late return acknowledged and record cleared.";
+            return RedirectToAction("Index");
         }
     }
 }

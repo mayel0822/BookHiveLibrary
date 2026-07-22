@@ -27,8 +27,17 @@ namespace BookHiveLibrary.Services
             await SendAsync(phoneNumber, message);
         }
 
+        private static string NormalizePhone(string phoneNumber)
+        {
+            var digits = new string(phoneNumber.Where(char.IsDigit).ToArray());
+            if (digits.StartsWith("63")) return digits;
+            if (digits.StartsWith("0")) return "63" + digits[1..];
+            return "63" + digits;
+        }
+
         private async Task SendAsync(string phoneNumber, string message)
         {
+            phoneNumber = NormalizePhone(phoneNumber);
             var apiKey = _configuration["Semaphore:ApiKey"];
             var senderName = _configuration["Semaphore:SenderName"] ?? "BookHive";
 

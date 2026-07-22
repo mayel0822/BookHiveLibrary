@@ -1,7 +1,9 @@
 using BookHiveLibrary.Data;
+using BookHiveLibrary.Hubs;
 using BookHiveLibrary.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
 
@@ -11,11 +13,13 @@ namespace BookHiveLibrary.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IHubContext<LibraryHub> _hub;
 
-        public LibrarianController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public LibrarianController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IHubContext<LibraryHub> hub)
         {
             _context = context;
             _userManager = userManager;
+            _hub = hub;
         }
 
         public async Task<IActionResult> Dashboard()
@@ -75,6 +79,7 @@ namespace BookHiveLibrary.Controllers
 
             ViewBag.Search = search;
             ViewBag.UserType = userType;
+            ViewBag.Sections = await _context.Sections.OrderBy(s => s.SectionName).ToListAsync();
 
             return View(users);
         }
@@ -227,6 +232,11 @@ namespace BookHiveLibrary.Controllers
         public async Task<IActionResult> Sectioning()
         {
             ViewBag.Sections = await _context.Sections.OrderBy(s => s.Level).ThenBy(s => s.SectionName).ToListAsync();
+            ViewBag.Professors = await _context.Users
+                .Where(u => u.UserType == "Professor" && u.IsActive)
+                .OrderBy(u => u.LastName).ThenBy(u => u.FirstName)
+                .Select(u => u.LastName + ", " + u.FirstName)
+                .ToListAsync();
             return View();
         }
 
@@ -252,13 +262,21 @@ namespace BookHiveLibrary.Controllers
             IQueryable<Section> query = _context.Sections;
 
             if (levelGroup == "JHS")
-                query = query.Where(s => s.Level == "Grade 7" || s.Level == "Grade 8" || s.Level == "Grade 9" || s.Level == "Grade 10");
+                query = query.Where(s => s.Level == "Junior High School");
             else if (levelGroup == "SHS")
-                query = query.Where(s => s.Level == "SHS");
-            else if (levelGroup == "College")
-                query = query.Where(s => s.Level == "College");
+                query = query.Where(s => s.Level == "Senior High School");
+            else if (levelGroup == "Tertiary")
+                query = query.Where(s => s.Level == "Tertiary");
 
-            _context.Sections.RemoveRange(query);
+            var sectionsToDelete = await query.ToListAsync();
+            var sectionNames     = sectionsToDelete.Select(s => s.SectionName).ToList();
+
+            var affected = await _context.Users
+                .Where(u => u.UserType == "Student" && u.Section != null && sectionNames.Contains(u.Section))
+                .ToListAsync();
+            foreach (var u in affected) { u.Section = ""; u.IsActive = false; }
+
+            _context.Sections.RemoveRange(sectionsToDelete);
             await _context.SaveChangesAsync();
             TempData["Success"] = $"{levelGroup} sections have been reset.";
             return RedirectToAction("Sectioning");
@@ -270,6 +288,11 @@ namespace BookHiveLibrary.Controllers
             var section = await _context.Sections.FindAsync(id);
             if (section != null)
             {
+                var affected = await _context.Users
+                    .Where(u => u.UserType == "Student" && u.Section == section.SectionName)
+                    .ToListAsync();
+                foreach (var u in affected) { u.Section = ""; u.IsActive = false; }
+
                 _context.Sections.Remove(section);
                 await _context.SaveChangesAsync();
             }
@@ -322,6 +345,19 @@ namespace BookHiveLibrary.Controllers
             if (user != null)
             {
                 user.IsActive = !user.IsActive;
+                await _userManager.UpdateAsync(user);
+            }
+            return RedirectToAction("UserManagement");
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ActivateWithSection(string userId, string section)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user != null)
+            {
+                user.Section = section;
+                user.IsActive = true;
                 await _userManager.UpdateAsync(user);
             }
             return RedirectToAction("UserManagement");
@@ -384,6 +420,117 @@ namespace BookHiveLibrary.Controllers
             return View(logs);
         }
 
+        // ── My Profile ───────────────────────────────────────────────────────
+
+        [HttpGet]
+        public async Task<IActionResult> Profile()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return NotFound();
+            return View(user);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Profile(string firstName, string lastName, string middleName, string phoneNumber, IFormFile? profilePicture)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return NotFound();
+
+            user.FirstName   = firstName ?? user.FirstName;
+            user.LastName    = lastName ?? user.LastName;
+            user.MiddleName  = middleName ?? user.MiddleName;
+            user.PhoneNumber = phoneNumber ?? user.PhoneNumber;
+
+            if (profilePicture != null && profilePicture.Length > 0)
+            {
+                using var ms = new MemoryStream();
+                await profilePicture.CopyToAsync(ms);
+                var base64 = Convert.ToBase64String(ms.ToArray());
+                var mimeType = profilePicture.ContentType;
+                user.ProfilePicture = $"data:{mimeType};base64,{base64}";
+            }
+
+            await _userManager.UpdateAsync(user);
+            TempData["Success"] = "Profile updated successfully.";
+            return RedirectToAction("Profile");
+        }
+
+        // ── Active Users (currently inside library) ────────────────────────────
+
+        public async Task<IActionResult> GetActiveUsers()
+        {
+            var logs = await _context.RFIDLogs
+                .Include(l => l.User)
+                .Where(l => l.IsInside)
+                .OrderBy(l => l.TapInTime)
+                .Select(l => new {
+                    name     = l.User != null ? l.User.LastName + ", " + l.User.FirstName : "Unknown",
+                    userType = l.User != null ? l.User.UserType : "",
+                    section  = l.User != null ? l.User.Section : "",
+                    tapIn    = l.TapInTime.ToString("hh:mm tt")
+                })
+                .ToListAsync();
+
+            return Json(logs);
+        }
+
+        public async Task<IActionResult> GetStudentsBySection(string sectionName)
+        {
+            var students = await _context.Users
+                .Where(u => u.Section == sectionName && u.UserType == "Student")
+                .OrderBy(u => u.LastName).ThenBy(u => u.FirstName)
+                .Select(u => new {
+                    id     = u.Id,
+                    name   = u.LastName + ", " + u.FirstName + (!string.IsNullOrEmpty(u.MiddleName) ? " " + u.MiddleName.Substring(0, 1) + "." : ""),
+                    idNo   = u.StudentNumber,
+                    email  = u.Email,
+                    active = u.IsActive
+                })
+                .ToListAsync();
+            return Json(students);
+        }
+
+        public async Task<IActionResult> GetUnassignedStudents()
+        {
+            var students = await _context.Users
+                .Where(u => u.UserType == "Student" && (u.Section == null || u.Section == ""))
+                .OrderBy(u => u.LastName).ThenBy(u => u.FirstName)
+                .Select(u => new {
+                    id   = u.Id,
+                    name = u.LastName + ", " + u.FirstName + (!string.IsNullOrEmpty(u.MiddleName) ? " " + u.MiddleName.Substring(0, 1) + "." : ""),
+                    idNo = u.StudentNumber,
+                    rfid = u.RFIDNumber
+                })
+                .ToListAsync();
+            return Json(students);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AssignStudentToSection(string userId, string sectionName)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return Json(new { success = false, message = "Student not found." });
+
+            user.Section  = sectionName;
+            user.IsActive = true;
+            await _userManager.UpdateAsync(user);
+
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> RemoveStudentFromSection(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return Json(new { success = false });
+
+            user.Section  = "";
+            user.IsActive = false;
+            await _userManager.UpdateAsync(user);
+
+            return Json(new { success = true });
+        }
+
         // ── Notifications ─────────────────────────────────────────────────────
 
         public async Task<IActionResult> GetNotifications()
@@ -412,6 +559,7 @@ namespace BookHiveLibrary.Controllers
         {
             var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RFIDNumber == rfidNumber);
             if (user == null) return NotFound("RFID not registered.");
+            if (!user.IsActive) return Unauthorized("This account has been deactivated.");
 
             var open = await _context.RFIDLogs
                 .Where(l => l.UserId == user.Id && l.IsInside)
@@ -424,6 +572,11 @@ namespace BookHiveLibrary.Controllers
 
             _context.RFIDLogs.Add(new RFIDLog { UserId = user.Id, TapInTime = DateTime.Now });
             await _context.SaveChangesAsync();
+
+            var tapPayload = new { action = "TapIn", name = $"{user.FirstName} {user.LastName}", userType = user.UserType, time = DateTime.Now.ToString("MMM d, h:mm tt") };
+            var librarians = await _userManager.GetUsersInRoleAsync("Librarian");
+            foreach (var lib in librarians)
+                await _hub.Clients.Group($"user-{lib.Id}").SendAsync("LibraryEntryUpdated", tapPayload);
 
             return Ok(new { name = $"{user.FirstName} {user.LastName}", studentNumber = user.StudentNumber });
         }
@@ -446,6 +599,11 @@ namespace BookHiveLibrary.Controllers
                 log.TapOutTime = DateTime.Now;
                 await _context.SaveChangesAsync();
             }
+
+            var tapOutPayload = new { action = "TapOut", name = $"{user.FirstName} {user.LastName}", userType = user.UserType, time = DateTime.Now.ToString("MMM d, h:mm tt") };
+            var librarians = await _userManager.GetUsersInRoleAsync("Librarian");
+            foreach (var lib in librarians)
+                await _hub.Clients.Group($"user-{lib.Id}").SendAsync("LibraryEntryUpdated", tapOutPayload);
 
             return Ok();
         }

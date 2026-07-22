@@ -1,5 +1,8 @@
 @{
-    Layout = "~/Views/Shared/_LibrarianLayout.cshtml";
+    var userType = ViewBag.UserType as string ?? "";
+    Layout = userType == "MIS"      ? "~/Views/Shared/_MISLayout.cshtml"
+           : userType == "Student" || userType == "Professor" ? "~/Views/Shared/_StudentLayout.cshtml"
+           : "~/Views/Shared/_LibrarianLayout.cshtml";
     ViewData["Title"] = "Messages";
     var me = ViewBag.Me as BookHiveLibrary.Models.ApplicationUser;
     var allUsers = ViewBag.AllUsers as List<BookHiveLibrary.Models.ApplicationUser>;
@@ -10,26 +13,35 @@
 
     <!-- Sidebar: Conversations -->
     <div class="w-72 flex-shrink-0 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
-        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between" style="background:#1e3a6e;">
+        <div class="px-4 py-3 border-b border-gray-100" style="background:#000147;">
             <span class="text-sm font-semibold text-white">Messages</span>
-            <button onclick="toggleNewMsg()" class="text-white/70 hover:text-white" title="New Message">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-            </button>
         </div>
 
-        <!-- New message: pick recipient -->
-        <div id="newMsgPanel" class="hidden border-b border-gray-100 p-3 bg-blue-50">
-            <p class="text-xs font-medium text-gray-500 mb-1">Start new conversation</p>
-            <select id="newMsgTarget" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none" onchange="openConversation(this.value)">
-                <option value="">Select user…</option>
-                @if (allUsers != null)
-                {
-                    foreach (var u in allUsers)
+        <!-- Always-visible search -->
+        <div class="border-b border-gray-100 p-3">
+            <div class="relative">
+                <input type="text" id="userSearch" placeholder="Search user to message…" autocomplete="off"
+                       class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                       oninput="filterUsers(this.value)" onfocus="showDropdown()"
+                       onblur="setTimeout(()=>{ document.getElementById('userSearch').value=''; document.getElementById('userDropdown').classList.add('hidden'); }, 200)" />
+                <div id="userDropdown"
+                     class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-52 overflow-y-auto">
+                    @if (allUsers != null)
                     {
-                        <option value="@u.Id">@u.FirstName @u.LastName (@u.UserType)</option>
+                        foreach (var u in allUsers)
+                        {
+                            <div class="user-option px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 flex items-center justify-between"
+                                 data-id="@u.Id"
+                                 data-name="@u.FirstName @u.LastName"
+                                 data-type="@u.UserType"
+                                 onclick="selectUser('@u.Id', '@u.FirstName @u.LastName', '@u.UserType')">
+                                <span>@u.FirstName @u.LastName</span>
+                                <span class="text-xs text-gray-400 ml-2">@u.UserType</span>
+                            </div>
+                        }
                     }
-                }
-            </select>
+                </div>
+            </div>
         </div>
 
         <!-- Conversation list -->
@@ -42,7 +54,7 @@
     <div class="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
 
         <!-- Chat header -->
-        <div id="chatHeader" class="px-5 py-3 border-b border-gray-100 flex items-center gap-3" style="background:#1e3a6e;">
+        <div id="chatHeader" class="px-5 py-3 border-b border-gray-100 flex items-center gap-3" style="background:#000147;">
             <div id="chatAvatar" class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold bg-blue-400 hidden"></div>
             <div class="flex-1">
                 <p id="chatName" class="text-sm font-semibold text-white">Select a conversation</p>
@@ -65,7 +77,7 @@
                 <input type="text" id="msgInput" placeholder="Type a message…" autocomplete="off"
                        class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" disabled />
                 <button type="submit" id="sendBtn" disabled
-                        class="px-4 py-2 text-white rounded-lg text-sm font-medium disabled:opacity-40" style="background:#1e3a6e;">
+                        class="px-4 py-2 text-white rounded-lg text-sm font-medium disabled:opacity-40" style="background:#000147;">
                     Send
                 </button>
             </form>
@@ -89,28 +101,48 @@ async function loadConvoList() {
         return;
     }
     el.innerHTML = list.map(c => `
-        <div onclick="openConversation('${c.userId}')"
-             class="px-4 py-3 cursor-pointer hover:bg-blue-50 transition ${activeUserId === c.userId ? 'bg-blue-50 border-l-2 border-blue-600' : ''}"
-             id="convo-${c.userId}">
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:#1e3a6e;">
-                    ${c.name.charAt(0).toUpperCase()}
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm font-medium text-gray-800 truncate">${c.name}</span>
-                        ${c.unread > 0 ? `<span class="ml-1 w-4 h-4 rounded-full text-[10px] font-bold text-white flex items-center justify-center flex-shrink-0" style="background:#e53e3e;">${c.unread}</span>` : ''}
-                    </div>
-                    <p class="text-xs text-gray-400 truncate">${c.lastMsg}</p>
-                    <p class="text-[10px] text-gray-300 mt-0.5">${c.sentAt}</p>
-                </div>
+        <div class="convo-item px-4 py-3 cursor-pointer hover:bg-blue-50 transition flex items-center gap-2"
+             style="${activeUserId === c.userId ? 'background:#eff6ff;border-left:2px solid #2563eb;' : ''}"
+             id="convo-${c.userId}" onclick="openConversation('${c.userId}')">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:#000147;">
+                ${c.name.charAt(0).toUpperCase()}
             </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-800 truncate">${c.name}</span>
+                    ${c.unread > 0 ? `<span class="ml-1 w-4 h-4 rounded-full text-[10px] font-bold text-white flex items-center justify-center flex-shrink-0" style="background:#e53e3e;">${c.unread}</span>` : ''}
+                </div>
+                <p class="text-xs ${c.lastMsgUnsent ? 'text-gray-300 italic' : 'text-gray-400'} truncate">${c.lastMsgUnsent ? 'This message was unsent' : c.lastMsg}</p>
+                <p class="text-[10px] text-gray-300 mt-0.5">${c.sentAt}</p>
+            </div>
+            <button onclick="event.stopPropagation(); showConvoMenu(event, '${c.userId}')"
+                    class="convo-dots flex-shrink-0 p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700"
+                    style="opacity:0.35;transition:opacity 0.15s;"
+                    id="dots-${c.userId}">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/></svg>
+            </button>
         </div>`).join('');
+
+    // Fixed dropdown rendered once, reused
+    let convoMenuEl = document.getElementById('globalConvoMenu');
+    if (!convoMenuEl) {
+        convoMenuEl = document.createElement('div');
+        convoMenuEl.id = 'globalConvoMenu';
+        convoMenuEl.style.cssText = 'position:fixed;z-index:9999;background:white;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);min-width:170px;overflow:hidden;font-size:13px;display:none;';
+        convoMenuEl.innerHTML = `
+            <button id="gcm-important" class="w-full text-left px-4 py-2.5 hover:bg-yellow-50 text-yellow-700 font-medium flex items-center gap-2">⭐ Mark as Important</button>
+            <button id="gcm-delete"    class="w-full text-left px-4 py-2.5 hover:bg-red-50 text-red-500 flex items-center gap-2">🗑 Delete Conversation</button>`;
+        document.body.appendChild(convoMenuEl);
+    }
+
+    // show dots on hover
+    document.querySelectorAll('.convo-item').forEach(row => {
+        const btn = row.querySelector('.convo-dots');
+        row.addEventListener('mouseenter', () => { if(btn) btn.style.opacity='1'; });
+        row.addEventListener('mouseleave', () => { if(btn) btn.style.opacity='0.35'; });
+    });
 }
 
-function toggleNewMsg() {
-    document.getElementById('newMsgPanel').classList.toggle('hidden');
-}
 
 // ── Chat ──────────────────────────────────────────────────────
 async function openConversation(userId) {
@@ -119,11 +151,12 @@ async function openConversation(userId) {
     document.getElementById('currentReceiverId').value = userId;
     document.getElementById('msgInput').disabled   = false;
     document.getElementById('sendBtn').disabled    = false;
-    document.getElementById('newMsgPanel').classList.add('hidden');
-    document.getElementById('newMsgTarget').value  = '';
-    await fetchMessages();
-    loadConvoList();
+    document.getElementById('userSearch').value = '';
+    document.getElementById('userDropdown').classList.add('hidden');
+    document.getElementById('msgInput').focus();
     clearInterval(pollTimer);
+    await fetchMessages();
+    await loadConvoList();
     pollTimer = setInterval(fetchMessages, 5000);
 }
 
@@ -145,13 +178,26 @@ async function fetchMessages() {
     }
     box.innerHTML = data.messages.map(m => {
         const mine = m.senderId === myId;
-        return `<div class="flex ${mine ? 'justify-end' : 'justify-start'}">
-            <div class="max-w-[65%]">
-                <div class="px-3 py-2 rounded-2xl text-sm ${mine ? 'text-white rounded-br-sm' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-sm'}"
-                     style="${mine ? 'background:#1e3a6e;' : ''}">
-                    ${escHtml(m.content)}
+        const unsent = m.isUnsent;
+        const msgContent = unsent
+            ? `<span class="italic text-gray-400 text-xs">This message was unsent</span>`
+            : `${escHtml(m.content)}`;
+
+        const menuItems = unsent ? '' : (mine
+            ? `<button onclick="unsendMsg(${m.id})" class="w-full text-left px-4 py-2.5 hover:bg-red-50 text-red-500 font-medium flex items-center gap-2"><span>✕</span> Unsend</button>
+               <button onclick="deleteForMe(${m.id})" class="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-gray-600 flex items-center gap-2"><span>🗑</span> Delete for me</button>`
+            : `<button onclick="deleteForMe(${m.id})" class="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-gray-600 flex items-center gap-2"><span>🗑</span> Delete for me</button>`);
+
+        return `<div class="flex ${mine ? 'justify-end' : 'justify-start'}" id="msg-${m.id}">
+            <div class="max-w-[65%]" style="position:relative;">
+                <div class="px-3 py-2 rounded-2xl text-sm ${unsent ? 'bg-gray-100 border border-gray-200 text-gray-400 italic' : mine ? 'text-white rounded-br-sm' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-sm'} select-none cursor-pointer"
+                     style="${mine && !unsent ? 'background:#000147;' : ''}"
+                     oncontextmenu="event.preventDefault(); showMsgMenu(event, 'mmenu-${m.id}')"
+                     ondblclick="showMsgMenu(event, 'mmenu-${m.id}')">
+                    ${msgContent}
                 </div>
                 <p class="text-[10px] text-gray-400 mt-0.5 ${mine ? 'text-right' : ''}">${m.sentAt}</p>
+                ${menuItems ? `<div id="mmenu-${m.id}" class="msg-menu hidden" style="position:fixed;z-index:9999;background:white;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);min-width:160px;overflow:hidden;font-size:13px;">${menuItems}</div>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -172,13 +218,110 @@ async function sendMessage(e) {
     fd.append('__RequestVerificationToken', document.querySelector('input[name="__RequestVerificationToken"]').value);
 
     input.value = '';
-    await fetch('/Message/Send', { method: 'POST', body: fd });
+    const res = await fetch('/Message/Send', { method: 'POST', body: fd });
+    if (!res.ok) return;
     await fetchMessages();
-    loadConvoList();
+    await loadConvoList();
 }
 
 function escHtml(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const token = () => document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+function showMsgMenu(event, menuId) {
+    document.querySelectorAll('.msg-menu').forEach(m => m.classList.add('hidden'));
+    const menu = document.getElementById(menuId);
+    if (!menu) return;
+    menu.classList.remove('hidden');
+    // Position near cursor, keep inside viewport
+    const x = event.clientX;
+    const y = event.clientY;
+    menu.style.left = Math.min(x, window.innerWidth - 180) + 'px';
+    menu.style.top  = Math.min(y + 4, window.innerHeight - 120) + 'px';
+}
+
+let _activeConvoMenuUser = null;
+
+function showConvoMenu(event, userId) {
+    const menu = document.getElementById('globalConvoMenu');
+    if (!menu) return;
+    // If same button clicked again, toggle off
+    if (_activeConvoMenuUser === userId && menu.style.display !== 'none') {
+        menu.style.display = 'none';
+        _activeConvoMenuUser = null;
+        return;
+    }
+    _activeConvoMenuUser = userId;
+    // Wire up actions
+    document.getElementById('gcm-important').onclick = (e) => { e.stopPropagation(); markImportant(userId); menu.style.display='none'; _activeConvoMenuUser=null; };
+    document.getElementById('gcm-delete').onclick    = (e) => { e.stopPropagation(); deleteConversation(userId); menu.style.display='none'; _activeConvoMenuUser=null; };
+    // Position near button
+    const btn = document.getElementById('dots-' + userId);
+    const rect = btn ? btn.getBoundingClientRect() : { right: event.clientX, bottom: event.clientY };
+    menu.style.display = 'block';
+    const menuW = 170, menuH = 90;
+    menu.style.left = Math.min(rect.right - menuW, window.innerWidth - menuW - 8) + 'px';
+    menu.style.top  = Math.min(rect.bottom + 4, window.innerHeight - menuH - 8) + 'px';
+}
+
+async function markImportant(userId) {
+    const el = document.getElementById('convo-' + userId);
+    if (!el) return;
+    const nameEl = el.querySelector('span.text-sm');
+    if (nameEl && !nameEl.textContent.includes('⭐')) nameEl.textContent = '⭐ ' + nameEl.textContent;
+}
+
+async function deleteConversation(userId) {
+    if (!confirm('Delete this entire conversation? This cannot be undone.')) return;
+    const fd = new FormData();
+    fd.append('otherUserId', userId);
+    fd.append('__RequestVerificationToken', token());
+    const res = await fetch('/Message/DeleteConversation', { method: 'POST', body: fd });
+    if (res.ok) {
+        document.getElementById('convo-' + userId)?.remove();
+        if (activeUserId === userId) {
+            activeUserId = null;
+            document.getElementById('chatMessages').innerHTML = '<div class="flex items-center justify-center h-full"><p class="text-sm text-gray-400">Select a conversation to start messaging</p></div>';
+            document.getElementById('chatName').textContent = 'Select a conversation';
+            document.getElementById('chatType').textContent = '';
+            document.getElementById('chatAvatar').classList.add('hidden');
+            document.getElementById('msgInput').disabled = true;
+            document.getElementById('sendBtn').disabled = true;
+        }
+    }
+}
+
+// close menus when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.msg-menu') && !e.target.closest('[ondblclick]') && !e.target.closest('[oncontextmenu]'))
+        document.querySelectorAll('.msg-menu').forEach(m => m.classList.add('hidden'));
+    const gcm = document.getElementById('globalConvoMenu');
+    if (gcm && !e.target.closest('#globalConvoMenu') && !e.target.closest('.convo-dots')) {
+        gcm.style.display = 'none';
+        _activeConvoMenuUser = null;
+    }
+});
+
+async function unsendMsg(id) {
+    if (!confirm('Unsend this message for everyone?')) return;
+    const fd = new FormData();
+    fd.append('id', id);
+    fd.append('__RequestVerificationToken', token());
+    const res = await fetch('/Message/Unsend', { method: 'POST', body: fd });
+    if (res.ok) {
+        await fetchMessages();
+        await loadConvoList();
+    }
+}
+
+async function deleteForMe(id) {
+    const fd = new FormData();
+    fd.append('id', id);
+    fd.append('__RequestVerificationToken', token());
+    const res = await fetch('/Message/DeleteForMe', { method: 'POST', body: fd });
+    if (res.ok) document.getElementById('msg-' + id)?.remove();
 }
 
 // ── Badge sync ────────────────────────────────────────────────
@@ -197,6 +340,34 @@ async function updateEnvelopeBadge() {
         }
     } catch {}
 }
+
+// ── User search ──────────────────────────────────────────────
+function showDropdown() {
+    document.getElementById('userDropdown').classList.remove('hidden');
+}
+
+function filterUsers(query) {
+    const q = query.toLowerCase().trim();
+    const dropdown = document.getElementById('userDropdown');
+    dropdown.classList.remove('hidden');
+    document.querySelectorAll('.user-option').forEach(el => {
+        const name = el.getAttribute('data-name').toLowerCase();
+        const type = el.getAttribute('data-type').toLowerCase();
+        el.style.display = (name.includes(q) || type.includes(q)) ? '' : 'none';
+    });
+}
+
+function selectUser(id, name, type) {
+    document.getElementById('userSearch').value = name + ' (' + type + ')';
+    document.getElementById('userDropdown').classList.add('hidden');
+    openConversation(id);
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#newMsgPanel')) {
+        document.getElementById('userDropdown')?.classList.add('hidden');
+    }
+});
 
 // Init
 loadConvoList();

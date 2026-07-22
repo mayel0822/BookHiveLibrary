@@ -1,0 +1,184 @@
+@using BookHiveLibrary.Models
+@model ApplicationUser
+@{
+    Layout = "~/Views/Shared/_MISLayout.cshtml";
+    ViewData["Title"] = $"{Model.FirstName} {Model.LastName}".Trim();
+}
+
+<div class="mb-4">
+    <a href="@Url.Action("UserInformation","MIS")" class="text-sm text-blue-600 hover:underline flex items-center gap-1">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        Back to User Information
+    </a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+
+    <!-- Left: Profile card -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center text-center gap-3">
+        <div class="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center text-white text-2xl font-bold flex-shrink-0" style="background-color:#000147;">
+            @if (!string.IsNullOrEmpty(Model.ProfilePicture))
+            {
+                <img src="@Model.ProfilePicture" class="w-full h-full object-cover" />
+            }
+            else
+            {
+                @(Model.FirstName?.Length > 0 ? Model.FirstName[0].ToString().ToUpper() : "?")
+            }
+        </div>
+        <div>
+            <p class="text-sm font-bold text-gray-800 leading-snug">@($"{Model.LastName}, {Model.FirstName} {Model.MiddleName}".Trim())</p>
+            <span class="text-xs px-2.5 py-1 rounded-full font-semibold mt-1 inline-block
+                @(Model.UserType == "Librarian" ? "bg-indigo-100 text-indigo-700" :
+                  Model.UserType == "Student"   ? "bg-green-100 text-green-700"   :
+                  "bg-blue-100 text-blue-700")">
+                @Model.UserType
+            </span>
+        </div>
+        <div class="w-full pt-2 border-t border-gray-100 text-sm text-gray-500 space-y-1 text-left">
+            <p><span class="font-medium text-gray-700">Status:</span>
+                @if (Model.IsActive)
+                { <span class="text-green-600 font-medium">Active</span> }
+                else
+                { <span class="text-gray-400 font-medium">Inactive</span> }
+            </p>
+            <p><span class="font-medium text-gray-700">Registered:</span> @Model.CreatedAt.ToString("MMM dd, yyyy")</p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="w-full pt-3 border-t border-gray-100">
+            @if (Model.IsActive)
+            {
+                <button type="button" onclick="openDeactivate()"
+                        class="w-full py-2 text-sm font-medium rounded-xl border border-yellow-300 text-yellow-700 hover:bg-yellow-50 transition">
+                    Deactivate Account
+                </button>
+            }
+            else
+            {
+                <form method="post" action="/MIS/ToggleStatus">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <input type="hidden" name="returnAction" value="UserInformation" />
+                    <button type="submit" class="w-full py-2 text-sm font-medium rounded-xl border border-green-300 text-green-700 hover:bg-green-50 transition">
+                        Activate Account
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+
+    <!-- Right: Info + Change Password -->
+    <div class="lg:col-span-2 flex flex-col gap-6 h-full">
+
+        <!-- Account Information -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1">
+            <h3 class="text-sm font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100">Account Information</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div class="min-w-0">
+                    <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Email</p>
+                    <p class="text-gray-700 truncate" title="@(Model.Email ?? "")">@(Model.Email ?? "—")</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Phone Number</p>
+                    <p class="text-gray-700">@(string.IsNullOrEmpty(Model.PhoneNumber) ? "—" : Model.PhoneNumber)</p>
+                </div>
+                @if (Model.UserType == "Student")
+                {
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Student Number</p>
+                        <p class="text-gray-700 font-mono">@(string.IsNullOrEmpty(Model.StudentNumber) ? "—" : Model.StudentNumber)</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Section</p>
+                        <p class="text-gray-700">@(string.IsNullOrEmpty(Model.Section) ? "—" : Model.Section)</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Course</p>
+                        <p class="text-gray-700">@(string.IsNullOrEmpty(Model.Course) ? "—" : Model.Course)</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Year Level</p>
+                        <p class="text-gray-700">@(string.IsNullOrEmpty(Model.Level) ? "—" : Model.Level)</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Adviser Email</p>
+                        <p class="text-gray-700">@(string.IsNullOrEmpty(Model.AdviserEmail) ? "—" : Model.AdviserEmail)</p>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Employee Number</p>
+                        <p class="text-gray-700 font-mono">@(string.IsNullOrEmpty(Model.EmployeeNumber) ? "—" : Model.EmployeeNumber)</p>
+                    </div>
+                }
+                <div>
+                    <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">RFID Number</p>
+                    <p class="text-gray-700 font-mono">@(string.IsNullOrEmpty(Model.RFIDNumber) ? "—" : Model.RFIDNumber)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Password -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h3 class="text-sm font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100">Change Password</h3>
+            <form method="post" action="@Url.Action("ChangeUserPassword","MIS")" class="flex flex-col gap-3">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <div>
+                    <label class="text-xs text-gray-500 font-medium block mb-1">New Password</label>
+                    <input type="password" name="newPassword" required
+                           class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                           placeholder="Enter new password" />
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit"
+                            class="px-5 py-2 text-sm text-white rounded-xl font-medium hover:opacity-90 transition"
+                            style="background-color:#000147;">
+                        Update Password
+                    </button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+<!-- Deactivate Modal -->
+<div id="deactivateModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100" style="background-color:#000147;">
+            <h3 class="text-sm font-semibold text-white">Deactivate Account</h3>
+        </div>
+        <div class="px-6 py-5">
+            <p class="text-sm text-gray-700 mb-3">Reason for deactivation:</p>
+            <textarea id="deactivateReason" rows="3"
+                      class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                      placeholder="Enter reason..."></textarea>
+            <p id="deactivateReasonError" class="text-red-500 text-xs mt-1 hidden">Please provide a reason.</p>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+            <button type="button" onclick="closeDeactivate()" class="px-5 py-2 text-sm border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50">Cancel</button>
+            <button type="button" onclick="submitDeactivate()" class="px-5 py-2 text-sm text-white bg-yellow-500 hover:bg-yellow-600 rounded-xl">Deactivate</button>
+        </div>
+    </div>
+</div>
+<form id="deactivateForm" method="post" action="/MIS/ToggleStatus">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@Model.Id" />
+    <input type="hidden" name="returnAction" value="UserInformation" />
+    <input type="hidden" id="deactivateReasonInput" name="reason" />
+</form>
+
+
+<script>
+function openDeactivate() { document.getElementById('deactivateModal').classList.remove('hidden'); }
+function closeDeactivate() { document.getElementById('deactivateModal').classList.add('hidden'); }
+function submitDeactivate() {
+    const r = document.getElementById('deactivateReason').value.trim();
+    if (!r) { document.getElementById('deactivateReasonError').classList.remove('hidden'); return; }
+    document.getElementById('deactivateReasonInput').value = r;
+    document.getElementById('deactivateForm').submit();
+}
+</script>

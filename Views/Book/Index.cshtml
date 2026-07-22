@@ -6,22 +6,18 @@
 }
 
 <!-- Stats Row -->
-<div class="grid grid-cols-4 gap-4 mb-6">
-    <div class="rounded-xl p-4 text-white" style="background-color:#4a6fa5;">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
         <p class="text-xs text-blue-200 mb-1">Total Books</p>
         <p class="text-3xl font-bold">@Model.Sum(b => b.TotalQuantity)</p>
     </div>
-    <div class="rounded-xl p-4 text-white" style="background-color:#4a6fa5;">
+    <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
         <p class="text-xs text-blue-200 mb-1">Available</p>
         <p class="text-3xl font-bold">@Model.Sum(b => b.AvailableQuantity)</p>
     </div>
-    <div class="rounded-xl p-4 text-white" style="background-color:#4a6fa5;">
+    <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
         <p class="text-xs text-blue-200 mb-1">Borrowed</p>
         <p class="text-3xl font-bold">@Model.Sum(b => b.TotalQuantity - b.AvailableQuantity)</p>
-    </div>
-    <div class="rounded-xl p-4 text-white" style="background-color:#4a6fa5;">
-        <p class="text-xs text-blue-200 mb-1">Titles</p>
-        <p class="text-3xl font-bold">@Model.Count()</p>
     </div>
 </div>
 
@@ -44,7 +40,7 @@
                         }
                     }
                 </select>
-                <button type="submit" class="px-4 py-2 text-sm text-white font-medium" style="background-color:#1e3a6e;">Search</button>
+                <button type="submit" class="px-4 py-2 text-sm text-white font-medium" style="background-color:#000147;">Search</button>
             </div>
             @if (!string.IsNullOrEmpty(ViewBag.Search as string) || !string.IsNullOrEmpty(ViewBag.Category as string))
             {
@@ -52,19 +48,34 @@
             }
         </form>
         <a href="@Url.Action("Register","Book")"
-           class="px-4 py-2 text-sm text-white rounded-lg flex-shrink-0 font-medium" style="background-color:#1e3a6e;">+ Add Book</a>
+           class="px-4 py-2 text-sm text-white rounded-lg flex-shrink-0 font-medium" style="background-color:#000147;">+ Add Book</a>
+    </div>
+
+    <!-- Bulk Print Toolbar (shows when books are selected) -->
+    <div id="bulkToolbar" style="display:none;" class="px-5 py-3 bg-blue-50 border-b border-blue-100 flex items-center gap-3">
+        <span id="selectedCount" class="text-sm font-semibold text-blue-800"></span>
+        <button onclick="printSelected()" class="px-4 py-1.5 text-sm text-white rounded-lg font-medium flex items-center gap-2" style="background-color:#000147;">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            Print Selected Labels
+        </button>
+        <button onclick="clearSelection()" class="px-4 py-1.5 text-sm bg-white border border-gray-300 text-gray-600 rounded-lg">Clear Selection</button>
     </div>
 
     <!-- Table -->
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
-            <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+            <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
                 <tr>
-                    <th class="px-4 py-3 text-left">Book ID</th>
+                    <th class="px-3 py-3 text-left w-8">
+                        <input type="checkbox" id="selectAll" class="w-4 h-4 cursor-pointer" onchange="toggleAll(this)" />
+                    </th>
+                    <th class="px-4 py-3 text-left">Call No.</th>
                     <th class="px-4 py-3 text-left">Book Title</th>
                     <th class="px-4 py-3 text-left">Author</th>
                     <th class="px-4 py-3 text-left">Published Year</th>
                     <th class="px-4 py-3 text-left">Category</th>
+                    <th class="px-4 py-3 text-left">Quantity</th>
+                    <th class="px-4 py-3 text-left">Available</th>
                     <th class="px-4 py-3 text-left">Status</th>
                     <th class="px-4 py-3 text-left">Action</th>
                 </tr>
@@ -73,11 +84,16 @@
                 @foreach (var book in Model)
                 {
                     <tr class="hover:bg-gray-50">
+                        <td class="px-3 py-3">
+                            <input type="checkbox" class="book-check w-4 h-4 cursor-pointer" value="@book.Id" onchange="updateToolbar()" />
+                        </td>
                         <td class="px-4 py-3 text-gray-600 font-mono text-xs">@book.CallNumber</td>
                         <td class="px-4 py-3 font-medium text-gray-800">@book.Title</td>
                         <td class="px-4 py-3 text-gray-600">@book.Author</td>
                         <td class="px-4 py-3 text-gray-600">@book.PublishedYear</td>
                         <td class="px-4 py-3 text-gray-600">@book.Category</td>
+                        <td class="px-4 py-3 text-gray-600 font-medium">@book.TotalQuantity</td>
+                        <td class="px-4 py-3 text-gray-600 font-medium">@book.AvailableQuantity</td>
                         <td class="px-4 py-3">
                             @if (book.AvailableQuantity > 0)
                             {
@@ -108,7 +124,7 @@
                 }
                 @if (!Model.Any())
                 {
-                    <tr><td colspan="7" class="px-4 py-8 text-center text-gray-400">No books found</td></tr>
+                    <tr><td colspan="9" class="px-4 py-8 text-center text-gray-400">No books found</td></tr>
                 }
             </tbody>
         </table>
@@ -134,7 +150,7 @@
                 </select>
             </div>
             <div class="flex gap-3">
-                <button type="submit" class="flex-1 py-2 text-white rounded-lg text-sm" style="background-color:#1e3a6e;">Archive</button>
+                <button type="submit" class="flex-1 py-2 text-white rounded-lg text-sm" style="background-color:#000147;">Archive</button>
                 <button type="button" onclick="closeArchiveModal()" class="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">Cancel</button>
             </div>
         </form>
@@ -149,6 +165,43 @@ function showArchiveModal(id) {
 }
 function closeArchiveModal() {
     document.getElementById('archiveModal').classList.add('hidden');
+}
+
+function getChecked() {
+    return Array.from(document.querySelectorAll('.book-check:checked')).map(c => c.value);
+}
+
+function updateToolbar() {
+    const ids = getChecked();
+    const toolbar = document.getElementById('bulkToolbar');
+    const count = document.getElementById('selectedCount');
+    if (ids.length > 0) {
+        toolbar.style.display = 'flex';
+        count.textContent = ids.length + ' book' + (ids.length > 1 ? 's' : '') + ' selected';
+    } else {
+        toolbar.style.display = 'none';
+    }
+    document.getElementById('selectAll').indeterminate =
+        ids.length > 0 && ids.length < document.querySelectorAll('.book-check').length;
+    document.getElementById('selectAll').checked =
+        ids.length === document.querySelectorAll('.book-check').length;
+}
+
+function toggleAll(cb) {
+    document.querySelectorAll('.book-check').forEach(c => c.checked = cb.checked);
+    updateToolbar();
+}
+
+function clearSelection() {
+    document.querySelectorAll('.book-check').forEach(c => c.checked = false);
+    document.getElementById('selectAll').checked = false;
+    updateToolbar();
+}
+
+function printSelected() {
+    const ids = getChecked();
+    if (ids.length === 0) return;
+    window.open('/Book/PrintLabels?ids=' + ids.join(','), '_blank');
 }
 </script>
 }

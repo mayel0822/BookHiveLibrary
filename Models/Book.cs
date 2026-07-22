@@ -8,6 +8,7 @@ namespace BookHiveLibrary.Models
         public string Category { get; set; } = "";
         public string GradeLevel { get; set; } = "";
         public string CallNumber { get; set; } = "";
+        public string ISBN { get; set; } = "";
         public string AisleLocation { get; set; } = "";
         public string Description { get; set; } = "";
         public int TotalQuantity { get; set; } = 1;
@@ -16,6 +17,8 @@ namespace BookHiveLibrary.Models
         public string ArchiveReason { get; set; } = "";
         public string CoverImageUrl { get; set; } = "";
         public string PublishedYear { get; set; } = "";
+        public string BookFor { get; set; } = "Student"; // "Student" or "Professor"
+        public bool IsRoomUseOnly { get; set; } = false;
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         public ICollection<BookReservation> Reservations { get; set; } = new List<BookReservation>();

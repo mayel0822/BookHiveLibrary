@@ -5,98 +5,107 @@
     var recentUsers = ViewBag.RecentUsers as List<ApplicationUser> ?? new();
 }
 
-<h1 class="text-3xl font-bold mb-6 text-gray-800">MIS Dashboard</h1>
+<!-- Stats Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
 
-<!-- Stats -->
-<div class="grid grid-cols-3 gap-5 mb-8">
+    <a href="@Url.Action("UserInformation","MIS", new { roleFilter = "Librarian" })"
+       class="bg-[#000147] rounded-2xl p-8 text-center shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer block">
+        <p class="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-3">Librarians</p>
+        <p class="text-6xl font-bold text-white mb-1">@ViewBag.TotalLibrarians</p>
+        <p class="text-sm text-blue-300">@ViewBag.ActiveLibrarians active</p>
+    </a>
 
-    <div class="bg-white rounded-2xl shadow p-6">
-        <p class="text-gray-500 text-sm">Librarians</p>
-        <p class="text-4xl font-bold text-indigo-700 mt-2">@ViewBag.TotalLibrarians</p>
-        <p class="text-xs text-gray-400 mt-1">@ViewBag.ActiveLibrarians active</p>
-        <a href="/MIS/Librarians" class="text-xs text-indigo-500 hover:underline mt-2 inline-block">View all →</a>
-    </div>
+    <a href="@Url.Action("UserInformation","MIS", new { roleFilter = "Student" })"
+       class="bg-[#000147] rounded-2xl p-8 text-center shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer block">
+        <p class="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-3">Students</p>
+        <p class="text-6xl font-bold text-white mb-1">@ViewBag.TotalStudents</p>
+        <p class="text-sm text-blue-300">@ViewBag.ActiveStudents active</p>
+    </a>
 
-    <div class="bg-white rounded-2xl shadow p-6">
-        <p class="text-gray-500 text-sm">Students</p>
-        <p class="text-4xl font-bold text-green-600 mt-2">@ViewBag.TotalStudents</p>
-        <p class="text-xs text-gray-400 mt-1">@ViewBag.ActiveStudents active</p>
-        <a href="/MIS/Students" class="text-xs text-green-500 hover:underline mt-2 inline-block">View all →</a>
-    </div>
-
-    <div class="bg-white rounded-2xl shadow p-6">
-        <p class="text-gray-500 text-sm">Professors</p>
-        <p class="text-4xl font-bold text-blue-600 mt-2">@ViewBag.TotalProfessors</p>
-        <p class="text-xs text-gray-400 mt-1">@ViewBag.ActiveProfessors active</p>
-        <a href="/MIS/Professors" class="text-xs text-blue-500 hover:underline mt-2 inline-block">View all →</a>
-    </div>
+    <a href="@Url.Action("UserInformation","MIS", new { roleFilter = "Professor" })"
+       class="bg-[#000147] rounded-2xl p-8 text-center shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer block">
+        <p class="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-3">Professors</p>
+        <p class="text-6xl font-bold text-white mb-1">@ViewBag.TotalProfessors</p>
+        <p class="text-sm text-blue-300">@ViewBag.ActiveProfessors active</p>
+    </a>
 
 </div>
 
-<!-- Quick Create Buttons -->
-<div class="flex gap-3 mb-8">
+<!-- Quick Actions -->
+<div class="flex flex-wrap gap-3 mb-8">
     <a href="/MIS/Registration"
-       class="text-white px-5 py-2.5 rounded-xl text-sm hover:opacity-90" style="background-color:#1B2B5E;">
-        + Register Account
+       class="flex items-center gap-2 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:opacity-90 transition" style="background-color:#000147;">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        Register Account
     </a>
     <a href="/MIS/UserInformation"
-       class="border border-gray-300 text-gray-600 px-5 py-2.5 rounded-xl text-sm hover:bg-gray-50">
+       class="flex items-center gap-2 border border-gray-300 text-gray-600 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         View All Users
     </a>
     <a href="/MIS/ArchivedUsers"
-       class="border border-gray-300 text-gray-600 px-5 py-2.5 rounded-xl text-sm hover:bg-gray-50">
+       class="flex items-center gap-2 border border-gray-300 text-gray-600 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
         Archived Users
     </a>
 </div>
 
-<!-- Recently Added -->
-<div class="bg-white rounded-2xl shadow p-6">
-    <h2 class="text-lg font-semibold text-gray-700 mb-4">Recently Added Accounts</h2>
+<!-- Recently Added Accounts -->
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between" style="background-color:#000147;">
+        <span class="text-sm font-semibold text-white">Recently Added Accounts</span>
+        <a href="/MIS/UserInformation" class="text-xs text-blue-200 hover:text-white transition">View all →</a>
+    </div>
 
     @if (!recentUsers.Any())
     {
-        <p class="text-gray-400 text-sm">No accounts yet.</p>
+        <div class="px-6 py-12 text-center text-gray-400 text-sm">
+            No accounts yet. <a href="/MIS/Registration" class="text-blue-500 hover:underline">Register one →</a>
+        </div>
     }
     else
     {
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
-            <thead>
-                <tr class="text-left text-gray-500 border-b">
-                    <th class="pb-2">Name</th>
-                    <th class="pb-2">Role</th>
-                    <th class="pb-2">Email</th>
-                    <th class="pb-2">Status</th>
-                    <th class="pb-2">Created</th>
+            <thead class="bg-gray-50 text-xs uppercase text-gray-500 border-b border-gray-100">
+                <tr>
+                    <th class="px-6 py-3 text-left font-medium">Name</th>
+                    <th class="px-6 py-3 text-left font-medium">Role</th>
+                    <th class="px-6 py-3 text-left font-medium">Email</th>
+                    <th class="px-6 py-3 text-left font-medium">Status</th>
+                    <th class="px-6 py-3 text-left font-medium">Created</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody class="divide-y divide-gray-100">
                 @foreach (var u in recentUsers)
                 {
-                    <tr class="border-b last:border-0 hover:bg-gray-50">
-                        <td class="py-2 font-medium">@u.LastName, @u.FirstName</td>
-                        <td class="py-2">
-                            <span class="px-2 py-1 rounded-full text-xs
+                    <tr class="hover:bg-blue-50 transition cursor-pointer" onclick="window.location='/MIS/Detail/@u.Id'">
+                        <td class="px-6 py-3 font-medium text-gray-800">
+                            @if (!string.IsNullOrWhiteSpace(u.FirstName) || !string.IsNullOrWhiteSpace(u.LastName))
+                            { @($"{u.LastName}, {u.FirstName}") }
+                            else
+                            { <span class="text-gray-400 italic">No name set</span> }
+                        </td>
+                        <td class="px-6 py-3">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold
                                 @(u.UserType == "Librarian" ? "bg-indigo-100 text-indigo-700" :
-                                  u.UserType == "Student"   ? "bg-green-100 text-green-700"   :
+                                  u.UserType == "Student"   ? "bg-emerald-100 text-emerald-700" :
                                   "bg-blue-100 text-blue-700")">
                                 @u.UserType
                             </span>
                         </td>
-                        <td class="py-2 text-gray-500">@u.Email</td>
-                        <td class="py-2">
+                        <td class="px-6 py-3 text-gray-500">@u.Email</td>
+                        <td class="px-6 py-3">
                             @if (u.IsActive)
-                            {
-                                <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Active</span>
-                            }
+                            { <span class="bg-emerald-100 text-emerald-700 text-xs px-2.5 py-1 rounded-full font-semibold">Active</span> }
                             else
-                            {
-                                <span class="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full">Inactive</span>
-                            }
+                            { <span class="bg-gray-100 text-gray-500 text-xs px-2.5 py-1 rounded-full font-semibold">Inactive</span> }
                         </td>
-                        <td class="py-2 text-gray-400">@u.CreatedAt.ToString("MMM dd, yyyy")</td>
+                        <td class="px-6 py-3 text-gray-400 text-xs">@u.CreatedAt.ToString("MMM dd, yyyy")</td>
                     </tr>
                 }
             </tbody>
         </table>
+        </div>
     }
 </div>

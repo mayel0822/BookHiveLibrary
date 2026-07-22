@@ -10,5 +10,8 @@ namespace BookHiveLibrary.Models
         public string Content { get; set; } = "";
         public DateTime SentAt { get; set; } = DateTime.Now;
         public bool IsRead { get; set; } = false;
+        public bool IsUnsent { get; set; } = false;
+        public bool IsDeletedBySender { get; set; } = false;
+        public bool IsDeletedByReceiver { get; set; } = false;
     }
 }

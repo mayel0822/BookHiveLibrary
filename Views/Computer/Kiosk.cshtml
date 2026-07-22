@@ -32,7 +32,7 @@
             font-size: 13px;
             font-weight: 600;
             color: #fff;
-            background: #1e3a6e;
+            background: #000147;
             padding: 4px 16px;
             border-radius: 20px;
             letter-spacing: .04em;
@@ -64,7 +64,7 @@
             font-size: 64px;
             font-weight: 700;
             font-variant-numeric: tabular-nums;
-            color: #1e3a6e;
+            color: #135CC5;
             letter-spacing: .02em;
         }
         #kiosk-timer.warning { color: #d97706; }
@@ -80,7 +80,7 @@
         #kiosk-bar {
             height: 100%;
             border-radius: 99px;
-            background: #1e3a6e;
+            background: #000147;
             transition: width 1s linear;
         }
 
@@ -185,7 +185,7 @@
         const pct = Math.min((totalSecs - remaining) / totalSecs * 100, 100);
         const bar = document.getElementById('kiosk-bar');
         bar.style.width      = (100 - pct) + '%';
-        bar.style.background = remaining <= 600 ? '#d97706' : '#1e3a6e';
+        bar.style.background = remaining <= 600 ? '#d97706' : '#000147';
     }
 
     function showExpired() {

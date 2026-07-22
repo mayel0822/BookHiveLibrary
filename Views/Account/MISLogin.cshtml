@@ -1,16 +1,15 @@
-@{
+﻿@{
     ViewData["Title"] = "MIS Login";
 }
 
 <div class="min-h-screen flex items-center justify-center"
      style="background: linear-gradient(135deg, #4f46e5, #6d28d9);">
 
-    <div class="bg-white rounded-[70px] shadow-2xl text-center"
-         style="width:800px; min-height:600px; padding:80px 80px 60px 80px;">
+    <div class="bg-white rounded-3xl sm:rounded-[70px] shadow-2xl text-center w-full max-w-2xl mx-4 px-6 py-12 sm:px-20 sm:py-20">
 
         <!-- Logo -->
         <div class="flex flex-col items-center">
-            <img src="/images/bookhive_logo_v2.svg" class="w-[220px] mb-4" />
+            <img src="/images/bookhive_logo_v2.png" class="w-[220px] mb-4" />
             <h3 class="text-2xl mb-8">MIS Portal Login</h3>
         </div>
 
@@ -25,7 +24,7 @@
         <div class="flex justify-center mt-10">
             <a asp-controller="Account"
                asp-action="MicrosoftLogin"
-               class="w-[470px] h-[70px] bg-white border-2 border-gray-200 rounded-3xl shadow-md flex items-center justify-center gap-4 text-xl hover:bg-gray-50 transition">
+               class="w-full h-[70px] bg-white border-2 border-gray-200 rounded-3xl shadow-md flex items-center justify-center gap-4 text-xl hover:bg-gray-50 transition">
 
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 21 21">
                     <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
@@ -44,7 +43,7 @@
             <a asp-controller="Account"
                asp-action="Login"
                class="text-violet-700 text-lg no-underline hover:text-violet-900">
-                ← Back
+                â† Back
             </a>
         </div>
 

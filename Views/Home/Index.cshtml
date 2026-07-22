@@ -1,8 +1,260 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "BookHive Library System";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; }
+    .hero-bg {
+        background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 50%, #f5f0ff 100%);
+        position: relative;
+        overflow: hidden;
+    }
+    .hero-bg::before {
+        content: '';
+        position: absolute;
+        top: -80px; left: -80px;
+        width: 400px; height: 400px;
+        background: rgba(99,102,241,0.08);
+        border-radius: 50%;
+    }
+    .hero-bg::after {
+        content: '';
+        position: absolute;
+        bottom: -60px; right: -60px;
+        width: 300px; height: 300px;
+        background: rgba(139,92,246,0.08);
+        border-radius: 50%;
+    }
+    .nav-link:hover { color: #4f46e5; }
+    .feature-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.10); }
+    .feature-card { transition: all 0.25s ease; }
+</style>
+
+<!-- Navbar -->
+<nav style="background:#000147;display:flex;align-items:center;justify-content:space-between;padding:14px 32px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+    <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-family:'Dancing Script',cursive;font-size:1.9rem;font-weight:800;color:white;line-height:1;">BookHive</span>
+        <span style="color:#93c5fd;font-size:0.85rem;">| STI San Jose Del Monte</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:28px;">
+        <a href="#features" style="color:#93c5fd;text-decoration:none;font-size:0.9rem;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#93c5fd'">Features</a>
+        <a href="#about" style="color:#93c5fd;text-decoration:none;font-size:0.9rem;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#93c5fd'">About</a>
+        <button onclick="openLoginModal()"
+                style="background:#fff;color:#000147;border:none;border-radius:999px;padding:8px 22px;font-size:0.9rem;font-weight:600;cursor:pointer;transition:background 0.15s;"
+                onmouseover="this.style.background='#e8eeff'" onmouseout="this.style.background='#fff'">
+            Log in
+        </button>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<section class="hero-bg py-16 px-8 md:px-16">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-12">
+        <!-- Left: Text -->
+        <div class="flex-1">
+            <span class="inline-block bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">Library Management System</span>
+            <h1 style="color:#000147;font-size:3rem;font-weight:900;line-height:1.1;" class="mb-4">
+                Your Smart<br/>
+                <span style="color:#4f46e5;">Library</span> Hub
+            </h1>
+            <p class="text-gray-500 text-lg mb-8 leading-relaxed">
+                Access books, reserve computers, and manage your library account — all in one place at STI San Jose Del Monte.
+            </p>
+            <div class="flex flex-wrap gap-4 mb-8">
+                <div class="flex items-center gap-2 text-gray-600 text-sm">
+                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    Online Book Reservation
+                </div>
+                <div class="flex items-center gap-2 text-gray-600 text-sm">
+                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    Computer Slot Booking
+                </div>
+                <div class="flex items-center gap-2 text-gray-600 text-sm">
+                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    SMS Due Date Reminders
+                </div>
+                <div class="flex items-center gap-2 text-gray-600 text-sm">
+                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    Microsoft 365 Sign-In
+                </div>
+            </div>
+            <button onclick="openLoginModal()"
+                    style="background:#000147;"
+                    class="px-8 py-3 text-white rounded-full font-semibold text-base hover:opacity-90 transition shadow-lg">
+                Get Started →
+            </button>
+        </div>
+
+        <!-- Right: Illustration -->
+        <div class="flex-1 flex justify-center">
+            <div style="background:linear-gradient(135deg,#e8eeff,#ede9fe);border-radius:32px;padding:48px;max-width:380px;width:100%;" class="flex flex-col items-center gap-6 shadow-xl">
+                <!-- Book icon -->
+                <div style="background:#000147;border-radius:20px;padding:24px;">
+                    <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                </div>
+                <div class="text-center">
+                    <p class="font-bold text-gray-800 text-lg">BookHive Library</p>
+                    <p class="text-gray-500 text-sm">STI San Jose Del Monte</p>
+                </div>
+                <!-- Mini stats -->
+                <div class="grid grid-cols-3 gap-3 w-full">
+                    <div class="bg-white rounded-xl p-3 text-center shadow-sm">
+                        <p style="color:#000147;" class="font-bold text-xl">Books</p>
+                        <p class="text-gray-400 text-xs">Catalog</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-3 text-center shadow-sm">
+                        <p style="color:#000147;" class="font-bold text-xl">PCs</p>
+                        <p class="text-gray-400 text-xs">Available</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-3 text-center shadow-sm">
+                        <p style="color:#000147;" class="font-bold text-xl">SMS</p>
+                        <p class="text-gray-400 text-xs">Alerts</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="py-16 px-8 md:px-16 bg-gray-50">
+    <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-12">
+            <h2 style="color:#000147;" class="text-3xl font-bold mb-3">What You Can Do</h2>
+            <p class="text-gray-500">Everything you need to manage your library experience</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            <!-- Feature 1 -->
+            <div class="feature-card bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
+                <div style="background:#eef2ff;" class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8" style="color:#4f46e5;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold text-gray-800 mb-2">Browse Books</h3>
+                <p class="text-gray-500 text-sm">Search and browse the full library catalog anytime, and reserve books online before visiting.</p>
+            </div>
+            <!-- Feature 2 -->
+            <div class="feature-card bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
+                <div style="background:#f0fdf4;" class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold text-gray-800 mb-2">Computer Access</h3>
+                <p class="text-gray-500 text-sm">Check available computers in real time and use library PCs during your visit.</p>
+            </div>
+            <!-- Feature 3 -->
+            <div class="feature-card bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
+                <div style="background:#fff7ed;" class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold text-gray-800 mb-2">SMS Reminders</h3>
+                <p class="text-gray-500 text-sm">Get automatic text notifications before your borrowed books are due so you never miss a return.</p>
+            </div>
+            <!-- Feature 4 -->
+            <div class="feature-card bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
+                <div style="background:#fdf4ff;" class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <h3 class="font-bold text-gray-800 mb-2">Messaging</h3>
+                <p class="text-gray-500 text-sm">Send messages directly to librarians or MIS staff through the built-in messaging system.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- About Section -->
+<section id="about" style="background:#000147;" class="py-16 px-8 md:px-16">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-12">
+        <div class="flex-1">
+            <div style="background:rgba(255,255,255,0.08);border-radius:24px;padding:40px;" class="flex flex-col gap-4">
+                <svg class="w-12 h-12 text-blue-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/>
+                </svg>
+                <p class="text-white text-xl font-bold">STI San Jose Del Monte</p>
+                <p class="text-blue-200 text-sm leading-relaxed">Leveraging modern technology to bring a smarter, more efficient library experience to every student, professor, and staff member.</p>
+            </div>
+        </div>
+        <div class="flex-1">
+            <h2 class="text-white text-3xl font-bold mb-4">A Modern Library for a Modern Campus</h2>
+            <p class="text-blue-200 text-base leading-relaxed mb-6">BookHive replaces manual library processes with a fully digital system — from book reservations and borrowing to computer session management — all secured with Microsoft 365 authentication and OTP verification.</p>
+            <button onclick="openLoginModal()"
+                    class="px-6 py-3 bg-white text-[#000147] rounded-full font-semibold text-sm hover:bg-blue-50 transition">
+                Log in to BookHive →
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="bg-gray-900 text-gray-400 text-center py-6 text-sm">
+    © 2026 BookHive Library System — STI San Jose Del Monte. All rights reserved.
+</footer>
+
+<!-- Login Modal -->
+<div id="loginModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.25);width:100%;max-width:400px;margin:16px;overflow:hidden;">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid #f0f0f0;">
+            <span style="font-size:1.1rem;font-weight:600;color:#111;">Log in</span>
+            <button onclick="closeLoginModal()" style="background:none;border:none;cursor:pointer;color:#999;padding:4px;line-height:1;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <!-- Body -->
+        <div style="padding:24px;display:flex;flex-direction:column;gap:12px;">
+            <!-- Office 365 -->
+            <a href="@Url.Action("MicrosoftLogin","Account")"
+               style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px;border:1.5px solid #d1d5db;border-radius:10px;text-decoration:none;color:#374151;font-size:0.95rem;font-weight:500;background:#fff;"
+               onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='#fff'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 21 21">
+                    <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                    <rect x="11" y="1" width="9" height="9" fill="#00a4ef"/>
+                    <rect x="1" y="11" width="9" height="9" fill="#7fba00"/>
+                    <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                </svg>
+                Log in with Office 365
+            </a>
+            <!-- Admin — Microsoft only -->
+            <a href="@Url.Action("MicrosoftLogin","Account")"
+               style="display:flex;align-items:center;justify-content:center;width:100%;padding:14px;border-radius:10px;text-decoration:none;color:#fff;font-size:0.95rem;font-weight:600;background:#1a7f8e;"
+               onmouseover="this.style.background='#166a77'" onmouseout="this.style.background='#1a7f8e'">
+                Admin log in
+            </a>
+            <!-- MIS -->
+            <div style="text-align:center;margin-top:4px;">
+                <a href="@Url.Action("MISLogin","Account")" style="color:#9ca3af;font-size:0.8rem;text-decoration:underline;">MIS Portal</a>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script>
+
+function openLoginModal() {
+    const m = document.getElementById('loginModal');
+    m.style.display = 'flex';
+}
+function closeLoginModal() {
+    document.getElementById('loginModal').style.display = 'none';
+}
+document.getElementById('loginModal').addEventListener('click', function(e) {
+    if (e.target === this) closeLoginModal();
+});
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+    });
+});
+</script>

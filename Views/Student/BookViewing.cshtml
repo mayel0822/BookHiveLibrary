@@ -1,0 +1,267 @@
+@model BookHiveLibrary.Models.ApplicationUser
+@{
+    ViewData["Title"] = "Book Viewing";
+    var userName = (!string.IsNullOrWhiteSpace(Model?.FirstName) || !string.IsNullOrWhiteSpace(Model?.LastName))
+        ? $"{Model.FirstName} {Model.LastName}".Trim()
+        : Model?.UserName ?? "User";
+    var books = (List<BookHiveLibrary.Models.Book>)(ViewBag.Books ?? new List<BookHiveLibrary.Models.Book>());
+    var categories = (List<string>)(ViewBag.Categories ?? new List<string>());
+    var search = (string)(ViewBag.Search ?? "");
+    var catFilter = (string)(ViewBag.Category ?? "");
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Book Viewing – BookHive</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
+</head>
+<body class="bg-[#dce6f5]">
+
+<div id="sidebar-backdrop" class="fixed inset-0 bg-black/40 z-40 hidden" onclick="toggleSidebar()"></div>
+
+<div class="flex h-screen bg-[#dce6f5]">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-56 bg-[#000147] text-white flex flex-col py-8 px-5 flex-shrink-0 shadow-xl -translate-x-full lg:translate-x-0 lg:relative transition-transform duration-300">
+        <div class="mb-10 flex items-center justify-between">
+            <a href="@Url.Action("Dashboard","Student")" class="flex items-center justify-center w-full">
+                <span style="font-family:'Dancing Script',cursive;font-size:2rem;font-weight:800;color:white;line-height:1;display:block;text-align:center;">BookHive</span>
+            </a>
+            <button onclick="toggleSidebar()" class="lg:hidden text-white/60 hover:text-white transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <nav class="space-y-1 flex-1">
+            <a href="@Url.Action("Dashboard","Student")" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-blue-200 hover:bg-white/10 hover:text-white transition-all duration-200">
+                <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+                Home
+            </a>
+            <a href="@Url.Action("BookViewing","Student")" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold bg-white/20 text-white ring-1 ring-white/10">
+                <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg>
+                Book Viewing
+            </a>
+            <a href="@Url.Action("ComputerVacancy","Student")" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-blue-200 hover:bg-white/10 hover:text-white transition-all duration-200">
+                <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd"/></svg>
+                Computer Vacancy
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- Header -->
+        <header class="bg-white border-b border-gray-200 flex items-center justify-between px-6 py-3 shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="lg:hidden text-gray-500 hover:text-gray-700 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <div class="mt-1">
+                    <h2 class="text-base font-semibold text-gray-800">Book Viewing</h2>
+                    <p class="text-xs text-gray-400 hidden sm:block">Student Portal — STI San Jose Del Monte</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <!-- Notification Bell -->
+                <div id="notification-wrapper" class="relative">
+                    <button onclick="toggleDropdown('notification-dropdown')" class="relative text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    </button>
+                    <div id="notification-dropdown" class="hidden absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                        <div class="px-4 py-3 border-b border-gray-100"><h3 class="text-sm font-bold text-gray-900">Notifications</h3></div>
+                        <div class="px-4 py-6 text-center text-xs text-gray-400">No new notifications</div>
+                    </div>
+                </div>
+                <!-- Messages -->
+                <a href="/Message/Index" class="relative text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                </a>
+                <!-- Profile -->
+                <div class="relative" id="profile-wrapper">
+                    <button onclick="toggleProfileDrop()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 focus:outline-none transition">
+                        <span class="text-sm font-medium text-gray-700 hidden sm:inline">@(!string.IsNullOrWhiteSpace(Model?.FirstName) ? Model.FirstName : Model?.UserName)</span>
+                        <div class="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background-color:#000147;">
+                            @if (!string.IsNullOrEmpty(Model?.ProfilePicture))
+                            {
+                                <img src="@Model.ProfilePicture" class="w-full h-full object-cover" />
+                            }
+                            else
+                            {
+                                @(userName.Length > 0 ? userName[0].ToString().ToUpper() : "S")
+                            }
+                        </div>
+                    </button>
+                    <div id="profile-drop" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
+                        <div class="px-4 py-4 border-b border-gray-100 flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-white text-lg font-bold flex-shrink-0" style="background-color:#000147;">
+                                @if (!string.IsNullOrEmpty(Model?.ProfilePicture))
+                                {
+                                    <img src="@Model.ProfilePicture" class="w-full h-full object-cover" />
+                                }
+                                else
+                                {
+                                    @(userName.Length > 0 ? userName[0].ToString().ToUpper() : "S")
+                                }
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-gray-900 truncate">@userName</p>
+                                <p class="text-xs text-gray-400 truncate">@Model?.Email</p>
+                                <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold mt-1 inline-block">@(Model?.UserType ?? "Student")</span>
+                            </div>
+                        </div>
+                        <form method="post" asp-controller="Account" asp-action="Logout" class="px-2 py-2">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                                Sign Out
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="mx-4 sm:mx-8 mt-2 bg-green-100 border border-green-300 text-green-700 px-4 py-2 rounded-xl text-sm">@TempData["Success"]</div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="mx-4 sm:mx-8 mt-2 bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded-xl text-sm">@TempData["Error"]</div>
+        }
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto px-4 sm:px-8 pb-8">
+            <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm">
+
+                <div class="flex items-center gap-4 mb-6 flex-wrap">
+                    <h2 class="text-lg font-bold text-gray-900 flex-1">Library Book Catalog</h2>
+                    <form method="get" asp-action="BookViewing" asp-controller="Student">
+                        <div class="flex border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-300">
+                            <div class="relative flex items-center">
+                                <svg class="absolute left-3 w-4 h-4 text-gray-400 pointer-events-none" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+                                <input type="text" name="search" value="@search" placeholder="Search title or author"
+                                       class="pl-9 pr-3 py-2 text-sm outline-none bg-white w-40 sm:w-52"/>
+                            </div>
+                            <div class="w-px bg-gray-200 self-stretch"></div>
+                            <select name="category" class="text-sm px-3 py-2 bg-white outline-none text-gray-600 border-0">
+                                <option value="">All Categories</option>
+                                @foreach (var cat in categories)
+                                {
+                                    <option value="@cat" selected="@(catFilter == cat ? "selected" : null)">@cat</option>
+                                }
+                            </select>
+                            <button type="submit" class="px-4 py-2 text-sm font-semibold text-white" style="background-color:#000147;">Search</button>
+                        </div>
+                    </form>
+                </div>
+
+                @if (books.Any())
+                {
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        @foreach (var book in books)
+                        {
+                            var isAvail = book.AvailableQuantity > 0;
+                            var badgeCls = isAvail ? "bg-emerald-500" : "bg-red-400";
+                            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col">
+                                <div class="flex gap-3 p-4">
+                                    <!-- Cover -->
+                                    @if (!string.IsNullOrEmpty(book.CoverImageUrl))
+                                    {
+                                        <img src="@book.CoverImageUrl" alt="cover" class="w-20 h-28 object-cover rounded-xl flex-shrink-0"/>
+                                    }
+                                    else
+                                    {
+                                        <div class="w-20 h-28 flex-shrink-0 rounded-xl bg-gradient-to-br from-[#c5cfe0] to-[#a8b8cc] shadow-inner"></div>
+                                    }
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex justify-end mb-1">
+                                            <button class="text-gray-300 hover:text-gray-500 transition">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                            </button>
+                                        </div>
+                                        <dl class="space-y-0.5 text-[11px] text-[#2c3e6b]">
+                                            <div><span class="font-semibold">Book Title:</span> @book.Title</div>
+                                            <div><span class="font-semibold">Author:</span> @book.Author</div>
+                                            <div><span class="font-semibold">Published Year:</span> @(string.IsNullOrEmpty(book.PublishedYear) ? "—" : book.PublishedYear)</div>
+                                            <div><span class="font-semibold">Category:</span> @(string.IsNullOrEmpty(book.Category) ? "—" : book.Category)</div>
+                                            <div class="flex items-center gap-1">
+                                                <span class="font-semibold">Status:</span>
+                                                <span class="inline-block @badgeCls text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">@(isAvail ? "Available" : "Not Available")</span>
+                                            </div>
+                                            <div><span class="font-semibold">Qty:</span> @book.AvailableQuantity</div>
+                                            <div><span class="font-semibold">Loc:</span> @(string.IsNullOrEmpty(book.AisleLocation) ? "—" : book.AisleLocation)</div>
+                                        </dl>
+                                    </div>
+                                </div>
+                                <div class="mx-4 border-t border-gray-100"></div>
+                                <div class="px-4 py-3 flex-1 flex flex-col">
+                                    <p class="text-[11px] font-semibold text-[#2c3e6b] mb-1">Book Synopsis:</p>
+                                    <p class="text-[11px] text-gray-400 flex-1 mb-4 leading-relaxed min-h-[2rem]">@(string.IsNullOrEmpty(book.Description) ? "No synopsis available." : book.Description)</p>
+                                    <div class="flex justify-end">
+                                        @if (isAvail)
+                                        {
+                                            <form method="post" asp-action="Reserve" asp-controller="Student">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="bookId" value="@book.Id"/>
+                                                <button type="submit" class="bg-[#000147] hover:bg-[#000147]/80 active:bg-[#0f2540] text-white text-xs font-semibold px-6 py-1.5 rounded-full transition-all duration-150 shadow-sm hover:shadow">
+                                                    Reserve
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" disabled
+                                                    class="text-xs font-semibold px-6 py-1.5 rounded-full cursor-not-allowed bg-gray-200 text-gray-400"
+                                                    title="No copies available. Check back when a book is returned.">
+                                                Reserve
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-16 text-gray-400">
+                        <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg>
+                        <p class="text-sm font-medium">No books found.</p>
+                        @if (!string.IsNullOrEmpty(search) || !string.IsNullOrEmpty(catFilter))
+                        {
+                            <a href="@Url.Action("BookViewing","Student")" class="text-xs text-gray-900 hover:underline mt-1 inline-block">Clear filters</a>
+                        }
+                    </div>
+                }
+
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    function toggleSidebar() {
+        const s = document.getElementById('sidebar'), b = document.getElementById('sidebar-backdrop');
+        const open = !s.classList.contains('-translate-x-full');
+        s.classList.toggle('-translate-x-full', open); b.classList.toggle('hidden', open);
+    }
+    function toggleDropdown(id) {
+        ['notification-dropdown','message-dropdown'].forEach(t => {
+            const el = document.getElementById(t);
+            if (el) el.classList[t === id ? 'toggle' : 'add']('hidden');
+        });
+    }
+    function toggleProfileDrop() { document.getElementById('profile-drop').classList.toggle('hidden'); }
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#notification-wrapper')) document.getElementById('notification-dropdown')?.classList.add('hidden');
+        if (!e.target.closest('#message-wrapper')) document.getElementById('message-dropdown')?.classList.add('hidden');
+        if (!e.target.closest('#profile-wrapper')) document.getElementById('profile-drop')?.classList.add('hidden');
+    });
+</script>
+</body>
+</html>

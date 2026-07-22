@@ -1,12 +1,12 @@
-@{
+﻿@{
     ViewData["Title"] = "Complete Profile";
 }
 
 <div class="min-h-screen flex items-center justify-center bg-violet-700">
 
-    <div class="bg-white rounded-[40px] w-[700px] p-16 flex flex-col items-center">
+    <div class="bg-white rounded-3xl sm:rounded-[40px] w-full max-w-lg mx-4 p-8 sm:p-16 flex flex-col items-center">
 
-        <img src="/images/bookhive_logo_v2.svg" class="w-[150px] mb-3" />
+        <img src="/images/bookhive_logo_v2.png" class="w-[150px] mb-3" />
 
         <h1 class="text-4xl font-light mb-2">
             Book<span class="text-violet-700">Hive</span>
@@ -23,20 +23,37 @@
 
         <form method="post"
               asp-action="CompleteProfile"
-              class="flex flex-col items-center w-full">
+              class="flex flex-col items-center w-full"
+              id="phoneForm">
 
-            <input type="text"
-                   name="phoneNumber"
-                   placeholder="Active Phone Number (09XXXXXXXXX)"
-                   required
-                   class="w-[450px] h-[60px] rounded-2xl bg-gray-100 px-6 text-xl mb-8 outline-none" />
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="phoneNumber" id="phoneNumberHidden" />
+
+            <div class="w-full max-w-sm flex items-center bg-gray-100 rounded-2xl h-[60px] mb-8 overflow-hidden">
+                <span class="pl-6 pr-3 text-xl text-gray-500 select-none whitespace-nowrap">+63</span>
+                <div class="w-px h-8 bg-gray-300"></div>
+                <input type="text"
+                       id="phoneInput"
+                       placeholder="9XXXXXXXXX"
+                       maxlength="10"
+                       required
+                       class="flex-1 bg-transparent px-4 text-xl outline-none" />
+            </div>
 
             <button type="submit"
-                    class="w-[450px] h-[65px] bg-violet-700 text-white rounded-2xl text-2xl hover:bg-violet-800 transition">
+                    class="w-full max-w-sm h-[65px] bg-violet-700 text-white rounded-2xl text-2xl hover:bg-violet-800 transition">
                 Send Verification Code
             </button>
 
         </form>
+
+        <script>
+        document.getElementById('phoneForm').addEventListener('submit', function(e) {
+            var digits = document.getElementById('phoneInput').value.replace(/\D/g, '');
+            if (digits.startsWith('0')) digits = digits.substring(1);
+            document.getElementById('phoneNumberHidden').value = '+63' + digits;
+        });
+        </script>
 
     </div>
 

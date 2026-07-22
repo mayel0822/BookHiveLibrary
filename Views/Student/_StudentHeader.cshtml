@@ -1,0 +1,43 @@
+@model object
+@{
+    var tuple = ((string userName, string email, string userType, string pageTitle))Model;
+    var userName = tuple.userName;
+    var email = tuple.email;
+    var userType = tuple.userType;
+    var pageTitle = tuple.pageTitle;
+}
+
+<header class="bg-[#dce6f5] px-4 sm:px-8 py-5 flex items-center justify-between flex-shrink-0">
+    <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="lg:hidden text-gray-900 hover:opacity-60 transition" aria-label="Open menu">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+        </button>
+        <h1 class="text-xl sm:text-2xl font-bold text-gray-900">@pageTitle</h1>
+    </div>
+
+    <div class="flex items-center gap-3 sm:gap-5 text-gray-900">
+        <div class="relative" id="profile-wrapper">
+            <a href="/Student/Profile" class="flex items-center gap-2 hover:opacity-80 transition">
+                <span class="hidden sm:inline text-sm font-medium">@userName</span>
+                <div class="w-8 h-8 rounded-full bg-[#000147] flex items-center justify-center text-white flex-shrink-0">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                    </svg>
+                </div>
+            </a>
+            <div id="profile-drop" class="hidden absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 z-50 py-2">
+                <div class="px-4 py-2 border-b border-gray-100">
+                    <p class="text-xs font-semibold text-gray-900">@userName</p>
+                    <p class="text-xs text-gray-400">@email</p>
+                    <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">@userType</span>
+                </div>
+                <form method="post" asp-controller="Account" asp-action="Logout">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition">Sign Out</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</header>

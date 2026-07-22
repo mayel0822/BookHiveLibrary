@@ -1,25 +1,25 @@
 @{
     Layout = "~/Views/Shared/_MISLayout.cshtml";
     ViewData["Title"] = "Registration";
+    var activeTab = (Context.Request.Query["tab"].ToString() ?? "student").ToLower();
+    if (activeTab != "student" && activeTab != "professor" && activeTab != "librarian")
+        activeTab = "student";
 }
 
-<!-- Tab Buttons -->
-<div class="flex gap-2 mb-6">
-    <button onclick="switchTab('student', this)"
-            id="tab-student"
-            class="tab-btn px-6 py-2.5 rounded-xl text-sm font-medium text-white transition"
-            style="background-color:#1B2B5E;">
-        Student
-    </button>
-    <button onclick="switchTab('professor', this)"
-            id="tab-professor"
-            class="tab-btn px-6 py-2.5 rounded-xl text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50 transition">
-        Professor
-    </button>
-    <button onclick="switchTab('librarian', this)"
-            id="tab-librarian"
-            class="tab-btn px-6 py-2.5 rounded-xl text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50 transition">
-        Librarian
+<!-- Header with dropdown and Import button -->
+<div class="flex items-center gap-3 mb-6">
+    <select id="userTypeDropdown" onchange="switchTab(this.value)"
+            class="border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+            style="min-width:160px;">
+        <option value="student" selected="@(activeTab == "student")">Student</option>
+        <option value="professor" selected="@(activeTab == "professor")">Professor</option>
+        <option value="librarian" selected="@(activeTab == "librarian")">Librarian</option>
+    </select>
+    <button type="button" onclick="document.getElementById('importModal').classList.remove('hidden')"
+            class="ml-auto px-4 py-2 text-sm text-white rounded-xl font-medium flex items-center gap-2"
+            style="background-color:#000147;">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        Import Excel
     </button>
 </div>
 
@@ -31,28 +31,37 @@
 }
 
 <!-- Student Form -->
-<div id="form-student" class="tab-form bg-white rounded-2xl shadow p-8">
-    <h2 class="text-lg font-semibold text-gray-700 mb-6">Student Registration</h2>
+<div id="form-student" class="tab-form bg-white rounded-2xl shadow w-full @(activeTab != "student" ? "hidden" : "")">
+    <div class="px-8 pt-8 pb-5 border-b border-gray-200 mb-6">
+        <h2 class="text-3xl font-bold text-gray-900">Student Registration</h2>
+        <p class="text-sm text-gray-400 mt-1">Fields marked <span class="text-red-500">*</span> are required. Phone number is set by the student on first login.</p>
+    </div>
+    <div class="px-8 pb-8">
     <form method="post" action="@Url.Action("RegisterUser","MIS")">
         @Html.AntiForgeryToken()
         <input type="hidden" name="role" value="Student" />
 
-        <div class="grid grid-cols-3 gap-4 mb-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Student ID</label>
-                <input type="text" name="studentNumber" class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        <!-- RFID -->
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-600 mb-1">RFID Card No. <span class="text-red-500">*</span></label>
+            <div class="flex items-center gap-2 border border-gray-300 rounded-xl px-4 py-2 bg-gray-50 focus-within:ring-2 focus-within:ring-blue-400 cursor-text"
+                 onclick="document.getElementById('studentRfidTap').focus()">
+                <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                </svg>
+                <input id="studentRfidTap" type="text" placeholder="Tap RFID card or type manually..."
+                       class="text-sm w-full focus:outline-none bg-transparent text-gray-700" autocomplete="off" required />
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">RFID Card No.</label>
-                <input type="text" name="rfidNumber" class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Section</label>
-                <input type="text" name="section" class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
+            <input type="hidden" id="studentRfidValue" name="rfidNumber" />
+            <p id="studentRfidStatus" class="text-xs text-green-600 mt-1 hidden">✓ RFID card detected</p>
         </div>
 
-        <div class="grid grid-cols-3 gap-4 mb-4">
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-600 mb-1">Student ID</label>
+            <input type="text" name="studentNumber" class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <div>
                 <label class="block text-sm font-medium text-gray-600 mb-1">Last Name <span class="text-red-500">*</span></label>
                 <input type="text" name="lastName" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
@@ -67,54 +76,32 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4 mb-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Email <span class="text-red-500">*</span></label>
-                <input type="email" name="email" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Outlook / Microsoft Email</label>
-                <input type="email" name="outlookEmail" class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="For Microsoft 365 login" />
-            </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4 mb-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Phone Number</label>
-                <input type="tel" name="phoneNumber" class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Adviser Email</label>
-                <input type="email" name="adviserEmail" class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4 mb-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Password <span class="text-red-500">*</span></label>
-                <input type="password" name="password" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Confirm Password <span class="text-red-500">*</span></label>
-                <input type="password" name="confirmPassword" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-600 mb-1">Microsoft Account Email <span class="text-red-500">*</span></label>
+            <input type="email" name="email" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="e.g. student@elleiramnananuc04outlook.onmicrosoft.com" />
+            <p class="text-xs text-gray-400 mt-1">This is the account they will use to log in via Microsoft.</p>
         </div>
 
         <div class="flex justify-end gap-3">
-            <button type="reset" class="px-6 py-2 border border-gray-300 text-gray-600 rounded-xl text-sm hover:bg-gray-50">Cancel</button>
-            <button type="submit" class="px-6 py-2 text-white rounded-xl text-sm font-medium" style="background-color:#1B2B5E;">Register</button>
+            <button type="reset" class="px-6 py-2 border border-gray-300 text-gray-600 rounded-xl text-sm hover:bg-gray-50">Clear</button>
+            <button type="submit" class="px-6 py-2 text-white rounded-xl text-sm font-medium" style="background-color:#000147;">Register Student</button>
         </div>
     </form>
+    </div>
 </div>
 
 <!-- Professor Form -->
-<div id="form-professor" class="tab-form bg-white rounded-2xl shadow p-8 hidden">
-    <h2 class="text-lg font-semibold text-gray-700 mb-6">Professor Registration</h2>
+<div id="form-professor" class="tab-form bg-white rounded-2xl shadow w-full @(activeTab != "professor" ? "hidden" : "")">
+    <div class="px-8 pt-8 pb-5 border-b border-gray-200 mb-6">
+        <h2 class="text-3xl font-bold text-gray-900">Professor Registration</h2>
+        <p class="text-sm text-gray-400 mt-1">Fields marked <span class="text-red-500">*</span> are required. Phone number is set by the professor on first login.</p>
+    </div>
+    <div class="px-8 pb-8">
     <form method="post" action="@Url.Action("RegisterUser","MIS")">
         @Html.AntiForgeryToken()
         <input type="hidden" name="role" value="Professor" />
 
-        <div class="grid grid-cols-2 gap-4 mb-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
                 <label class="block text-sm font-medium text-gray-600 mb-1">Employee ID</label>
                 <input type="text" name="employeeNumber" class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
@@ -125,7 +112,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-4 mb-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <div>
                 <label class="block text-sm font-medium text-gray-600 mb-1">Last Name <span class="text-red-500">*</span></label>
                 <input type="text" name="lastName" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
@@ -140,59 +127,37 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4 mb-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Email <span class="text-red-500">*</span></label>
-                <input type="email" name="email" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Outlook / Microsoft Email</label>
-                <input type="email" name="outlookEmail" class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4 mb-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Phone Number</label>
-                <input type="tel" name="phoneNumber" class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-            <div></div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4 mb-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Password <span class="text-red-500">*</span></label>
-                <input type="password" name="password" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Confirm Password <span class="text-red-500">*</span></label>
-                <input type="password" name="confirmPassword" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-600 mb-1">Microsoft Account Email <span class="text-red-500">*</span></label>
+            <input type="email" name="email" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="e.g. professor@elleiramnananuc04outlook.onmicrosoft.com" />
+            <p class="text-xs text-gray-400 mt-1">This is the account they will use to log in via Microsoft.</p>
         </div>
 
         <div class="flex justify-end gap-3">
-            <button type="reset" class="px-6 py-2 border border-gray-300 text-gray-600 rounded-xl text-sm hover:bg-gray-50">Cancel</button>
-            <button type="submit" class="px-6 py-2 text-white rounded-xl text-sm font-medium" style="background-color:#1B2B5E;">Register</button>
+            <button type="reset" class="px-6 py-2 border border-gray-300 text-gray-600 rounded-xl text-sm hover:bg-gray-50">Clear</button>
+            <button type="submit" class="px-6 py-2 text-white rounded-xl text-sm font-medium" style="background-color:#000147;">Register Professor</button>
         </div>
     </form>
+    </div>
 </div>
 
 <!-- Librarian Form -->
-<div id="form-librarian" class="tab-form bg-white rounded-2xl shadow p-8 hidden">
-    <h2 class="text-lg font-semibold text-gray-700 mb-6">Librarian Registration</h2>
+<div id="form-librarian" class="tab-form bg-white rounded-2xl shadow w-full @(activeTab != "librarian" ? "hidden" : "")">
+    <div class="px-8 pt-8 pb-5 border-b border-gray-200 mb-6">
+        <h2 class="text-3xl font-bold text-gray-900">Librarian Registration</h2>
+        <p class="text-sm text-gray-400 mt-1">Fields marked <span class="text-red-500">*</span> are required. Phone number is set by the librarian on first login.</p>
+    </div>
+    <div class="px-8 pb-8">
     <form method="post" action="@Url.Action("RegisterUser","MIS")">
         @Html.AntiForgeryToken()
         <input type="hidden" name="role" value="Librarian" />
 
-        <div class="grid grid-cols-2 gap-4 mb-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Employee ID</label>
-                <input type="text" name="employeeNumber" class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-            <div></div>
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-600 mb-1">Employee ID</label>
+            <input type="text" name="employeeNumber" class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
         </div>
 
-        <div class="grid grid-cols-3 gap-4 mb-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <div>
                 <label class="block text-sm font-medium text-gray-600 mb-1">Last Name <span class="text-red-500">*</span></label>
                 <input type="text" name="lastName" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
@@ -207,60 +172,182 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4 mb-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Email <span class="text-red-500">*</span></label>
-                <input type="email" name="email" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Outlook / Microsoft Email</label>
-                <input type="email" name="outlookEmail" class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4 mb-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Phone Number</label>
-                <input type="tel" name="phoneNumber" class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-            <div></div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4 mb-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Password <span class="text-red-500">*</span></label>
-                <input type="password" name="password" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Confirm Password <span class="text-red-500">*</span></label>
-                <input type="password" name="confirmPassword" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-            </div>
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-600 mb-1">Microsoft Account Email <span class="text-red-500">*</span></label>
+            <input type="email" name="email" required class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="e.g. librarian@elleiramnananuc04outlook.onmicrosoft.com" />
+            <p class="text-xs text-gray-400 mt-1">This is the account they will use to log in via Microsoft.</p>
         </div>
 
         <div class="flex justify-end gap-3">
-            <button type="reset" class="px-6 py-2 border border-gray-300 text-gray-600 rounded-xl text-sm hover:bg-gray-50">Cancel</button>
-            <button type="submit" class="px-6 py-2 text-white rounded-xl text-sm font-medium" style="background-color:#1B2B5E;">Register</button>
+            <button type="reset" class="px-6 py-2 border border-gray-300 text-gray-600 rounded-xl text-sm hover:bg-gray-50">Clear</button>
+            <button type="submit" class="px-6 py-2 text-white rounded-xl text-sm font-medium" style="background-color:#000147;">Register Librarian</button>
         </div>
     </form>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div id="previewModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden p-6">
+    <div class="bg-white rounded-2xl shadow-xl flex flex-col" style="width:90%;max-width:1100px;max-height:85vh;">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0" style="background-color:#000147;">
+            <span class="text-sm font-semibold text-white">Preview — Review before registering</span>
+            <span id="previewCount" class="text-xs text-blue-200"></span>
+        </div>
+        <div class="overflow-auto flex-1">
+            <table class="w-full text-sm">
+                <thead id="previewHead" class="text-xs uppercase sticky top-0" style="background-color:#23354D;color:white;"></thead>
+                <tbody id="previewBody" class="divide-y divide-gray-100"></tbody>
+            </table>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 flex-shrink-0">
+            <button type="button" onclick="cancelPreview()" class="px-6 py-2 text-sm border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50">Cancel</button>
+            <button type="button" onclick="submitImport()" class="px-6 py-2 text-sm text-white rounded-xl font-medium hover:opacity-90" style="background-color:#000147;">Register</button>
+        </div>
+    </div>
+</div>
+
+<!-- Import Excel Modal -->
+<div id="importModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl shadow-xl w-[580px] overflow-hidden">
+        <div class="px-6 py-4 flex items-center justify-between border-b border-gray-100">
+            <h3 class="text-base font-semibold text-gray-800">Import Users from Excel</h3>
+            <button type="button" onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="px-6 py-5">
+            <form id="importForm" method="post" action="@Url.Action("ImportExcel","MIS")" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <label id="fileDropLabel" for="excelFileInput" class="border-2 border-dashed border-gray-300 rounded-xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition w-full">
+                    <svg id="fileIcon" class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+                    <p id="filePrompt" class="text-sm text-gray-500">Click to select your Excel file (.xlsx)</p>
+                    <p id="selectedFileName" class="text-xs text-blue-600 font-medium"></p>
+                    <input type="file" id="excelFileInput" name="file" accept=".xlsx" class="hidden"
+                           onchange="onFileSelected(this)" />
+                </label>
+            </form>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end">
+            <button type="button" onclick="closeImportModal()" class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">Cancel</button>
+            <button type="button" onclick="previewExcel()" class="px-5 py-2 text-white rounded-lg text-sm font-medium" style="background:#000147;">Preview</button>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-function switchTab(tab, btn) {
-    // Hide all forms
-    document.querySelectorAll('.tab-form').forEach(f => f.classList.add('hidden'));
-    // Reset all tab buttons
-    document.querySelectorAll('.tab-btn').forEach(b => {
-        b.style.backgroundColor = '';
-        b.classList.remove('text-white');
-        b.classList.add('border', 'border-gray-300', 'text-gray-600');
+(function() {
+    const tapInput = document.getElementById('studentRfidTap');
+    const hidden   = document.getElementById('studentRfidValue');
+    const status   = document.getElementById('studentRfidStatus');
+    let buffer = '', timer = null;
+
+    tapInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            commitRfid(buffer.trim());
+            buffer = '';
+        }
     });
-    // Show selected form
+    tapInput.addEventListener('input', function() {
+        buffer = this.value;
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+            if (buffer.length >= 4) { commitRfid(buffer.trim()); buffer = ''; }
+        }, 150);
+    });
+    function commitRfid(val) {
+        if (!val) return;
+        hidden.value = val;
+        tapInput.value = val;
+        status.classList.remove('hidden');
+    }
+})();
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab-form').forEach(f => f.classList.add('hidden'));
     document.getElementById('form-' + tab).classList.remove('hidden');
-    // Activate selected button
-    btn.style.backgroundColor = '#1B2B5E';
-    btn.classList.add('text-white');
-    btn.classList.remove('border', 'border-gray-300', 'text-gray-600');
+}
+document.getElementById('userTypeDropdown').value = '@activeTab';
+function closeImportModal() { document.getElementById('importModal').classList.add('hidden'); }
+function submitImport() { document.getElementById('importForm').submit(); }
+
+function onFileSelected(input) {
+    const name = input.files[0]?.name ?? '';
+    document.getElementById('selectedFileName').textContent = name;
+    const label = document.getElementById('fileDropLabel');
+    const icon  = document.getElementById('fileIcon');
+    const prompt = document.getElementById('filePrompt');
+    if (name) {
+        label.classList.remove('border-dashed','border-gray-300','hover:border-blue-400','hover:bg-blue-50');
+        label.classList.add('border-solid','border-green-300','bg-green-50');
+        icon.classList.add('hidden');
+        prompt.classList.add('hidden');
+    } else {
+        label.classList.add('border-dashed','border-gray-300','hover:border-blue-400','hover:bg-blue-50');
+        label.classList.remove('border-solid','border-green-300','bg-green-50');
+        icon.classList.remove('hidden');
+        prompt.classList.remove('hidden');
+    }
+}
+
+function cancelPreview() {
+    document.getElementById('previewModal').classList.add('hidden');
+    document.getElementById('excelFileInput').value = '';
+    document.getElementById('selectedFileName').textContent = '';
+    onFileSelected(document.getElementById('excelFileInput'));
+}
+
+function previewExcel() {
+    const fileInput = document.getElementById('excelFileInput');
+    if (!fileInput.files || !fileInput.files[0]) {
+        alert('Please select an Excel file first.');
+        return;
+    }
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        // Pick sheet with most rows
+        let sheet = null, maxRows = 0;
+        workbook.SheetNames.forEach(name => {
+            const s = workbook.Sheets[name];
+            const range = XLSX.utils.decode_range(s['!ref'] || 'A1:A1');
+            const rows = range.e.r + 1;
+            if (rows > maxRows) { maxRows = rows; sheet = s; }
+        });
+        if (!sheet) { alert('No data found in the file.'); return; }
+
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        if (rows.length < 2) { alert('No data rows found. Please check your file.'); return; }
+
+        const headers = rows[0];
+        const dataRows = rows.slice(1).filter(r => r.some(c => c !== ''));
+
+        // Build header row
+        const thead = document.getElementById('previewHead');
+        thead.innerHTML = '<tr>' + headers.map(h =>
+            `<th class="px-4 py-2 text-left font-medium whitespace-nowrap">${h}</th>`
+        ).join('') + '</tr>';
+
+        // Build data rows
+        const tbody = document.getElementById('previewBody');
+        tbody.innerHTML = dataRows.map(row =>
+            '<tr class="hover:bg-gray-50">' + headers.map((_, i) =>
+                `<td class="px-4 py-2 text-gray-700 whitespace-nowrap">${row[i] ?? ''}</td>`
+            ).join('') + '</tr>'
+        ).join('');
+
+        document.getElementById('previewCount').textContent = `${dataRows.length} row(s) found`;
+
+        // Show preview modal
+        closeImportModal();
+        document.getElementById('previewModal').classList.remove('hidden');
+    };
+    reader.readAsArrayBuffer(file);
 }
 </script>
 }

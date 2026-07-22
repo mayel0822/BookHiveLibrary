@@ -6,37 +6,42 @@
 
 <!-- Stat Cards -->
 <div class="grid grid-cols-5 gap-4 mb-6">
-    <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-        <p class="text-xs text-gray-500 mb-1">Active Users</p>
-        <p class="text-3xl font-bold text-gray-800">@ViewBag.ActiveUsers</p>
-    </div>
-    <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-        <p class="text-xs text-gray-500 mb-1">Book Borrowed</p>
-        <p class="text-3xl font-bold text-gray-800">@ViewBag.BookBorrowed</p>
-    </div>
-    <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-        <p class="text-xs text-gray-500 mb-1">Reservation</p>
-        <p class="text-3xl font-bold text-gray-800">@ViewBag.Reservations</p>
-    </div>
-    <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-        <p class="text-xs text-gray-500 mb-1">Computer In Use</p>
-        <p class="text-3xl font-bold text-gray-800">@ViewBag.ComputerInUse</p>
-    </div>
-    <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-        <p class="text-xs text-gray-500 mb-1">Available</p>
-        <p class="text-3xl font-bold text-gray-800">@ViewBag.ComputerAvailable</p>
-    </div>
+    <a href="#" onclick="openActiveUsersModal(); return false;"
+       class="rounded-xl p-5 text-white shadow-sm hover:opacity-90 transition block text-center" style="background-color:#000147;">
+        <p class="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-2">Active Users</p>
+        <p class="text-4xl font-bold" data-stat="active-users">@ViewBag.ActiveUsers</p>
+    </a>
+    <a href="@Url.Action("Index","Borrow")"
+       class="rounded-xl p-5 text-white shadow-sm hover:opacity-90 transition block text-center" style="background-color:#000147;">
+        <p class="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-2">Book Borrowed</p>
+        <p class="text-4xl font-bold">@ViewBag.BookBorrowed</p>
+    </a>
+    <a href="@Url.Action("Index","Borrow")"
+       class="rounded-xl p-5 text-white shadow-sm hover:opacity-90 transition block text-center" style="background-color:#000147;">
+        <p class="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-2">Book Reservation</p>
+        <p class="text-4xl font-bold">@ViewBag.Reservations</p>
+    </a>
+    <a href="@Url.Action("Transaction","Computer")"
+       class="rounded-xl p-5 text-white shadow-sm hover:opacity-90 transition block text-center" style="background-color:#000147;">
+        <p class="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-2">Computer In Use</p>
+        <p class="text-4xl font-bold">@ViewBag.ComputerInUse</p>
+    </a>
+    <a href="@Url.Action("Transaction","Computer")"
+       class="rounded-xl p-5 text-white shadow-sm hover:opacity-90 transition block text-center" style="background-color:#000147;">
+        <p class="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-2">Computer Available</p>
+        <p class="text-4xl font-bold">@ViewBag.ComputerAvailable</p>
+    </a>
 </div>
 
-<div class="grid grid-cols-3 gap-4">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
     <!-- Current Borrowers Table -->
-    <div class="col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
-        <div class="px-5 py-4 border-b border-gray-100">
-            <h2 class="font-semibold text-gray-700">Current Borrowers</h2>
+    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="px-5 py-4 text-white" style="background-color:#000147;">
+            <h2 class="font-semibold text-sm">Current Borrowers</h2>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
-                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
                     <tr>
                         <th class="px-4 py-3 text-left">Date</th>
                         <th class="px-4 py-3 text-left">Name</th>
@@ -77,27 +82,42 @@
         </div>
     </div>
 
+    <!-- Active Users Modal -->
+    <div id="activeUsersModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
+            <div class="px-6 py-4 flex items-center justify-between" style="background-color:#000147;">
+                <h3 class="text-sm font-semibold text-white">Users Currently Inside the Library</h3>
+                <button onclick="closeActiveUsersModal()" class="text-white/70 hover:text-white">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div id="activeUsersList" class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+                <p class="px-6 py-8 text-center text-sm text-gray-400">Loading…</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Right panels -->
     <div class="space-y-4">
         <!-- Reservation List -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div class="px-5 py-4 border-b border-gray-100">
-                <h2 class="font-semibold text-gray-700">Reservation List</h2>
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="px-5 py-4 text-white" style="background-color:#000147;">
+                <h2 class="font-semibold text-sm">Reservation List</h2>
             </div>
             <div class="px-5 py-3 space-y-3 max-h-52 overflow-y-auto">
                 @if (ViewBag.ReservationList != null)
                 {
                     foreach (var r in (List<BookReservation>)ViewBag.ReservationList)
                     {
-                        <div class="flex items-start gap-3">
-                            <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold flex-shrink-0">
+                        <a href="@Url.Action("Index","Borrow")" class="flex items-start gap-3 hover:bg-gray-50 rounded-lg px-2 py-1 -mx-2 transition cursor-pointer">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background-color:#000147;">
                                 @r.User?.FirstName?.FirstOrDefault()
                             </div>
                             <div>
                                 <p class="text-sm font-medium text-gray-800">@r.User?.FirstName @r.User?.LastName</p>
                                 <p class="text-xs text-gray-500">@r.Book?.Title</p>
                             </div>
-                        </div>
+                        </a>
                     }
                 }
                 @if (ViewBag.ReservationList == null || ((List<BookReservation>)ViewBag.ReservationList).Count == 0)
@@ -108,9 +128,9 @@
         </div>
 
         <!-- Book Dues -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div class="px-5 py-4 border-b border-gray-100">
-                <h2 class="font-semibold text-gray-700">Book Dues</h2>
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="px-5 py-4 text-white" style="background-color:#000147;">
+                <h2 class="font-semibold text-sm">Book Dues</h2>
             </div>
             <div class="px-5 py-3 space-y-3 max-h-52 overflow-y-auto">
                 @if (ViewBag.BookDues != null)
@@ -134,3 +154,65 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+async function openActiveUsersModal() {
+    document.getElementById('activeUsersModal').classList.remove('hidden');
+    const list = document.getElementById('activeUsersList');
+    list.innerHTML = '<p class="px-6 py-8 text-center text-sm text-gray-400">Loading…</p>';
+    try {
+        const res  = await fetch('/Librarian/GetActiveUsers');
+        const data = await res.json();
+        if (!data.length) {
+            list.innerHTML = '<p class="px-6 py-8 text-center text-sm text-gray-400">No users currently inside the library.</p>';
+            return;
+        }
+        list.innerHTML = data.map(u => `
+            <div class="flex items-center gap-4 px-6 py-3 hover:bg-gray-50">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style="background-color:#000147;">
+                    ${u.name.charAt(0).toUpperCase()}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-800">${u.name}</p>
+                    <p class="text-xs text-gray-400">${u.section || u.userType}</p>
+                </div>
+                <div class="text-right flex-shrink-0">
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">${u.userType}</span>
+                    <p class="text-xs text-gray-400 mt-0.5">Tapped in ${u.tapIn}</p>
+                </div>
+            </div>`).join('');
+    } catch {
+        list.innerHTML = '<p class="px-6 py-8 text-center text-sm text-gray-400">Could not load data.</p>';
+    }
+}
+function closeActiveUsersModal() {
+    document.getElementById('activeUsersModal').classList.add('hidden');
+}
+document.getElementById('activeUsersModal').addEventListener('click', function(e) {
+    if (e.target === this) closeActiveUsersModal();
+});
+
+// ── Real-time dashboard updates ──────────────────────────────────────────
+async function refreshActiveUsersCount() {
+    try {
+        const res  = await fetch('/Librarian/GetActiveUsers');
+        const data = await res.json();
+        const el   = document.querySelector('[data-stat="active-users"]');
+        if (el) el.textContent = data.length;
+    } catch {}
+}
+
+libraryConnection.on('LibraryEntryUpdated', function() {
+    refreshActiveUsersCount();
+    // If the modal is open, refresh its content too
+    if (!document.getElementById('activeUsersModal').classList.contains('hidden'))
+        openActiveUsersModal();
+});
+
+libraryConnection.on('BookTransactionUpdated', function() {
+    // Reload the current borrowers table
+    location.reload();
+});
+</script>
+}

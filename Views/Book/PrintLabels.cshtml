@@ -1,0 +1,116 @@
+@model List<BookHiveLibrary.Models.Book>
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Print Book Labels (@Model.Count)</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #f1f5f9; font-family: 'Segoe UI', sans-serif; padding: 24px 16px; }
+
+        .toolbar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
+        .btn { padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+        .btn-print { background: #000147; color: white; }
+        .btn-back  { background: #e2e8f0; color: #374151; text-decoration: none; display: inline-flex; align-items: center; }
+        .count     { font-size: 13px; color: #64748b; }
+
+        .label-sheet {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: flex-start;
+        }
+
+        .label {
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            width: 200px;
+            padding: 10px 10px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08);
+            page-break-inside: avoid;
+        }
+
+        .label-school { font-size: 8px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .5px; text-align: center; }
+        .label-callno { font-size: 18px; font-weight: 800; color: #000147; text-align: center; letter-spacing: 1px; border: 2px solid #000147; width: 100%; padding: 2px 0; border-radius: 4px; }
+        .label-title  { font-size: 10px; font-weight: 600; color: #1e293b; text-align: center; max-width: 180px; line-height: 1.3; }
+        .label-author { font-size: 9px; color: #64748b; text-align: center; }
+        .label-loc    { font-size: 9px; color: #475569; text-align: center; background: #f1f5f9; width: 100%; padding: 2px 0; border-radius: 3px; }
+        .label-divider { width: 100%; border-top: 1px dashed #e2e8f0; margin: 2px 0; }
+        .qr-wrap { width: 100%; display: flex; justify-content: center; }
+        .qr-wrap canvas { width: 100px !important; height: 100px !important; }
+        .label-isbn { font-size: 8.5px; color: #374151; font-family: 'Courier New', monospace; text-align: center; letter-spacing: .5px; }
+        .label-type { font-size: 8px; font-weight: 700; padding: 1px 6px; border-radius: 8px; }
+        .type-student   { background: #dbeafe; color: #1e40af; }
+        .type-professor { background: #fef3c7; color: #92400e; }
+        .type-roomonly  { background: #ffedd5; color: #9a3412; }
+
+        @@media print {
+            body { background: white; padding: 0; }
+            .toolbar { display: none; }
+            .label-sheet { gap: 8px; }
+            .label { box-shadow: none; border: 1px solid #aaa; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="toolbar">
+    <a href="/Book/Index" class="btn btn-back">← Back to Catalog</a>
+    <button class="btn btn-print" onclick="window.print()">🖨 Print All Labels</button>
+    <span class="count">@Model.Count label@(Model.Count != 1 ? "s" : "") ready to print</span>
+</div>
+
+<div class="label-sheet">
+    @foreach (var book in Model)
+    {
+        <div class="label">
+            <span class="label-school">STI San Jose Del Monte Library</span>
+            <div class="label-callno">@book.CallNumber</div>
+            <div class="label-title">@book.Title</div>
+            <div class="label-author">@book.Author</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-top:2px;">
+                @if (book.BookFor == "Professor")
+                {
+                    <span class="label-type type-professor">Professor Only</span>
+                }
+                else
+                {
+                    <span class="label-type type-student">Student</span>
+                }
+                @if (book.IsRoomUseOnly)
+                {
+                    <span class="label-type type-roomonly">Room Use Only</span>
+                }
+            </div>
+            <div class="label-divider"></div>
+            <div class="qr-wrap">
+                <canvas class="qrcode" data-callno="@book.CallNumber"></canvas>
+            </div>
+            @if (!string.IsNullOrEmpty(book.ISBN))
+            {
+                <div class="label-isbn">ISBN: @book.ISBN</div>
+            }
+        </div>
+    }
+</div>
+
+<script>
+    document.querySelectorAll('.qrcode').forEach(function(el) {
+        QRCode.toCanvas(el, el.getAttribute('data-callno'), {
+            width: 100,
+            margin: 1,
+            color: { dark: '#000000', light: '#ffffff' }
+        });
+    });
+</script>
+</body>
+</html>

@@ -21,22 +21,24 @@
   <ItemGroup>
     <Content Remove="wwwroot\css\adminlogin.css" />
     <Content Remove="wwwroot\css\login.css" />
-    <Content Remove="wwwroot\images\bookhive_logo_v2.svg" />
   </ItemGroup>
 
-  <Target Name="BuildTailwind" BeforeTargets="Build">
+  <Target Name="BuildTailwind" BeforeTargets="Build" Condition="'$(SkipTailwindBuild)' != 'true'">
     <Exec Command="npm run css:build" WorkingDirectory="$(ProjectDir)" />
   </Target>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.21.0" />
     <PackageReference Include="EPPlus" Version="7.3.2" />
     <PackageReference Include="MailKit" Version="4.17.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="8.0.28" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.28" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.28" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.28" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.28" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.28" />
+    <PackageReference Include="Microsoft.Graph" Version="5.56.0" />
     <PackageReference Include="Microsoft.Identity.Web" Version="4.10.0" />
     <PackageReference Include="Microsoft.Identity.Web.UI" Version="4.10.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
@@ -50,8 +52,7 @@
     <Folder Include="Middleware\" />
     <Folder Include="Respositories\" />
     <Folder Include="Views\Dashboard\" />
-    <Folder Include="Views\Professor\" />
-    <Folder Include="Views\Student\" />
+    <Folder Include="Views\Student_Professor\" />
   </ItemGroup>
 
 </Project>

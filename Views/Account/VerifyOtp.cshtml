@@ -6,9 +6,9 @@
 
 <div class="min-h-screen flex items-center justify-center bg-violet-700">
 
-    <div class="bg-white rounded-[40px] w-[700px] p-16 flex flex-col items-center">
+    <div class="bg-white rounded-3xl sm:rounded-[40px] w-full max-w-lg mx-4 p-8 sm:p-16 flex flex-col items-center">
 
-        <img src="/images/bookhive_logo_v2.svg" class="w-[150px] mb-3" />
+        <img src="/images/bookhive_logo_v2.png" class="w-[150px] mb-3" />
 
         <h3 class="text-2xl mb-2">
             Verify OTP
@@ -21,7 +21,7 @@
 
         @if (TempData["OtpFallback"] != null)
         {
-            <div class="w-[450px] bg-yellow-50 border-2 border-yellow-400 text-yellow-900 text-base font-semibold px-4 py-4 rounded-xl mb-4 text-center">
+            <div class="w-full max-w-sm bg-yellow-50 border-2 border-yellow-400 text-yellow-900 text-base font-semibold px-4 py-4 rounded-xl mb-4 text-center">
                 @TempData["OtpFallback"]
             </div>
         }
@@ -37,10 +37,10 @@
 
             <input asp-for="Code"
                    placeholder="Enter 6-digit code"
-                   class="w-[450px] h-[60px] rounded-2xl bg-gray-100 px-6 text-xl mb-8 outline-none" />
+                   class="w-full max-w-sm h-[60px] rounded-2xl bg-gray-100 px-6 text-xl mb-8 outline-none" />
 
             <button type="submit"
-                    class="w-[450px] h-[65px] bg-violet-700 text-white rounded-2xl text-2xl hover:bg-violet-800 transition">
+                    class="w-full max-w-sm h-[65px] bg-violet-700 text-white rounded-2xl text-2xl hover:bg-violet-800 transition">
                 Verify
             </button>
 

@@ -15,19 +15,19 @@
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
 
     <!-- Header -->
-    <div class="flex items-center justify-between mb-5">
-        <div>
-            <h2 class="text-lg font-semibold text-gray-700">Register New User</h2>
-            <p class="text-sm text-gray-400">Select user type to begin.</p>
-        </div>
-        <!-- Import Excel Button -->
+    <div class="mb-5">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-3xl font-bold text-gray-900">Register New User</h2>
+            <!-- Import Excel Button -->
         <button onclick="document.getElementById('importModal').classList.remove('hidden')"
-                class="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg" style="background-color:#1e3a6e;">
+                class="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg" style="background-color:#000147;">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/>
             </svg>
             Import Excel
         </button>
+        </div>
+        <hr class="border-gray-200">
     </div>
 
     <form method="post" action="@Url.Action("Registration","Librarian")" id="regForm">
@@ -47,62 +47,72 @@
         <!-- Fields (hidden until type selected) -->
         <div id="formFields" class="hidden">
 
-            <!-- Email dropdown from MIS -->
+            <!-- 1. Student / Employee Number -->
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-600 mb-1">School Email (from MIS)</label>
+                <div id="studentNumField">
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Student Number</label>
+                    <input type="text" name="studentNumber" id="studentNumber" readonly
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500" />
+                </div>
+                <div id="employeeNumField" class="hidden">
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Employee Number</label>
+                    <input type="text" name="employeeNumber" id="employeeNumber" readonly
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500" />
+                </div>
+            </div>
+
+            <!-- 2. RFID Card No. (students only) -->
+            <div id="rfidField" class="hidden mb-4">
+                <label class="block text-sm font-medium text-gray-600 mb-1">RFID Card No.</label>
+                <input type="text" id="rfidDisplay" readonly
+                       placeholder="No RFID on record"
+                       class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed" />
+            </div>
+
+            <!-- 3. Last Name, First Name, MI -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Last Name</label>
+                    <input type="text" name="lastName" id="lastName" required readonly
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">First Name</label>
+                    <input type="text" name="firstName" id="firstName" required readonly
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">M.I.</label>
+                    <input type="text" name="middleName" id="middleName" readonly
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500" />
+                </div>
+            </div>
+
+            <!-- 4. Email dropdown from MIS -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-600 mb-1">School Email (from MIS) <span class="text-red-500">*</span></label>
                 <select name="email" id="emailSelect" required onchange="onEmailChange()"
                         class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
                     <option value="">Select account...</option>
                 </select>
+                <p class="text-xs text-gray-400 mt-1">Selecting an account will auto-fill the fields above.</p>
             </div>
 
-            <!-- Name fields -->
-            <div class="grid grid-cols-3 gap-3 mb-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-1">First Name</label>
-                    <input type="text" name="firstName" id="firstName" required
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50" />
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-1">Middle Name</label>
-                    <input type="text" name="middleName" id="middleName"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50" />
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-1">Last Name</label>
-                    <input type="text" name="lastName" id="lastName" required
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50" />
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 mb-4">
-                <div id="studentNumField">
-                    <label class="block text-sm font-medium text-gray-600 mb-1">Student Number</label>
-                    <input type="text" name="studentNumber" id="studentNumber"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50" />
-                </div>
-                <div id="employeeNumField" class="hidden">
-                    <label class="block text-sm font-medium text-gray-600 mb-1">Employee Number</label>
-                    <input type="text" name="employeeNumber" id="employeeNumber"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50" />
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-1">Phone Number</label>
-                    <input type="tel" name="phoneNumber" id="phoneNumber"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50" />
-                </div>
-            </div>
-
+            <!-- 5. Phone Number -->
             <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-600 mb-1">Section / Department</label>
-                <input type="text" name="section" id="section"
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50" />
+                <label class="block text-sm font-medium text-gray-600 mb-1">Phone Number</label>
+                <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-gray-50">
+                    <span class="pl-3 pr-2 text-sm text-gray-500 select-none whitespace-nowrap">+63</span>
+                    <div class="w-px h-5 bg-gray-300"></div>
+                    <input type="tel" name="phoneNumber" id="phoneNumber" readonly
+                           class="flex-1 px-3 py-2 text-sm bg-transparent text-gray-500 outline-none" />
+                </div>
             </div>
 
             <!-- Buttons right-aligned -->
             <div class="flex gap-3 justify-end">
                 <a href="@Url.Action("UserManagement","Librarian")" class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">Cancel</a>
-                <button type="submit" class="px-6 py-2 text-white rounded-lg text-sm font-medium" style="background-color:#1e3a6e;">Register</button>
+                <button type="submit" class="px-6 py-2 text-white rounded-lg text-sm font-medium" style="background-color:#000147;">Register</button>
             </div>
         </div>
     </form>
@@ -136,7 +146,7 @@
             <div class="flex gap-3 justify-end">
                 <button type="button" onclick="document.getElementById('importModal').classList.add('hidden')"
                         class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">Cancel</button>
-                <button type="submit" class="px-5 py-2 text-white rounded-lg text-sm font-medium" style="background-color:#1e3a6e;">Import Users</button>
+                <button type="submit" class="px-5 py-2 text-white rounded-lg text-sm font-medium" style="background-color:#000147;">Import Users</button>
             </div>
         </form>
     </div>
@@ -150,7 +160,7 @@
         <h3 class="text-sm font-semibold text-gray-700 mb-3">Import Results — @imported.Count row(s) processed</h3>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
-                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
                     <tr>
                         <th class="px-4 py-3 text-left">Type</th>
                         <th class="px-4 py-3 text-left">Name</th>
@@ -186,11 +196,11 @@
 <script>
 const students = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
     (ViewBag.Students as List<BookHiveLibrary.Models.ApplicationUser> ?? new List<BookHiveLibrary.Models.ApplicationUser>())
-    .Select(u => new { u.Email, u.FirstName, u.MiddleName, u.LastName, u.StudentNumber, u.EmployeeNumber, u.PhoneNumber, u.Section })
+    .Select(u => new { u.Email, u.FirstName, u.MiddleName, u.LastName, u.StudentNumber, u.EmployeeNumber, u.PhoneNumber, u.RFIDNumber })
 ));
 const professors = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
     (ViewBag.Professors as List<BookHiveLibrary.Models.ApplicationUser> ?? new List<BookHiveLibrary.Models.ApplicationUser>())
-    .Select(u => new { u.Email, u.FirstName, u.MiddleName, u.LastName, u.StudentNumber, u.EmployeeNumber, u.PhoneNumber, u.Section })
+    .Select(u => new { u.Email, u.FirstName, u.MiddleName, u.LastName, u.StudentNumber, u.EmployeeNumber, u.PhoneNumber, u.RFIDNumber })
 ));
 
 function onTypeChange() {
@@ -206,9 +216,11 @@ function onTypeChange() {
     if (type === 'Student') {
         studentNumField.classList.remove('hidden');
         employeeNumField.classList.add('hidden');
+        document.getElementById('rfidField').classList.remove('hidden');
     } else {
         studentNumField.classList.add('hidden');
         employeeNumField.classList.remove('hidden');
+        document.getElementById('rfidField').classList.add('hidden');
     }
 
     const users = type === 'Student' ? students : professors;
@@ -235,11 +247,11 @@ function onEmailChange() {
     document.getElementById('studentNumber').value  = u.StudentNumber  ?? '';
     document.getElementById('employeeNumber').value = u.EmployeeNumber ?? '';
     document.getElementById('phoneNumber').value    = u.PhoneNumber    ?? '';
-    document.getElementById('section').value        = u.Section        ?? '';
+    document.getElementById('rfidDisplay').value    = u.RFIDNumber     ?? '';
 }
 
 function clearFields() {
-    ['firstName','middleName','lastName','studentNumber','employeeNumber','phoneNumber','section']
+    ['firstName','middleName','lastName','studentNumber','employeeNumber','phoneNumber']
         .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 }
 

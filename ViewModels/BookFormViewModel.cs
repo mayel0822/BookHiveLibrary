@@ -20,6 +20,9 @@ namespace BookHiveLibrary.ViewModels
         [Required]
         public string CallNumber { get; set; } = "";
 
+        [Display(Name = "ISBN")]
+        public string ISBN { get; set; } = "";
+
         [Required]
         public string AisleLocation { get; set; } = "";
 
@@ -36,5 +39,8 @@ namespace BookHiveLibrary.ViewModels
 
         [Range(0, 1000)]
         public int AvailableQuantity { get; set; } = 1;
+
+        public string BookFor { get; set; } = "Student";
+        public bool IsRoomUseOnly { get; set; } = false;
     }
 }

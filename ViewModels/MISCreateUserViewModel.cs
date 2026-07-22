@@ -19,10 +19,6 @@ namespace BookHiveLibrary.ViewModels
         [Required, EmailAddress]
         public string Email { get; set; } = "";
 
-        [Display(Name = "Outlook / Microsoft Email")]
-        [EmailAddress]
-        public string OutlookEmail { get; set; } = "";
-
         [Display(Name = "Username")]
         public string Username { get; set; } = "";
 
@@ -37,19 +33,19 @@ namespace BookHiveLibrary.ViewModels
         public string StudentNumber { get; set; } = "";
 
         [Display(Name = "Employee Number")]
-        public string EmployeeNumber { get; set; } = "";
+        public string? EmployeeNumber { get; set; }
 
         [Display(Name = "Section / Department")]
-        public string Section { get; set; } = "";
+        public string? Section { get; set; }
 
         [Display(Name = "RFID Number")]
-        public string RFIDNumber { get; set; } = "";
+        public string? RFIDNumber { get; set; }
 
         [Phone, Display(Name = "Phone Number")]
-        public string PhoneNumber { get; set; } = "";
+        public string? PhoneNumber { get; set; }
 
         [EmailAddress, Display(Name = "Adviser Email")]
-        public string AdviserEmail { get; set; } = "";
+        public string? AdviserEmail { get; set; }
 
         [Display(Name = "Level")]
         public string Level { get; set; } = "";

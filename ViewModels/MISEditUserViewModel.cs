@@ -19,10 +19,6 @@ namespace BookHiveLibrary.ViewModels
         [Required, EmailAddress]
         public string Email { get; set; } = "";
 
-        [Display(Name = "Outlook / Microsoft Email")]
-        [EmailAddress]
-        public string OutlookEmail { get; set; } = "";
-
         [Display(Name = "Student Number")]
         public string StudentNumber { get; set; } = "";
 
@@ -35,7 +31,7 @@ namespace BookHiveLibrary.ViewModels
         [Display(Name = "RFID Number")]
         public string RFIDNumber { get; set; } = "";
 
-        [Phone, Display(Name = "Phone Number")]
+        [Display(Name = "Phone Number")]
         public string PhoneNumber { get; set; } = "";
 
         // Optional: leave blank to keep existing password

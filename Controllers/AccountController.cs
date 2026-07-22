@@ -34,7 +34,7 @@ namespace BookHiveLibrary.Controllers
 
         public IActionResult Login()
         {
-            return View();
+            return RedirectToAction("Index", "Home");
         }
 
         public IActionResult AdminLogin()
@@ -81,10 +81,7 @@ namespace BookHiveLibrary.Controllers
             var redirectUrl = Url.Action("MicrosoftLoginCallback", "Account");
             var properties = _signInManager.ConfigureExternalAuthenticationProperties(
                 "Microsoft", redirectUrl);
-
-            // Force Microsoft to always show the login prompt
             properties.Parameters["prompt"] = "login";
-
             return Challenge(properties, "Microsoft");
         }
 
@@ -109,46 +106,41 @@ namespace BookHiveLibrary.Controllers
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
             {
-                TempData["Error"] = "No account found for this Microsoft email. Contact your administrator.";
+                TempData["Error"] = "Your Microsoft account is not registered in the system. Please contact MIS to register your account first.";
                 return RedirectToAction("Login");
             }
 
             if (!user.IsActive)
             {
-                TempData["Error"] = "Your account has been deactivated.";
+                TempData["Error"] = "Your account has been deactivated. Please contact MIS.";
                 return RedirectToAction("Login");
             }
 
-            // Librarian and MIS: Microsoft already handled MFA — sign in directly
-            if (user.UserType == "Librarian" || user.UserType == "MIS")
+            // All users: check if phone number is set up (first time login)
+            if (string.IsNullOrEmpty(user.PhoneNumber))
             {
-                await _signInManager.SignInAsync(user, isPersistent: false);
-                return RedirectToDashboard(user.UserType);
+                TempData["Email"] = user.Email;
+                return RedirectToAction("CompleteProfile");
             }
 
-            // Students and Professors: send email OTP as second factor
+            // Send SMS OTP via Semaphore
             string otpCode = GenerateOtp();
-            _context.OtpVerifications.Add(new OtpVerification
-            {
-                Email = user.Email!,
-                Code = otpCode,
-                ExpirationTime = DateTime.Now.AddMinutes(5),
-                IsUsed = false
-            });
-            await _context.SaveChangesAsync();
+            user.PhoneOTPCode = otpCode;
+            user.PhoneOTPExpiration = DateTime.Now.AddMinutes(5);
+            await _userManager.UpdateAsync(user);
 
             try
             {
-                await _emailService.SendOtpAsync(user.Email!, otpCode);
+                await _smsService.SendOtpAsync(user.PhoneNumber!, otpCode);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[EMAIL ERROR] {ex.Message}");
+                Console.WriteLine($"[SMS ERROR] {ex.Message}");
                 Console.WriteLine($"[DEV OTP] {user.Email} → {otpCode}");
             }
 
             TempData["Email"] = user.Email;
-            return RedirectToAction("VerifyOtp");
+            return RedirectToAction("VerifyPhoneOtp");
         }
 
         // ── Student/Professor Test Login ─────────────────────────────────────
@@ -169,7 +161,7 @@ namespace BookHiveLibrary.Controllers
 
             if (user == null)
             {
-                ModelState.AddModelError("", "User not found.");
+                ModelState.AddModelError("", "No account found. Please contact MIS to register your account.");
                 return View("Login", model);
             }
 
@@ -181,7 +173,7 @@ namespace BookHiveLibrary.Controllers
 
             if (!user.IsActive)
             {
-                ModelState.AddModelError("", "Your account has been deactivated.");
+                ModelState.AddModelError("", "Your account has been deactivated. Please contact MIS or the librarian.");
                 return View("Login", model);
             }
 
@@ -364,6 +356,12 @@ namespace BookHiveLibrary.Controllers
                 await _userManager.UpdateAsync(user);
             }
 
+            if (!user.IsActive)
+            {
+                TempData["Error"] = "Your account has been deactivated. Please contact MIS.";
+                return RedirectToAction("Login");
+            }
+
             await _signInManager.SignInAsync(user, isPersistent: false);
 
             // First-time login: collect phone number before going to dashboard
@@ -378,6 +376,7 @@ namespace BookHiveLibrary.Controllers
 
         // ── Complete Profile (first-time login) ──────────────────────────────
 
+        [HttpPost]
         [HttpPost]
         public async Task<IActionResult> CompleteProfile(string phoneNumber)
         {
@@ -443,6 +442,12 @@ namespace BookHiveLibrary.Controllers
                 return View(model);
             }
 
+            if (!user.IsActive)
+            {
+                ModelState.AddModelError("", "Your account has been deactivated. Please contact MIS.");
+                return View(model);
+            }
+
             // Phone is confirmed — mark it verified and complete first-login setup
             user.PhoneVerified = true;
             user.IsFirstLogin = false;
@@ -454,13 +459,41 @@ namespace BookHiveLibrary.Controllers
             return RedirectToDashboard(user.UserType);
         }
 
+        // ── Resend Phone OTP ─────────────────────────────────────────────────
+
+        [HttpPost]
+        public async Task<IActionResult> ResendPhoneOtp(string email)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+                return RedirectToAction("Login");
+
+            string otpCode = GenerateOtp();
+            user.PhoneOTPCode = otpCode;
+            user.PhoneOTPExpiration = DateTime.Now.AddMinutes(5);
+            await _userManager.UpdateAsync(user);
+
+            try
+            {
+                await _smsService.SendOtpAsync(user.PhoneNumber!, otpCode);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SMS ERROR] {ex.Message}");
+                TempData["SmsError"] = $"SMS could not be delivered. DEV CODE: {otpCode}";
+            }
+
+            TempData["Email"] = email;
+            TempData["Success"] = "A new code has been sent to your phone.";
+            return RedirectToAction("VerifyPhoneOtp");
+        }
+
         // ── Logout ───────────────────────────────────────────────────────────
 
         public async Task<IActionResult> Logout()
         {
             await _signInManager.SignOutAsync();
-            await HttpContext.SignOutAsync(Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme);
-            return RedirectToAction("Login");
+            return RedirectToAction("Index", "Home");
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
@@ -475,7 +508,7 @@ namespace BookHiveLibrary.Controllers
             "MIS" => RedirectToAction("Dashboard", "MIS"),
             "Librarian" => RedirectToAction("Dashboard", "Librarian"),
             "Student" => RedirectToAction("Dashboard", "Student"),
-            "Professor" => RedirectToAction("Dashboard", "Professor"),
+            "Professor" => RedirectToAction("Dashboard", "Student"),
             _ => RedirectToAction("Index", "Home")
         };
     }

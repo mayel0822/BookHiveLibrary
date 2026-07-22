@@ -8,8 +8,8 @@
 <div class="grid grid-cols-2 gap-6">
     <!-- Left: Create Section Form -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h2 class="text-lg font-semibold text-gray-700 mb-5">Add Section</h2>
-        <form method="post" action="@Url.Action("CreateSection","Librarian")">
+        <h2 class="text-2xl font-bold pb-3 mb-5 border-b border-gray-200" class="text-gray-900">Add Section</h2>
+        <form method="post" action="@Url.Action("CreateSection","Librarian")" id="sectionForm">
             @Html.AntiForgeryToken()
 
             <div class="mb-4">
@@ -17,21 +17,26 @@
                 <select name="level" id="levelSelect" required onchange="onLevelChange()"
                         class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
                     <option value="">Select level...</option>
-                    <option value="SHS">SHS</option>
-                    <option value="College">College</option>
-                    <option value="Grade 7">Grade 7</option>
-                    <option value="Grade 8">Grade 8</option>
-                    <option value="Grade 9">Grade 9</option>
-                    <option value="Grade 10">Grade 10</option>
+                    <option value="Junior High School">Junior High School</option>
+                    <option value="Senior High School">Senior High School</option>
+                    <option value="Tertiary">Tertiary</option>
                 </select>
             </div>
 
-            <div class="mb-4">
+            <div class="mb-4" id="courseDiv">
                 <label class="block text-sm font-medium text-gray-600 mb-1">Course / Strand</label>
-                <select name="course" id="courseSelect" required
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    <option value="">Select level first...</option>
-                </select>
+                <div class="relative">
+                    <button type="button" id="courseDropdownBtn"
+                            onclick="toggleCourseDropdown()"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white">
+                        <span id="courseDropdownLabel" class="text-gray-400">Select level first...</span>
+                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div id="courseDropdownMenu"
+                         class="hidden absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    </div>
+                </div>
+                <input type="hidden" name="course" id="courseValue" />
             </div>
 
             <div class="mb-4">
@@ -44,56 +49,106 @@
 
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-600 mb-1">Section Name</label>
-                <input type="text" name="sectionName" required placeholder="e.g. Section A, Dahlia..."
+                <input type="text" name="sectionName" id="sectionNameInput" required placeholder="e.g. 601, Dahlia..."
                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
             </div>
 
-            <div class="mb-6">
+            <div class="mb-6 relative">
                 <label class="block text-sm font-medium text-gray-600 mb-1">Adviser Name</label>
-                <input type="text" name="adviserName" placeholder="e.g. Mr. Juan Dela Cruz"
+                <input type="text" id="adviserSearch" name="adviserName" autocomplete="off"
+                       placeholder="Type to search professor..."
+                       oninput="filterAdvisers()"
+                       onfocus="showAdviserDropdown()"
                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                <div id="adviserDropdown"
+                     class="hidden absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    @{
+                        var professors = ViewBag.Professors as List<string> ?? new List<string>();
+                    }
+                    @if (!professors.Any())
+                    {
+                        <p class="px-4 py-3 text-sm text-gray-400">No professors registered.</p>
+                    }
+                    @foreach (var p in professors)
+                    {
+                        <div class="adviser-option px-4 py-2 text-sm cursor-pointer hover:bg-blue-50 hover:text-blue-700"
+                             data-name="@p.ToLower()"
+                             onclick="selectAdviser('@p')">@p</div>
+                    }
+                </div>
             </div>
 
             <div class="flex gap-3 justify-end">
                 <button type="reset" class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">Cancel</button>
-                <button type="submit" class="px-6 py-2 text-white rounded-lg text-sm font-medium" style="background-color:#1e3a6e;">Save</button>
+                <button type="submit" class="px-6 py-2 text-white rounded-lg text-sm font-medium" style="background-color:#000147;">Save</button>
             </div>
         </form>
     </div>
 
     <!-- Right: Sections List -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 class="font-semibold text-gray-700">Sections (@sections.Count)</h2>
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 class="text-2xl font-bold" class="text-gray-900">Sections (@sections.Count)</h2>
             <button type="button"
                     onclick="@(sections.Any() ? "document.getElementById('resetModal').classList.remove('hidden')" : "document.getElementById('noSectionToast').classList.remove('hidden'); setTimeout(()=>document.getElementById('noSectionToast').classList.add('hidden'),2500)")"
-                    class="px-3 py-1.5 text-xs text-white rounded-lg" style="background-color:#1e3a6e;">
+                    class="px-3 py-1.5 text-xs text-white rounded-lg" style="background-color:#000147;">
                 Reset Section
             </button>
         </div>
-        <div class="divide-y divide-gray-100 max-h-[calc(100vh-16rem)] overflow-y-auto">
+        <div class="px-5 py-3 border-b border-gray-100">
+            <div class="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-blue-300 bg-white">
+                <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/></svg>
+                <input type="text" id="sectionSearch" placeholder="Search sections..."
+                       oninput="filterSections()"
+                       class="flex-1 text-sm outline-none bg-transparent text-gray-700 placeholder-gray-400" />
+            </div>
+        </div>
+        <div id="sectionList" class="max-h-[calc(100vh-20rem)] overflow-y-auto">
             @if (!sections.Any())
             {
                 <p class="px-5 py-8 text-center text-gray-400 text-sm">No sections created yet</p>
             }
-            @foreach (var s in sections)
+            @{
+                var levelOrder = new[] { "Junior High School", "Senior High School", "College" };
+                // Normalize old "Tertiary"/"College" values to "College"
+                var grouped = sections
+                    .GroupBy(s => (s.Level == "Tertiary" || s.Level == "College") ? "College" :
+                                   s.Level == "SHS" ? "Senior High School" :
+                                   (s.Level == "Grade 7" || s.Level == "Grade 8" || s.Level == "Grade 9" || s.Level == "Grade 10") ? "Junior High School" :
+                                   s.Level)
+                    .OrderBy(g => Array.IndexOf(levelOrder, g.Key) < 0 ? 99 : Array.IndexOf(levelOrder, g.Key));
+            }
+            @foreach (var group in grouped)
             {
-                <div class="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+                <div class="sticky top-0 z-10 px-5 py-2 text-xs font-semibold uppercase tracking-widest text-white" style="background-color:#23354D;">
+                    @(group.Key == "Junior High School" ? "Junior High School" : group.Key == "Senior High School" ? "Senior High School" : "College")
+                </div>
+                <div class="divide-y divide-gray-100">
+                @foreach (var s in group.OrderBy(s => s.SectionName))
+                {
+                <div class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 cursor-pointer group"
+                     data-section="@s.SectionName"
+                     onclick="openSectionStudents('@s.SectionName', '@s.AdviserName')">
                     <div>
-                        <p class="text-sm font-medium text-gray-800">@s.SectionName</p>
+                        <p class="text-sm font-medium text-gray-800 group-hover:text-blue-700 transition">@s.SectionName</p>
                         @if (!string.IsNullOrEmpty(s.AdviserName))
                         {
                             <p class="text-xs text-gray-400">Adviser: @s.AdviserName</p>
                         }
                     </div>
-                    <form method="post" action="@Url.Action("DeleteSection","Librarian")"
-                          onsubmit="return confirm('Delete this section?')">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@s.Id" />
-                        <button type="submit" class="text-red-400 hover:text-red-600">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                        </button>
-                    </form>
+                    <div class="flex items-center gap-3">
+                        <svg class="w-4 h-4 text-gray-300 group-hover:text-blue-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                        <form method="post" action="@Url.Action("DeleteSection","Librarian")"
+                              onsubmit="event.stopPropagation(); return confirm('Delete this section?')" onclick="event.stopPropagation()">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@s.Id" />
+                            <button type="submit" class="text-red-400 hover:text-red-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                }
                 </div>
             }
         </div>
@@ -111,7 +166,7 @@
         <h3 class="text-base font-semibold text-gray-700 mb-2">No Sections Found</h3>
         <p class="text-sm text-gray-400 mb-5">There are no sections listed yet. Add a section first before resetting.</p>
         <button onclick="document.getElementById('noSectionToast').classList.add('hidden')"
-                class="px-6 py-2 text-white rounded-lg text-sm font-medium" style="background-color:#1e3a6e;">OK</button>
+                class="px-6 py-2 text-white rounded-lg text-sm font-medium" style="background-color:#000147;">OK</button>
     </div>
 </div>
 
@@ -141,9 +196,9 @@
                     </div>
                 </label>
                 <label class="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                    <input type="radio" name="levelGroup" value="College" class="mt-0.5" />
+                    <input type="radio" name="levelGroup" value="Tertiary" class="mt-0.5" />
                     <div>
-                        <p class="text-sm font-medium text-gray-700">College</p>
+                        <p class="text-sm font-medium text-gray-700">Tertiary</p>
                         <p class="text-xs text-gray-400">Resets every semester</p>
                     </div>
                 </label>
@@ -152,83 +207,360 @@
             <div class="flex gap-3 justify-end">
                 <button type="button" onclick="document.getElementById('resetModal').classList.add('hidden')"
                         class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">Cancel</button>
-                <button type="submit" class="px-5 py-2 text-white rounded-lg text-sm font-medium" style="background-color:#1e3a6e;">Reset</button>
+                <button type="submit" class="px-5 py-2 text-white rounded-lg text-sm font-medium" style="background-color:#000147;">Reset</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Section Students Modal -->
+<div id="sectionStudentsModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden flex flex-col" style="max-height:90vh;">
+        <div class="px-6 py-4 flex items-center justify-between flex-shrink-0" style="background-color:#000147;">
+            <div>
+                <h3 id="sm-title" class="text-sm font-semibold text-white"></h3>
+                <p id="sm-adviser" class="text-xs text-blue-300 mt-0.5"></p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="sm-add-btn" onclick="toggleAddPanel()" class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-white/20 hover:bg-white/30 text-white transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                    Add Student
+                </button>
+                <button onclick="closeSectionStudents()" class="text-white/70 hover:text-white">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Add Student Panel (collapsible) -->
+        <div id="sm-add-panel" class="hidden flex-shrink-0 border-b border-gray-200 bg-gray-50 px-6 py-4">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Unassigned Students</p>
+            <div class="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-1.5 bg-white mb-2 focus-within:ring-2 focus-within:ring-blue-300">
+                <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/></svg>
+                <input type="text" id="sm-search" placeholder="Search by name, ID, or tap RFID card..."
+                       oninput="filterUnassigned()"
+                       class="flex-1 text-sm outline-none bg-transparent text-gray-700 placeholder-gray-400" />
+            </div>
+            <div id="sm-unassigned-list" class="max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white divide-y divide-gray-100">
+                <p class="px-4 py-3 text-sm text-gray-400 text-center">Loading…</p>
+            </div>
+        </div>
+
+        <!-- Enrolled students list -->
+        <div id="sm-body" class="divide-y divide-gray-100 overflow-y-auto flex-1">
+            <p class="px-6 py-8 text-center text-sm text-gray-400">Loading…</p>
+        </div>
     </div>
 </div>
 
 @section Scripts {
 <script>
 const data = {
-    SHS: {
-        courses: ['STEM', 'HUMSS', 'ABM', 'GAS', 'TVL', 'SPORTS', 'ARTS & DESIGN'],
-        years:   ['Grade 11', 'Grade 12']
+    'Junior High School': {
+        courses: null,
+        years:   ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10']
     },
-    College: {
+    'Senior High School': {
         courses: [
-            'BS Information Technology (BSIT)',
-            'BS Computer Science (BSCS)',
-            'BS Information Systems (BSIS)',
-            'BS Accountancy (BSA)',
-            'BS Business Administration (BSBA)',
-            'BS Nursing (BSN)',
-            'BS Midwifery (BSM)',
-            'BS Education - Secondary (BSED)',
-            'BS Education - Elementary (BEED)',
-            'BS Criminology (BSCrim)',
-            'BS Mechanical Engineering (BSME)',
-            'BS Civil Engineering (BSCE)',
-            'BS Electronics Engineering (BSEcE)',
-            'BS Computer Engineering (BSCpE)',
-            'BS Electrical Engineering (BSEE)',
-            'BS Architecture (BSArch)',
-            'BS Psychology (BSPsych)',
-            'BS Social Work (BSSW)',
-            'BS Tourism Management (BSTM)',
-            'BS Hospitality Management (BSHM)',
-            'BS Agriculture (BSA)',
-            'BS Biology (BSBio)',
-            'BS Mathematics (BSMath)',
-            'BS Physical Education (BSPE)',
-            'AB Communication (ABComm)',
-            'AB Political Science (ABPS)',
-            'AB English Language Studies (ABELS)',
-            'Doctor of Medicine (MD)',
-            'Juris Doctor (JD)',
+            { abbr: 'ABM',         label: 'Accountancy, Business, and Management' },
+            { abbr: 'STEM',        label: 'Science, Technology, Engineering, and Mathematics' },
+            { abbr: 'HUMSS',       label: 'Humanities and Social Sciences' },
+            { abbr: 'GA',          label: 'General Academic' },
+            { abbr: 'ICT',         label: 'IT in Mobile App and Web Development' },
+            { abbr: 'DA',          label: 'Digital Arts' },
+            { abbr: 'TVL-Tourism', label: 'Tourism Operations' },
+            { abbr: 'TVL-RCO',     label: 'Restaurant and Cafe Operations' },
+            { abbr: 'TVL-CA',      label: 'Culinary Arts' }
         ],
-        years: ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year']
+        years: ['Grade 11', 'Grade 12']
     },
-    'Grade 7':  { courses: ['Junior High School'], years: ['Grade 7'] },
-    'Grade 8':  { courses: ['Junior High School'], years: ['Grade 8'] },
-    'Grade 9':  { courses: ['Junior High School'], years: ['Grade 9'] },
-    'Grade 10': { courses: ['Junior High School'], years: ['Grade 10'] },
+    'Tertiary': {
+        courses: [
+            { abbr: 'BSCS',   label: 'Bachelor of Science in Computer Science' },
+            { abbr: 'BSIT',   label: 'Bachelor of Science in Information Technology' },
+            { abbr: 'BSCpE',  label: 'Bachelor of Science in Computer Engineering' },
+            { abbr: 'BSBA',   label: 'Bachelor of Science in Business Administration' },
+            { abbr: 'BSRTCS', label: 'Bachelor of Science in Retail Technology and Consumer Science' },
+            { abbr: 'BACOMM', label: 'Bachelor of Arts in Communication' },
+            { abbr: 'BAP',    label: 'Bachelor of Arts in Psychology' },
+            { abbr: 'BSTM',   label: 'Bachelor of Science in Tourism Management' },
+            { abbr: 'ACT',    label: '2-yr. Associate in Computer Technology' },
+            { abbr: 'ART',    label: '2-yr. Associate in Retail Technology' }
+        ],
+        years: ['1st Year', '2nd Year', '3rd Year', '4th Year']
+    }
 };
 
+function filterSections() {
+    const q = document.getElementById('sectionSearch').value.toLowerCase();
+    document.querySelectorAll('#sectionList [data-section]').forEach(row => {
+        row.style.display = row.dataset.section.toLowerCase().includes(q) ? '' : 'none';
+    });
+}
+
+let currentSection = '';
+let allUnassigned  = [];
+
+async function openSectionStudents(sectionName, adviserName) {
+    currentSection = sectionName;
+    document.getElementById('sm-title').textContent = sectionName + ' — Students';
+    document.getElementById('sm-adviser').textContent = adviserName ? 'Adviser: ' + adviserName : '';
+    document.getElementById('sm-body').innerHTML = '<p class="px-6 py-8 text-center text-sm text-gray-400">Loading…</p>';
+    document.getElementById('sm-add-panel').classList.add('hidden');
+    document.getElementById('sm-search').value = '';
+    document.getElementById('sectionStudentsModal').classList.remove('hidden');
+    await refreshEnrolledStudents();
+}
+
+async function refreshEnrolledStudents() {
+    try {
+        const res   = await fetch('/Librarian/GetStudentsBySection?sectionName=' + encodeURIComponent(currentSection));
+        const list  = await res.json();
+        if (!list.length) {
+            document.getElementById('sm-body').innerHTML = '<p class="px-6 py-8 text-center text-sm text-gray-400">No students in this section yet.</p>';
+            return;
+        }
+        document.getElementById('sm-body').innerHTML = list.map((s, i) => `
+            <div class="flex items-center gap-4 px-6 py-3 hover:bg-gray-50">
+                <span class="text-xs text-gray-400 w-5 text-right flex-shrink-0">${i + 1}</span>
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background-color:#000147;">
+                    ${s.name.charAt(0).toUpperCase()}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-800">${s.name}</p>
+                    <p class="text-xs text-gray-400">${s.idNo || '—'} &bull; ${s.email || ''}</p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${s.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                        ${s.active ? 'Active' : 'Inactive'}
+                    </span>
+                    <button onclick="removeStudent('${s.id}', '${s.name.replace(/'/g,"\\'")}', this)"
+                            title="Remove from section"
+                            class="p-1 text-red-300 hover:text-red-600 transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </div>`).join('');
+    } catch {
+        document.getElementById('sm-body').innerHTML = '<p class="px-6 py-8 text-center text-sm text-gray-400">Could not load students.</p>';
+    }
+}
+
+async function toggleAddPanel() {
+    const panel = document.getElementById('sm-add-panel');
+    if (!panel.classList.contains('hidden')) {
+        panel.classList.add('hidden');
+        return;
+    }
+    panel.classList.remove('hidden');
+    setTimeout(() => document.getElementById('sm-search').focus(), 50);
+    document.getElementById('sm-unassigned-list').innerHTML = '<p class="px-4 py-3 text-sm text-gray-400 text-center">Loading…</p>';
+    try {
+        const res   = await fetch('/Librarian/GetUnassignedStudents');
+        allUnassigned = await res.json();
+        document.getElementById('sm-unassigned-list').innerHTML = '';
+    } catch {
+        document.getElementById('sm-unassigned-list').innerHTML = '<p class="px-4 py-3 text-sm text-gray-400 text-center">Could not load students.</p>';
+    }
+}
+
+function renderUnassigned(list) {
+    const el = document.getElementById('sm-unassigned-list');
+    if (!list.length) {
+        el.innerHTML = '';
+        return;
+    }
+    el.innerHTML = list.map(s => `
+        <div class="flex items-center gap-3 px-4 py-2 hover:bg-blue-50 cursor-pointer transition" onclick="assignStudent('${s.id}', '${s.name.replace(/'/g,"\\'")}', this)">
+            <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 bg-gray-400">
+                ${s.name.charAt(0).toUpperCase()}
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-800">${s.name}</p>
+                <p class="text-xs text-gray-400">${s.idNo || '—'}${s.rfid ? ' · RFID: ' + s.rfid : ''}</p>
+            </div>
+            <svg class="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        </div>`).join('');
+}
+
+function filterUnassigned() {
+    const q = document.getElementById('sm-search').value.toLowerCase();
+    if (!q) { document.getElementById('sm-unassigned-list').innerHTML = ''; return; }
+    renderUnassigned(allUnassigned.filter(s =>
+        s.name.toLowerCase().includes(q) ||
+        (s.idNo  || '').toLowerCase().includes(q) ||
+        (s.rfid  || '').toLowerCase().includes(q)
+    ));
+}
+
+async function assignStudent(userId, name, rowEl) {
+    if (!confirm('Assign ' + name + ' to ' + currentSection + '? This will activate their RFID card.')) return;
+    rowEl.closest('[onclick]').style.opacity = '0.4';
+    rowEl.closest('[onclick]').style.pointerEvents = 'none';
+    try {
+        const res  = await fetch('/Librarian/AssignStudentToSection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': getAntiForgeryToken() },
+            body: 'userId=' + encodeURIComponent(userId) + '&sectionName=' + encodeURIComponent(currentSection)
+        });
+        const json = await res.json();
+        if (json.success) {
+            allUnassigned = allUnassigned.filter(s => s.id !== userId);
+            renderUnassigned(allUnassigned.filter(s => {
+                const q = document.getElementById('sm-search').value.toLowerCase();
+                return s.name.toLowerCase().includes(q) || (s.idNo || '').toLowerCase().includes(q);
+            }));
+            await refreshEnrolledStudents();
+        } else {
+            alert(json.message || 'Failed to assign student.');
+            rowEl.closest('[onclick]').style.opacity = '';
+            rowEl.closest('[onclick]').style.pointerEvents = '';
+        }
+    } catch {
+        alert('Error assigning student.');
+    }
+}
+
+async function removeStudent(userId, name, btnEl) {
+    if (!confirm('Remove ' + name + ' from this section? This will deactivate their RFID card.')) return;
+    btnEl.disabled = true;
+    try {
+        const res  = await fetch('/Librarian/RemoveStudentFromSection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': getAntiForgeryToken() },
+            body: 'userId=' + encodeURIComponent(userId)
+        });
+        const json = await res.json();
+        if (json.success) {
+            await refreshEnrolledStudents();
+            if (!document.getElementById('sm-add-panel').classList.contains('hidden')) {
+                const res2 = await fetch('/Librarian/GetUnassignedStudents');
+                allUnassigned = await res2.json();
+                filterUnassigned();
+            }
+        }
+    } catch {
+        btnEl.disabled = false;
+    }
+}
+
+function getAntiForgeryToken() {
+    return document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+}
+
+function closeSectionStudents() {
+    document.getElementById('sectionStudentsModal').classList.add('hidden');
+}
+document.getElementById('sectionStudentsModal').addEventListener('click', function(e) {
+    if (e.target === this) closeSectionStudents();
+});
+
+// ── Adviser searchable dropdown ───────────────────────────────────────────
+function showAdviserDropdown() {
+    filterAdviserDropdown('');
+    document.getElementById('adviserDropdown').classList.remove('hidden');
+}
+function filterAdvisers() {
+    filterAdviserDropdown(document.getElementById('adviserSearch').value);
+}
+function filterAdviserDropdown(q) {
+    const lower = q.toLowerCase();
+    document.querySelectorAll('.adviser-option').forEach(el => {
+        el.style.display = el.dataset.name.includes(lower) ? '' : 'none';
+    });
+    document.getElementById('adviserDropdown').classList.remove('hidden');
+}
+function selectAdviser(name) {
+    document.getElementById('adviserSearch').value = name;
+    document.getElementById('adviserDropdown').classList.add('hidden');
+}
+document.addEventListener('click', function(e) {
+    const input = document.getElementById('adviserSearch');
+    const drop  = document.getElementById('adviserDropdown');
+    if (input && drop && !input.contains(e.target) && !drop.contains(e.target)) {
+        drop.classList.add('hidden');
+    }
+});
+
+// ── Custom course dropdown ────────────────────────────────────────────────
+function toggleCourseDropdown() {
+    document.getElementById('courseDropdownMenu').classList.toggle('hidden');
+}
+function selectCourse(abbr, label) {
+    document.getElementById('courseValue').value        = abbr;
+    document.getElementById('courseDropdownLabel').innerHTML = label + ' <strong>(' + abbr + ')</strong>';
+    document.getElementById('courseDropdownLabel').classList.remove('text-gray-400');
+    document.getElementById('courseDropdownMenu').classList.add('hidden');
+    document.getElementById('sectionNameInput').value  = '';
+}
+document.addEventListener('click', function(e) {
+    const btn  = document.getElementById('courseDropdownBtn');
+    const menu = document.getElementById('courseDropdownMenu');
+    if (btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) {
+        menu.classList.add('hidden');
+    }
+});
+
+// ── Form submit ───────────────────────────────────────────────────────────
+document.getElementById('sectionForm').addEventListener('submit', function(e) {
+    const level        = document.getElementById('levelSelect').value;
+    const year         = document.getElementById('yearSelect').value;
+    const courseVal    = document.getElementById('courseValue').value;
+    const sectionInput = document.getElementById('sectionNameInput');
+    const typed        = sectionInput.value.trim();
+
+    if (!typed) { e.preventDefault(); alert('Please enter a section name.'); return; }
+
+    if (level === 'Junior High School') {
+        if (!year) { e.preventDefault(); alert('Please select a year.'); return; }
+        sectionInput.value = year + ' - ' + typed;
+    } else if (level === 'Senior High School' || level === 'Tertiary') {
+        if (!courseVal) { e.preventDefault(); alert('Please select a course/strand.'); return; }
+        sectionInput.value = courseVal + ' - ' + typed;
+    }
+});
+
+// ── Level change ──────────────────────────────────────────────────────────
 function onLevelChange() {
-    const level = document.getElementById('levelSelect').value;
-    const courseSelect = document.getElementById('courseSelect');
+    const level     = document.getElementById('levelSelect').value;
+    const courseDiv = document.getElementById('courseDiv');
+    const courseVal = document.getElementById('courseValue');
+    const menu      = document.getElementById('courseDropdownMenu');
+    const label     = document.getElementById('courseDropdownLabel');
     const yearSelect = document.getElementById('yearSelect');
 
-    courseSelect.innerHTML = '<option value="">Select course/strand...</option>';
-    yearSelect.innerHTML   = '<option value="">Select year...</option>';
+    yearSelect.innerHTML = '<option value="">Select year...</option>';
+    document.getElementById('sectionNameInput').value = '';
+    courseVal.value = '';
+    label.innerHTML = 'Select course/strand...';
+    label.classList.add('text-gray-400');
+    menu.innerHTML  = '';
+    menu.classList.add('hidden');
 
-    if (!level || !data[level]) return;
+    if (!level || !data[level]) {
+        courseDiv.classList.remove('hidden');
+        return;
+    }
 
-    data[level].courses.forEach(c => {
-        const o = document.createElement('option');
-        o.value = o.textContent = c;
-        courseSelect.appendChild(o);
-    });
+    if (level === 'Junior High School') {
+        courseDiv.classList.add('hidden');
+        courseVal.value = 'Junior High School';
+    } else {
+        courseDiv.classList.remove('hidden');
+        data[level].courses.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'px-4 py-2 text-sm cursor-pointer hover:bg-blue-50 hover:text-blue-700';
+            div.innerHTML = c.label + ' <strong>(' + c.abbr + ')</strong>';
+            div.onclick   = () => selectCourse(c.abbr, c.label);
+            menu.appendChild(div);
+        });
+    }
 
     data[level].years.forEach(y => {
         const o = document.createElement('option');
         o.value = o.textContent = y;
         yearSelect.appendChild(o);
     });
-
-    if (data[level].courses.length === 1) courseSelect.selectedIndex = 1;
-    if (data[level].years.length === 1)   yearSelect.selectedIndex   = 1;
 }
 </script>
 }

@@ -45,6 +45,9 @@ namespace BookHiveLibrary.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("DeactivationReason")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -125,6 +128,9 @@ namespace BookHiveLibrary.Data.Migrations
                     b.Property<bool>("PhoneVerified")
                         .HasColumnType("bit");
 
+                    b.Property<string>("ProfilePicture")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("RFIDNumber")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -187,6 +193,10 @@ namespace BookHiveLibrary.Data.Migrations
                     b.Property<int>("AvailableQuantity")
                         .HasColumnType("int");
 
+                    b.Property<string>("BookFor")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("CallNumber")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -210,7 +220,14 @@ namespace BookHiveLibrary.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ISBN")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsArchived")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRoomUseOnly")
                         .HasColumnType("bit");
 
                     b.Property<string>("PublishedYear")
@@ -366,7 +383,16 @@ namespace BookHiveLibrary.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsDeletedByReceiver")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeletedBySender")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsUnsent")
                         .HasColumnType("bit");
 
                     b.Property<string>("ReceiverId")

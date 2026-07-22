@@ -8,7 +8,7 @@
 <div class="bg-white rounded-xl shadow-sm border border-gray-100">
     <!-- Header with search and filter -->
     <div class="px-5 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
-        <h2 class="font-semibold text-gray-700">Users</h2>
+        <h2 class="text-3xl font-bold text-gray-900">Users</h2>
         <div class="flex gap-3 items-center">
             <form method="get" class="flex items-center border border-gray-300 rounded-full overflow-hidden shadow-sm bg-white">
                 <!-- Dropdown filter -->
@@ -24,27 +24,28 @@
                        class="text-sm px-4 py-2 w-64 focus:outline-none bg-white" />
                 <!-- Search button with icon -->
                 <button type="submit" class="px-4 py-2 flex items-center justify-center bg-white hover:bg-gray-50">
-                    <svg class="w-4 h-4" fill="none" stroke="#1e3a6e" stroke-width="2" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4" fill="none" stroke="#111827" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
                     </svg>
                 </button>
             </form>
             <a href="@Url.Action("Registration","Librarian")"
-               class="px-4 py-2 text-sm text-white rounded-full" style="background-color:#1e3a6e;">+ Add User</a>
+               class="px-4 py-2 text-sm text-white rounded-full" style="background-color:#000147;">+ Add User</a>
         </div>
     </div>
 
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
-            <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+            <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
                 <tr>
                     <th class="px-4 py-3 text-left">Stud/Emp ID</th>
                     <th class="px-4 py-3 text-left">Name</th>
                     <th class="px-4 py-3 text-left">Email</th>
                     <th class="px-4 py-3 text-left">Phone</th>
+                    <th class="px-4 py-3 text-left">Section</th>
                     <th class="px-4 py-3 text-left">Type</th>
                     <th class="px-4 py-3 text-left">Status</th>
-                    <th class="px-4 py-3 text-left"></th>
+                    <th class="px-4 py-3 text-center"></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -57,10 +58,9 @@
                         <td class="px-4 py-3 font-medium text-gray-800">@user.LastName, @user.FirstName @(string.IsNullOrEmpty(user.MiddleName) ? "" : user.MiddleName[0] + ".")</td>
                         <td class="px-4 py-3 text-gray-600">@user.Email</td>
                         <td class="px-4 py-3 text-gray-600">@user.PhoneNumber</td>
+                        <td class="px-4 py-3 text-gray-600">@(string.IsNullOrEmpty(user.Section) ? "—" : user.Section)</td>
                         <td class="px-4 py-3">
-                            <span class="px-2 py-1 rounded-full text-xs font-medium @(user.UserType == "Student" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700")">
-                                @user.UserType
-                            </span>
+                            <span class="text-sm font-medium text-gray-900">@user.UserType</span>
                         </td>
                         <td class="px-4 py-3">
                             @if (user.IsActive)
@@ -73,18 +73,12 @@
                             }
                         </td>
                         <td class="px-4 py-3">
-                            <div class="flex gap-2">
-                                <form method="post" action="@Url.Action("ToggleAccountStatus","Librarian")">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="userId" value="@user.Id" />
-                                    <button type="submit"
-                                            class="text-xs px-3 py-1.5 rounded border @(user.IsActive ? "border-red-300 text-red-600 hover:bg-red-50" : "border-green-300 text-green-600 hover:bg-green-50")">
-                                        @(user.IsActive ? "Deactivate" : "Activate")
-                                    </button>
-                                </form>
-                                <a href="#" class="text-gray-400 hover:text-gray-600">
+                            <div class="flex gap-2 items-center">
+                                <button type="button"
+                                        onclick="openUserDetail('@user.Id','@(user.LastName), @user.FirstName @(string.IsNullOrEmpty(user.MiddleName) ? "" : user.MiddleName[0] + ".")','@user.Email','@user.PhoneNumber','@user.UserType','@(user.IsActive ? "Active" : "Inactive")','@(user.UserType == "Student" ? user.StudentNumber : user.EmployeeNumber)','@user.Section','@user.CreatedAt.ToString("MMMM dd, yyyy")')"
+                                        class="flex items-center justify-center w-7 h-7 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition flex-shrink-0">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                                </a>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -97,3 +91,131 @@
         </table>
     </div>
 </div>
+
+<!-- User Detail Modal -->
+<div id="userDetailModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black bg-opacity-40">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-4 flex items-center justify-between" style="background-color:#000147;">
+            <h3 class="text-sm font-semibold text-white">Account Details</h3>
+            <button onclick="closeUserDetail()" class="text-white/70 hover:text-white">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="p-6">
+            <!-- Avatar + Name -->
+            <div class="flex items-center gap-4 mb-6">
+                <div id="ud-avatar" class="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0" style="background-color:#000147;"></div>
+                <div>
+                    <p id="ud-name" class="font-semibold text-gray-800 text-base"></p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span id="ud-type-badge" class="px-2 py-0.5 rounded-full text-xs font-medium"></span>
+                        <span id="ud-status-badge" class="px-2 py-0.5 rounded-full text-xs font-medium"></span>
+                    </div>
+                </div>
+            </div>
+            <!-- Details grid -->
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between border-b border-gray-100 pb-2">
+                    <span id="ud-idno-label" class="text-gray-500">Student ID</span>
+                    <span id="ud-idno" class="font-medium text-gray-800"></span>
+                </div>
+                <div class="flex justify-between border-b border-gray-100 pb-2">
+                    <span class="text-gray-500">Email</span>
+                    <span id="ud-email" class="font-medium text-gray-800 break-all text-right max-w-[60%]"></span>
+                </div>
+                <div class="flex justify-between border-b border-gray-100 pb-2">
+                    <span class="text-gray-500">Phone</span>
+                    <span id="ud-phone" class="font-medium text-gray-800"></span>
+                </div>
+                <div id="ud-section-row" class="flex justify-between border-b border-gray-100 pb-2">
+                    <span class="text-gray-500">Section</span>
+                    <span id="ud-section" class="font-medium text-gray-800"></span>
+                </div>
+                <div class="flex justify-between pb-2">
+                    <span class="text-gray-500">Member Since</span>
+                    <span id="ud-since" class="font-medium text-gray-800"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activate with Section Modal -->
+<div id="activateModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black bg-opacity-40">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-1">Assign Section &amp; Activate</h3>
+        <p class="text-sm text-gray-500 mb-5">Student: <span id="modalStudentName" class="font-medium text-gray-700"></span></p>
+        <form method="post" action="@Url.Action("ActivateWithSection","Librarian")">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="modalUserId" name="userId" />
+            <div class="mb-5">
+                <label class="block text-sm font-medium text-gray-600 mb-1">Section <span class="text-red-500">*</span></label>
+                <select name="section" required
+                        class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <option value="">-- Select Section --</option>
+                    @foreach (var s in (IEnumerable<BookHiveLibrary.Models.Section>)ViewBag.Sections)
+                    {
+                        <option value="@s.SectionName">@s.SectionName</option>
+                    }
+                </select>
+            </div>
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="closeActivateModal()"
+                        class="px-5 py-2 border border-gray-300 text-gray-600 rounded-xl text-sm hover:bg-gray-50">Cancel</button>
+                <button type="submit"
+                        class="px-5 py-2 text-white rounded-xl text-sm font-medium" style="background-color:#000147;">Activate</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function openUserDetail(id, name, email, phone, type, status, idno, section, since) {
+    document.getElementById('ud-avatar').textContent = name.charAt(0).toUpperCase();
+    document.getElementById('ud-name').textContent = name;
+    document.getElementById('ud-idno').textContent = idno || '—';
+    document.getElementById('ud-idno-label').textContent = type === 'Student' ? 'Student ID' : 'Employee No.';
+    document.getElementById('ud-email').textContent = email || '—';
+    document.getElementById('ud-phone').textContent = phone || '—';
+    document.getElementById('ud-since').textContent = since || '—';
+
+    const typeEl = document.getElementById('ud-type-badge');
+    typeEl.textContent = type;
+    typeEl.className = 'text-sm font-medium text-gray-900';
+
+    const statusEl = document.getElementById('ud-status-badge');
+    statusEl.textContent = status;
+    statusEl.className = 'px-2 py-0.5 rounded-full text-xs font-medium ' +
+        (status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700');
+
+    const sectionRow = document.getElementById('ud-section-row');
+    if (type === 'Student') {
+        document.getElementById('ud-section').textContent = section || '—';
+        sectionRow.classList.remove('hidden');
+    } else {
+        sectionRow.classList.add('hidden');
+    }
+
+    document.getElementById('userDetailModal').classList.remove('hidden');
+}
+function closeUserDetail() {
+    document.getElementById('userDetailModal').classList.add('hidden');
+}
+document.getElementById('userDetailModal').addEventListener('click', function(e) {
+    if (e.target === this) closeUserDetail();
+});
+
+function openActivateModal(userId, name) {
+    document.getElementById('modalUserId').value = userId;
+    document.getElementById('modalStudentName').textContent = name;
+    document.getElementById('activateModal').classList.remove('hidden');
+}
+function closeActivateModal() {
+    document.getElementById('activateModal').classList.add('hidden');
+}
+document.getElementById('activateModal').addEventListener('click', function(e) {
+    if (e.target === this) closeActivateModal();
+});
+</script>
+}

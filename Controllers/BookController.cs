@@ -56,6 +56,7 @@ namespace BookHiveLibrary.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(BookFormViewModel model)
         {
             if (!ModelState.IsValid) return View(model);
@@ -71,8 +72,11 @@ namespace BookHiveLibrary.Controllers
                 Description = model.Description,
                 CoverImageUrl = model.CoverImageUrl,
                 PublishedYear = model.PublishedYear,
+                ISBN = model.ISBN,
                 TotalQuantity = model.TotalQuantity,
-                AvailableQuantity = model.AvailableQuantity
+                AvailableQuantity = model.TotalQuantity,
+                BookFor = model.BookFor,
+                IsRoomUseOnly = model.IsRoomUseOnly
             });
 
             await _context.SaveChangesAsync();
@@ -99,7 +103,10 @@ namespace BookHiveLibrary.Controllers
                 CoverImageUrl = book.CoverImageUrl,
                 PublishedYear = book.PublishedYear,
                 TotalQuantity = book.TotalQuantity,
-                AvailableQuantity = book.AvailableQuantity
+                ISBN = book.ISBN,
+                AvailableQuantity = book.AvailableQuantity,
+                BookFor = book.BookFor,
+                IsRoomUseOnly = book.IsRoomUseOnly
             });
         }
 
@@ -121,7 +128,10 @@ namespace BookHiveLibrary.Controllers
             book.CoverImageUrl = model.CoverImageUrl;
             book.PublishedYear = model.PublishedYear;
             book.TotalQuantity = model.TotalQuantity;
+            book.ISBN = model.ISBN;
             book.AvailableQuantity = model.AvailableQuantity;
+            book.BookFor = model.BookFor;
+            book.IsRoomUseOnly = model.IsRoomUseOnly;
 
             await _context.SaveChangesAsync();
             TempData["Success"] = "Book updated successfully.";
@@ -220,6 +230,23 @@ namespace BookHiveLibrary.Controllers
             await _context.SaveChangesAsync();
 
             return Json(new { success = true });
+        }
+
+        // Print Label (single)
+        public async Task<IActionResult> PrintLabel(int id)
+        {
+            var book = await _context.Books.FindAsync(id);
+            if (book == null) return NotFound();
+            return View(book);
+        }
+
+        // Print Labels (bulk)
+        public async Task<IActionResult> PrintLabels(string ids)
+        {
+            if (string.IsNullOrEmpty(ids)) return BadRequest();
+            var idList = ids.Split(',').Select(s => int.TryParse(s.Trim(), out var n) ? n : 0).Where(n => n > 0).ToList();
+            var books = await _context.Books.Where(b => idList.Contains(b.Id)).ToListAsync();
+            return View(books);
         }
 
         // Archive Book

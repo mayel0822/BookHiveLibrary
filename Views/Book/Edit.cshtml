@@ -12,7 +12,7 @@
         <input type="hidden" asp-for="Id" />
         <div asp-validation-summary="ModelOnly" class="mb-4 text-red-600 text-sm"></div>
 
-        <div class="grid grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <!-- Cover Image -->
             <div class="flex flex-col items-center gap-4">
                 <div class="w-48 h-64 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden">
@@ -27,12 +27,15 @@
                 <div class="w-full">
                     <label class="block text-sm font-medium text-gray-600 mb-1">Total Quantity</label>
                     <input type="number" asp-for="TotalQuantity" min="1"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                           style="appearance:auto; -webkit-appearance:auto;" />
                 </div>
                 <div class="w-full">
                     <label class="block text-sm font-medium text-gray-600 mb-1">Available Quantity</label>
-                    <input type="number" asp-for="AvailableQuantity" min="0"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                    <input type="number" value="@Model.AvailableQuantity" readonly
+                           class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-400 cursor-not-allowed" />
+                    <input type="hidden" asp-for="AvailableQuantity" />
+                    <p class="text-xs text-gray-400 mt-1">Auto-calculated. Cannot be edited manually.</p>
                 </div>
             </div>
 
@@ -48,10 +51,15 @@
                     <input type="text" asp-for="Author" required
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">Book ID / Call No.</label>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Call No.</label>
                         <input type="text" asp-for="CallNumber" required
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">ISBN</label>
+                        <input type="text" asp-for="ISBN" placeholder="e.g. 978-3-16-148410-0"
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
                     </div>
                     <div>
@@ -63,19 +71,85 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Category</label>
-                        <input type="text" asp-for="Category" required
-                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                        <select asp-for="Category" required
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+                            <option value="">Select category...</option>
+                            <optgroup label="Junior High School">
+                                <option>Mathematics</option><option>Science</option><option>English</option>
+                                <option>Filipino</option><option>Araling Panlipunan</option><option>MAPEH</option>
+                                <option>TLE</option><option>EsP</option><option>Mother Tongue</option><option>Research</option>
+                            </optgroup>
+                            <optgroup label="Senior High School">
+                                <option>General Mathematics</option><option>Statistics & Probability</option>
+                                <option>Earth and Life Science</option><option>Physical Science</option>
+                                <option>Reading and Writing</option><option>21st Century Literature</option>
+                                <option>Oral Communication</option><option>Media and Information Literacy</option>
+                                <option>Personal Development</option><option>Understanding Culture & Society</option>
+                                <option>Introduction to Philosophy</option><option>Komunikasyon at Pananaliksik</option>
+                                <option>Practical Research</option><option>Entrepreneurship</option><option>Work Immersion</option>
+                            </optgroup>
+                            <optgroup label="Tertiary / College">
+                                <option>Computer Science & IT</option><option>Information Technology</option>
+                                <option>Programming & Software Dev.</option><option>Computer Engineering</option>
+                                <option>Engineering</option><option>Business Administration</option>
+                                <option>Accounting & Finance</option><option>Marketing</option>
+                                <option>Tourism Management</option><option>Hospitality Management</option>
+                                <option>Culinary Arts</option><option>Psychology</option>
+                                <option>Communication</option><option>Education</option>
+                                <option>Social Sciences</option><option>Natural Science</option>
+                                <option>Law</option><option>Criminology</option>
+                                <option>Reference</option><option>General</option>
+                            </optgroup>
+                        </select>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">Location / Aisle</label>
-                        <input type="text" asp-for="AisleLocation" required
-                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Aisle</label>
+                            <select id="aisleSelect" onchange="syncLocation()"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+                                <option value="">Aisle...</option>
+                                @foreach (var c in Enumerable.Range(0, 10).Select(i => ((char)('A' + i)).ToString()))
+                                {
+                                    <option value="@c">@c</option>
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Shelf</label>
+                            <select id="shelfSelect" onchange="syncLocation()"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+                                <option value="">Shelf...</option>
+                                @foreach (var n in Enumerable.Range(1, 6))
+                                {
+                                    <option value="@n">@n</option>
+                                }
+                            </select>
+                        </div>
                     </div>
+                </div>
+                <input type="hidden" asp-for="AisleLocation" id="aisleLocationHidden" />
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Book For</label>
+                    <select asp-for="BookFor" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        <option value="Student">Student</option>
+                        <option value="Professor">Professor Only</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <input type="checkbox" asp-for="IsRoomUseOnly" id="roomUseOnly" class="w-4 h-4 accent-amber-600" />
+                    <label for="roomUseOnly" class="text-sm font-medium text-amber-800 cursor-pointer">
+                        Room Use Only <span class="text-amber-600 font-normal">(cannot be borrowed outside the library)</span>
+                    </label>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Grade Level</label>
-                    <input type="text" asp-for="GradeLevel"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                    <select asp-for="GradeLevel"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        <option value="">Select level...</option>
+                        <option value="Junior High School">Junior High School (Grade 7–10)</option>
+                        <option value="Senior High School">Senior High School (Grade 11–12)</option>
+                        <option value="Tertiary">Tertiary / College</option>
+                    </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Book Synopsis</label>
@@ -86,8 +160,30 @@
         </div>
 
         <div class="flex gap-3 mt-6">
-            <button type="submit" class="px-6 py-2 text-white rounded-lg text-sm font-medium" style="background-color:#1e3a6e;">Save Changes</button>
+            <button type="submit" class="px-6 py-2 text-white rounded-lg text-sm font-medium" style="background-color:#000147;">Save Changes</button>
             <a href="@Url.Action("Index","Book")" class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">Cancel</a>
         </div>
     </form>
 </div>
+
+@section Scripts {
+<script>
+function syncLocation() {
+    const aisle = document.getElementById('aisleSelect').value;
+    const shelf = document.getElementById('shelfSelect').value;
+    document.getElementById('aisleLocationHidden').value = (aisle && shelf) ? aisle + '-' + shelf : (aisle || shelf || '');
+}
+
+// Pre-select aisle/shelf from saved value e.g. "B-5"
+(function() {
+    const saved = '@Model.AisleLocation';
+    if (!saved) return;
+    const parts = saved.split('-');
+    const aisle = parts[0]?.trim();
+    const shelf = parts[1]?.trim();
+    if (aisle) document.getElementById('aisleSelect').value = aisle;
+    if (shelf) document.getElementById('shelfSelect').value = shelf;
+})();
+
+</script>
+}

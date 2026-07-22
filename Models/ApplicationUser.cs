@@ -44,5 +44,9 @@ namespace BookHiveLibrary.Models
         public string Level { get; set; } = "";
 
         public string Course { get; set; } = "";
+
+        public string? ProfilePicture { get; set; }
+
+        public string? DeactivationReason { get; set; }
     }
 }

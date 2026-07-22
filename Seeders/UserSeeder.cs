@@ -11,7 +11,7 @@ namespace BookHiveLibrary.Seeders
             await CreateUser(
             userManager,
             "misadmin",
-            "MisBookHive@gmail.com",
+            "MIS@elleiramnananuc04outlook.onmicrosoft.com",
             "MisBookHivePassword@123",
             "MIS");
 
@@ -29,21 +29,27 @@ namespace BookHiveLibrary.Seeders
                 "librarian1",
                 "librarian@bookhive.com",
                 "LibrarianPassword@123",
-                "Librarian");
+                "Librarian",
+                "Librarian",
+                "BookHive");
 
             await CreateUser(
                 userManager,
                 "professor1",
                 "professor@bookhive.com",
                 "ProfessorPassword@123",
-                "Professor");
+                "Professor",
+                "Professor",
+                "BookHive");
 
             await CreateUser(
                 userManager,
                 "student1",
                 "Rebisco2023@outlook.com",
                 "StudentPassword@123",
-                "Student");
+                "Student",
+                "Student",
+                "BookHive");
         }
 
         private static async Task CreateUser(
