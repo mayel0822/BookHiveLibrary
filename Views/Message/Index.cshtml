@@ -11,32 +11,43 @@
 
 <div class="flex gap-4 h-[calc(100vh-112px)]">
 
-    <!-- Sidebar: Conversations -->
+    <!-- ── Left sidebar ─────────────────────────────────────────── -->
     <div class="w-72 flex-shrink-0 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
-        <div class="px-4 py-3 border-b border-gray-100" style="background:#000147;">
-            <span class="text-sm font-semibold text-white">Messages</span>
+
+        <!-- Header -->
+        <div class="px-4 py-3.5 flex-shrink-0" style="background:#000147;">
+            <p class="text-sm font-semibold text-white">Messages</p>
         </div>
 
-        <!-- Always-visible search -->
-        <div class="border-b border-gray-100 p-3">
+        <!-- Search -->
+        <div class="p-3 border-b border-gray-100 flex-shrink-0">
             <div class="relative">
-                <input type="text" id="userSearch" placeholder="Search user to message…" autocomplete="off"
-                       class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                       oninput="filterUsers(this.value)" onfocus="showDropdown()"
-                       onblur="setTimeout(()=>{ document.getElementById('userSearch').value=''; document.getElementById('userDropdown').classList.add('hidden'); }, 200)" />
+                <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+                    </svg>
+                </div>
+                <input type="text" id="userSearch" placeholder="Search or start new message…" autocomplete="off"
+                       class="w-full border border-gray-200 rounded-lg pl-8 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50"
+                       oninput="filterUsers(this.value)" onfocus="showDropdown()" />
                 <div id="userDropdown"
-                     class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-52 overflow-y-auto">
+                     class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-52 overflow-y-auto">
                     @if (allUsers != null)
                     {
-                        foreach (var u in allUsers)
+                        foreach (var u in allUsers.Where(u => u.UserType != "MIS"))
                         {
-                            <div class="user-option px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 flex items-center justify-between"
+                            <div class="user-option px-3 py-2.5 text-sm cursor-pointer hover:bg-blue-50 flex items-center gap-3 transition"
                                  data-id="@u.Id"
                                  data-name="@u.FirstName @u.LastName"
                                  data-type="@u.UserType"
-                                 onclick="selectUser('@u.Id', '@u.FirstName @u.LastName', '@u.UserType')">
-                                <span>@u.FirstName @u.LastName</span>
-                                <span class="text-xs text-gray-400 ml-2">@u.UserType</span>
+                                 onclick="selectUser('@u.Id', '@(u.FirstName) @(u.LastName)', '@u.UserType')">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:#000147;">
+                                    @(u.FirstName?.Length > 0 ? u.FirstName[0].ToString().ToUpper() : "?")
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-medium text-gray-800 truncate">@u.FirstName @u.LastName</p>
+                                    <p class="text-xs text-gray-400">@u.UserType</p>
+                                </div>
                             </div>
                         }
                     }
@@ -46,38 +57,38 @@
 
         <!-- Conversation list -->
         <div id="convoList" class="flex-1 overflow-y-auto divide-y divide-gray-100">
-            <p class="px-4 py-6 text-center text-xs text-gray-400">Loading…</p>
+            <p class="px-4 py-8 text-center text-xs text-gray-400">Loading…</p>
         </div>
     </div>
 
-    <!-- Chat panel -->
+    <!-- ── Right: active conversation ───────────────────────────── -->
     <div class="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
 
         <!-- Chat header -->
-        <div id="chatHeader" class="px-5 py-3 border-b border-gray-100 flex items-center gap-3" style="background:#000147;">
-            <div id="chatAvatar" class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold bg-blue-400 hidden"></div>
-            <div class="flex-1">
-                <p id="chatName" class="text-sm font-semibold text-white">Select a conversation</p>
-                <p id="chatType" class="text-xs text-blue-200"></p>
+        <div id="chatHeader" class="px-5 py-3.5 flex items-center gap-3 flex-shrink-0" style="background:#000147;">
+            <div id="chatAvatar" class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 bg-white/20 hidden"></div>
+            <div class="flex-1 min-w-0">
+                <p id="chatName" class="text-sm font-semibold text-white truncate">Select a conversation</p>
+                <p id="chatType" class="text-xs text-blue-300"></p>
             </div>
         </div>
 
         <!-- Messages -->
-        <div id="chatMessages" class="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-gray-50">
+        <div id="chatMessages" class="flex-1 overflow-y-auto px-5 py-4 space-y-2 bg-gray-50">
             <div class="flex items-center justify-center h-full">
                 <p class="text-sm text-gray-400">Select a conversation to start messaging</p>
             </div>
         </div>
 
         <!-- Input -->
-        <div class="px-4 py-3 border-t border-gray-100 bg-white">
-            <form id="msgForm" class="flex gap-2" onsubmit="sendMessage(event)">
+        <div class="px-4 py-3 border-t border-gray-100 bg-white flex gap-2 flex-shrink-0">
+            <form id="msgForm" class="flex gap-2 w-full" onsubmit="sendMessage(event)">
                 @Html.AntiForgeryToken()
                 <input type="hidden" id="currentReceiverId" />
-                <input type="text" id="msgInput" placeholder="Type a message…" autocomplete="off"
-                       class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" disabled />
+                <input type="text" id="msgInput" placeholder="Type a message…" autocomplete="off" disabled
+                       class="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50 disabled:opacity-60" />
                 <button type="submit" id="sendBtn" disabled
-                        class="px-4 py-2 text-white rounded-lg text-sm font-medium disabled:opacity-40" style="background:#000147;">
+                        class="px-5 py-2 text-white rounded-xl text-sm font-medium disabled:opacity-40 transition hover:opacity-90 flex-shrink-0" style="background:#000147;">
                     Send
                 </button>
             </form>
@@ -91,186 +102,94 @@ const myId = '@me?.Id';
 let activeUserId = '@withUserId' || null;
 let pollTimer = null;
 
-// ── Sidebar ───────────────────────────────────────────────────
-async function loadConvoList() {
-    const res  = await fetch('/Message/GetConversationList');
-    const list = await res.json();
-    const el   = document.getElementById('convoList');
-    if (!list.length) {
-        el.innerHTML = '<p class="px-4 py-6 text-center text-xs text-gray-400">No conversations yet.<br>Click the pencil icon to start one.</p>';
-        return;
-    }
-    el.innerHTML = list.map(c => `
-        <div class="convo-item px-4 py-3 cursor-pointer hover:bg-blue-50 transition flex items-center gap-2"
-             style="${activeUserId === c.userId ? 'background:#eff6ff;border-left:2px solid #2563eb;' : ''}"
-             id="convo-${c.userId}" onclick="openConversation('${c.userId}')">
-            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:#000147;">
-                ${c.name.charAt(0).toUpperCase()}
-            </div>
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium text-gray-800 truncate">${c.name}</span>
-                    ${c.unread > 0 ? `<span class="ml-1 w-4 h-4 rounded-full text-[10px] font-bold text-white flex items-center justify-center flex-shrink-0" style="background:#e53e3e;">${c.unread}</span>` : ''}
-                </div>
-                <p class="text-xs ${c.lastMsgUnsent ? 'text-gray-300 italic' : 'text-gray-400'} truncate">${c.lastMsgUnsent ? 'This message was unsent' : c.lastMsg}</p>
-                <p class="text-[10px] text-gray-300 mt-0.5">${c.sentAt}</p>
-            </div>
-            <button onclick="event.stopPropagation(); showConvoMenu(event, '${c.userId}')"
-                    class="convo-dots flex-shrink-0 p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700"
-                    style="opacity:0.35;transition:opacity 0.15s;"
-                    id="dots-${c.userId}">
-                <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/></svg>
-            </button>
-        </div>`).join('');
-
-    // Fixed dropdown rendered once, reused
-    let convoMenuEl = document.getElementById('globalConvoMenu');
-    if (!convoMenuEl) {
-        convoMenuEl = document.createElement('div');
-        convoMenuEl.id = 'globalConvoMenu';
-        convoMenuEl.style.cssText = 'position:fixed;z-index:9999;background:white;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);min-width:170px;overflow:hidden;font-size:13px;display:none;';
-        convoMenuEl.innerHTML = `
-            <button id="gcm-important" class="w-full text-left px-4 py-2.5 hover:bg-yellow-50 text-yellow-700 font-medium flex items-center gap-2">⭐ Mark as Important</button>
-            <button id="gcm-delete"    class="w-full text-left px-4 py-2.5 hover:bg-red-50 text-red-500 flex items-center gap-2">🗑 Delete Conversation</button>`;
-        document.body.appendChild(convoMenuEl);
-    }
-
-    // show dots on hover
-    document.querySelectorAll('.convo-item').forEach(row => {
-        const btn = row.querySelector('.convo-dots');
-        row.addEventListener('mouseenter', () => { if(btn) btn.style.opacity='1'; });
-        row.addEventListener('mouseleave', () => { if(btn) btn.style.opacity='0.35'; });
-    });
-}
-
-
-// ── Chat ──────────────────────────────────────────────────────
-async function openConversation(userId) {
-    if (!userId) return;
-    activeUserId = userId;
-    document.getElementById('currentReceiverId').value = userId;
-    document.getElementById('msgInput').disabled   = false;
-    document.getElementById('sendBtn').disabled    = false;
-    document.getElementById('userSearch').value = '';
-    document.getElementById('userDropdown').classList.add('hidden');
-    document.getElementById('msgInput').focus();
-    clearInterval(pollTimer);
-    await fetchMessages();
-    await loadConvoList();
-    pollTimer = setInterval(fetchMessages, 5000);
-}
-
-async function fetchMessages() {
-    if (!activeUserId) return;
-    const res  = await fetch('/Message/GetConversation?otherUserId=' + activeUserId);
-    const data = await res.json();
-
-    document.getElementById('chatName').textContent = data.otherName;
-    document.getElementById('chatType').textContent = data.otherType;
-    const av = document.getElementById('chatAvatar');
-    av.textContent = data.otherName.charAt(0).toUpperCase();
-    av.classList.remove('hidden');
-
-    const box = document.getElementById('chatMessages');
-    if (!data.messages.length) {
-        box.innerHTML = '<div class="flex items-center justify-center h-full"><p class="text-sm text-gray-400">No messages yet. Say hello!</p></div>';
-        return;
-    }
-    box.innerHTML = data.messages.map(m => {
-        const mine = m.senderId === myId;
-        const unsent = m.isUnsent;
-        const msgContent = unsent
-            ? `<span class="italic text-gray-400 text-xs">This message was unsent</span>`
-            : `${escHtml(m.content)}`;
-
-        const menuItems = unsent ? '' : (mine
-            ? `<button onclick="unsendMsg(${m.id})" class="w-full text-left px-4 py-2.5 hover:bg-red-50 text-red-500 font-medium flex items-center gap-2"><span>✕</span> Unsend</button>
-               <button onclick="deleteForMe(${m.id})" class="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-gray-600 flex items-center gap-2"><span>🗑</span> Delete for me</button>`
-            : `<button onclick="deleteForMe(${m.id})" class="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-gray-600 flex items-center gap-2"><span>🗑</span> Delete for me</button>`);
-
-        return `<div class="flex ${mine ? 'justify-end' : 'justify-start'}" id="msg-${m.id}">
-            <div class="max-w-[65%]" style="position:relative;">
-                <div class="px-3 py-2 rounded-2xl text-sm ${unsent ? 'bg-gray-100 border border-gray-200 text-gray-400 italic' : mine ? 'text-white rounded-br-sm' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-sm'} select-none cursor-pointer"
-                     style="${mine && !unsent ? 'background:#000147;' : ''}"
-                     oncontextmenu="event.preventDefault(); showMsgMenu(event, 'mmenu-${m.id}')"
-                     ondblclick="showMsgMenu(event, 'mmenu-${m.id}')">
-                    ${msgContent}
-                </div>
-                <p class="text-[10px] text-gray-400 mt-0.5 ${mine ? 'text-right' : ''}">${m.sentAt}</p>
-                ${menuItems ? `<div id="mmenu-${m.id}" class="msg-menu hidden" style="position:fixed;z-index:9999;background:white;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);min-width:160px;overflow:hidden;font-size:13px;">${menuItems}</div>` : ''}
-            </div>
-        </div>`;
-    }).join('');
-    box.scrollTop = box.scrollHeight;
-    updateEnvelopeBadge();
-}
-
-async function sendMessage(e) {
-    e.preventDefault();
-    const input    = document.getElementById('msgInput');
-    const content  = input.value.trim();
-    const receiver = document.getElementById('currentReceiverId').value;
-    if (!content || !receiver) return;
-
-    const fd = new FormData();
-    fd.append('receiverId', receiver);
-    fd.append('content', content);
-    fd.append('__RequestVerificationToken', document.querySelector('input[name="__RequestVerificationToken"]').value);
-
-    input.value = '';
-    const res = await fetch('/Message/Send', { method: 'POST', body: fd });
-    if (!res.ok) return;
-    await fetchMessages();
-    await loadConvoList();
-}
-
-function escHtml(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
+// ── Helpers ───────────────────────────────────────────────────
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 const token = () => document.querySelector('input[name="__RequestVerificationToken"]').value;
 
-function showMsgMenu(event, menuId) {
-    document.querySelectorAll('.msg-menu').forEach(m => m.classList.add('hidden'));
-    const menu = document.getElementById(menuId);
-    if (!menu) return;
-    menu.classList.remove('hidden');
-    // Position near cursor, keep inside viewport
-    const x = event.clientX;
-    const y = event.clientY;
-    menu.style.left = Math.min(x, window.innerWidth - 180) + 'px';
-    menu.style.top  = Math.min(y + 4, window.innerHeight - 120) + 'px';
+// ── Sidebar ───────────────────────────────────────────────────
+function convoRow(c) {
+    const isActive = activeUserId === c.userId;
+    return `<div class="flex items-center gap-3 px-4 py-3 cursor-pointer transition ${isActive ? 'bg-blue-50' : 'hover:bg-gray-50'}"
+                 id="convo-${c.userId}"
+                 onclick="openConversation('${c.userId}')">
+        <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style="background:#000147;">
+            ${c.name.charAt(0).toUpperCase()}
+        </div>
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-semibold text-gray-800 truncate" id="convoname-${c.userId}">${c.name}</p>
+                <span class="text-[10px] text-gray-400 ml-2 flex-shrink-0">${c.sentAt}</span>
+            </div>
+            <p class="text-xs text-gray-500 truncate">${c.lastMsgUnsent ? '<em class="not-italic text-gray-400">Message unsent</em>' : (c.lastMsg || '…')}</p>
+        </div>
+        <div class="flex items-center gap-1 flex-shrink-0">
+            ${c.unread > 0 ? `<span class="w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0" style="background:#e53e3e;">${c.unread}</span>` : ''}
+            <button onclick="event.stopPropagation(); showConvoMenu(event,'${c.userId}')"
+                    id="dots-${c.userId}"
+                    class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition flex-shrink-0">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5z"/>
+                </svg>
+            </button>
+        </div>
+    </div>`;
 }
 
-let _activeConvoMenuUser = null;
+async function loadConvoList() {
+    try {
+        const list = await fetch('/Message/GetConversationList').then(r => r.json());
+        const el = document.getElementById('convoList');
+        if (!list.length) {
+            el.innerHTML = '<p class="px-4 py-8 text-center text-xs text-gray-400">No conversations yet.<br>Search above to start one.</p>';
+            return;
+        }
+        el.innerHTML = list.map(c => convoRow(c)).join('');
+    } catch {
+        document.getElementById('convoList').innerHTML = '<p class="px-4 py-8 text-center text-xs text-red-400">Could not load conversations</p>';
+    }
+}
+
+// ── Convo 3-dot menu ─────────────────────────────────────────
+let _activeConvoMenu = null;
+
+function _ensureConvoMenuEl() {
+    if (document.getElementById('globalConvoMenu')) return;
+    const m = document.createElement('div');
+    m.id = 'globalConvoMenu';
+    m.style.cssText = 'position:fixed;z-index:9999;background:white;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:180px;overflow:hidden;font-size:13px;display:none;';
+    m.innerHTML = `
+        <div style="padding:7px 14px 5px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f3f4f6;">Conversation</div>
+        <button id="gcm-important" class="w-full text-left px-4 py-2.5 hover:bg-amber-50 flex items-center gap-3" style="color:#b45309;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/></svg>
+            Mark as Important
+        </button>
+        <div style="height:1px;background:#f3f4f6;margin:2px 0;"></div>
+        <button id="gcm-delete" class="w-full text-left px-4 py-2.5 hover:bg-red-50 flex items-center gap-3" style="color:#dc2626;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+            Delete Conversation
+        </button>`;
+    document.body.appendChild(m);
+}
 
 function showConvoMenu(event, userId) {
+    _ensureConvoMenuEl();
     const menu = document.getElementById('globalConvoMenu');
-    if (!menu) return;
-    // If same button clicked again, toggle off
-    if (_activeConvoMenuUser === userId && menu.style.display !== 'none') {
-        menu.style.display = 'none';
-        _activeConvoMenuUser = null;
-        return;
+    if (_activeConvoMenu === userId && menu.style.display !== 'none') {
+        menu.style.display = 'none'; _activeConvoMenu = null; return;
     }
-    _activeConvoMenuUser = userId;
-    // Wire up actions
-    document.getElementById('gcm-important').onclick = (e) => { e.stopPropagation(); markImportant(userId); menu.style.display='none'; _activeConvoMenuUser=null; };
-    document.getElementById('gcm-delete').onclick    = (e) => { e.stopPropagation(); deleteConversation(userId); menu.style.display='none'; _activeConvoMenuUser=null; };
-    // Position near button
-    const btn = document.getElementById('dots-' + userId);
+    _activeConvoMenu = userId;
+    document.getElementById('gcm-important').onclick = (e) => { e.stopPropagation(); markImportant(userId); menu.style.display='none'; _activeConvoMenu=null; };
+    document.getElementById('gcm-delete').onclick    = (e) => { e.stopPropagation(); deleteConversation(userId); menu.style.display='none'; _activeConvoMenu=null; };
+    const btn  = event.target.closest('button') || event.currentTarget;
     const rect = btn ? btn.getBoundingClientRect() : { right: event.clientX, bottom: event.clientY };
     menu.style.display = 'block';
-    const menuW = 170, menuH = 90;
-    menu.style.left = Math.min(rect.right - menuW, window.innerWidth - menuW - 8) + 'px';
-    menu.style.top  = Math.min(rect.bottom + 4, window.innerHeight - menuH - 8) + 'px';
+    menu.style.left = Math.min(rect.right - 180, window.innerWidth - 190) + 'px';
+    menu.style.top  = Math.min(rect.bottom + 4, window.innerHeight - 100) + 'px';
 }
 
-async function markImportant(userId) {
-    const el = document.getElementById('convo-' + userId);
-    if (!el) return;
-    const nameEl = el.querySelector('span.text-sm');
-    if (nameEl && !nameEl.textContent.includes('⭐')) nameEl.textContent = '⭐ ' + nameEl.textContent;
+function markImportant(userId) {
+    const el = document.getElementById('convoname-' + userId);
+    if (el && !el.textContent.startsWith('⭐')) el.textContent = '⭐ ' + el.textContent;
 }
 
 async function deleteConversation(userId) {
@@ -288,35 +207,135 @@ async function deleteConversation(userId) {
             document.getElementById('chatType').textContent = '';
             document.getElementById('chatAvatar').classList.add('hidden');
             document.getElementById('msgInput').disabled = true;
-            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('sendBtn').disabled  = true;
+            clearInterval(pollTimer);
         }
     }
 }
 
-// close menus when clicking outside
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.msg-menu') && !e.target.closest('[ondblclick]') && !e.target.closest('[oncontextmenu]'))
-        document.querySelectorAll('.msg-menu').forEach(m => m.classList.add('hidden'));
-    const gcm = document.getElementById('globalConvoMenu');
-    if (gcm && !e.target.closest('#globalConvoMenu') && !e.target.closest('.convo-dots')) {
-        gcm.style.display = 'none';
-        _activeConvoMenuUser = null;
-    }
-});
+// ── Open conversation ─────────────────────────────────────────
+async function openConversation(userId) {
+    if (!userId) return;
+    activeUserId = userId;
+    document.getElementById('currentReceiverId').value = userId;
+    document.getElementById('msgInput').disabled  = false;
+    document.getElementById('sendBtn').disabled   = false;
+    document.getElementById('userSearch').value   = '';
+    document.getElementById('userDropdown').classList.add('hidden');
+    clearInterval(pollTimer);
+    await fetchMessages();
+    await loadConvoList();
+    document.getElementById('msgInput').focus();
+    pollTimer = setInterval(fetchMessages, 5000);
+}
+
+// ── Fetch & render messages ───────────────────────────────────
+const _icoUnsend = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>`;
+const _icoTrash  = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>`;
+
+async function fetchMessages() {
+    if (!activeUserId) return;
+    try {
+        const data = await fetch('/Message/GetConversation?otherUserId=' + activeUserId).then(r => r.json());
+
+        document.getElementById('chatName').textContent = data.otherName;
+        document.getElementById('chatType').textContent = data.otherType;
+        const av = document.getElementById('chatAvatar');
+        av.textContent = data.otherName.charAt(0).toUpperCase();
+        av.classList.remove('hidden');
+
+        const box = document.getElementById('chatMessages');
+        if (!data.messages.length) {
+            box.innerHTML = '<div class="flex items-center justify-center h-full"><p class="text-sm text-gray-400">No messages yet. Say hello!</p></div>';
+            return;
+        }
+
+        const _menuHdr = `<div style="padding:7px 14px 5px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f3f4f6;">Message</div>`;
+        const _menuDiv = `<div style="height:1px;background:#f3f4f6;margin:2px 0;"></div>`;
+
+        box.innerHTML = data.messages.map(m => {
+            const isMe   = m.senderId === myId;
+            const unsent = m.isUnsent;
+
+            if (unsent) return `<div class="flex ${isMe?'justify-end':'justify-start'}" id="msg-${m.id}">
+                <span class="text-xs italic text-gray-400 px-3 py-1 border border-gray-200 rounded-2xl">Message unsent</span>
+            </div>`;
+
+            const menuItems = isMe
+                ? `${_menuHdr}
+                   <button onclick="unsendMsg(${m.id})" class="w-full text-left px-4 py-2.5 hover:bg-red-50 flex items-center gap-3" style="font-size:13px;color:#dc2626;">
+                       ${_icoUnsend} Unsend for everyone
+                   </button>
+                   ${_menuDiv}
+                   <button onclick="deleteForMe(${m.id})" class="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3" style="font-size:13px;color:#6b7280;">
+                       ${_icoTrash} Delete for me
+                   </button>`
+                : `${_menuHdr}
+                   <button onclick="deleteForMe(${m.id})" class="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3" style="font-size:13px;color:#6b7280;">
+                       ${_icoTrash} Delete for me
+                   </button>`;
+
+            return `<div class="flex ${isMe?'justify-end':'justify-start'}" id="msg-${m.id}">
+                <div class="max-w-[72%] relative">
+                    <div class="chat-msg-bubble px-4 py-2 rounded-2xl text-sm cursor-pointer select-none ${isMe?'text-white rounded-br-sm':'bg-white border border-gray-200 text-gray-800 rounded-bl-sm'}"
+                         style="${isMe?'background-color:#000147;':''}"
+                         oncontextmenu="showMsgMenu(event,'mmenu-${m.id}')"
+                         ondblclick="showMsgMenu(event,'mmenu-${m.id}')">
+                        ${escHtml(m.content)}
+                    </div>
+                    <p class="text-[10px] mt-0.5 text-gray-400 ${isMe?'text-right':''}">${m.sentAt}</p>
+                    <div id="mmenu-${m.id}" class="msg-menu hidden" style="position:fixed;z-index:10001;background:white;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:175px;overflow:hidden;">
+                        ${menuItems}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+        box.scrollTop = box.scrollHeight;
+        updateEnvelopeBadge();
+    } catch {}
+}
+
+// ── Send ──────────────────────────────────────────────────────
+async function sendMessage(e) {
+    e.preventDefault();
+    const input   = document.getElementById('msgInput');
+    const content = input.value.trim();
+    const receiver = document.getElementById('currentReceiverId').value;
+    if (!content || !receiver) return;
+    const fd = new FormData();
+    fd.append('receiverId', receiver);
+    fd.append('content', content);
+    fd.append('__RequestVerificationToken', token());
+    input.value = '';
+    const res = await fetch('/Message/Send', { method: 'POST', body: fd });
+    if (!res.ok) return;
+    await fetchMessages();
+    await loadConvoList();
+}
+
+// ── Message context menu ─────────────────────────────────────
+function showMsgMenu(event, menuId) {
+    event.preventDefault();
+    document.querySelectorAll('.msg-menu').forEach(m => m.classList.add('hidden'));
+    const menu = document.getElementById(menuId); if (!menu) return;
+    menu.classList.remove('hidden');
+    menu.style.left = Math.min(event.clientX, window.innerWidth - 185) + 'px';
+    menu.style.top  = Math.min(event.clientY + 4, window.innerHeight - 110) + 'px';
+}
 
 async function unsendMsg(id) {
+    document.querySelectorAll('.msg-menu').forEach(m => m.classList.add('hidden'));
     if (!confirm('Unsend this message for everyone?')) return;
     const fd = new FormData();
     fd.append('id', id);
     fd.append('__RequestVerificationToken', token());
     const res = await fetch('/Message/Unsend', { method: 'POST', body: fd });
-    if (res.ok) {
-        await fetchMessages();
-        await loadConvoList();
-    }
+    if (res.ok) { await fetchMessages(); await loadConvoList(); }
 }
 
 async function deleteForMe(id) {
+    document.querySelectorAll('.msg-menu').forEach(m => m.classList.add('hidden'));
     const fd = new FormData();
     fd.append('id', id);
     fd.append('__RequestVerificationToken', token());
@@ -327,29 +346,20 @@ async function deleteForMe(id) {
 // ── Badge sync ────────────────────────────────────────────────
 async function updateEnvelopeBadge() {
     try {
-        const res  = await fetch('/Message/UnreadCount');
-        const data = await res.json();
+        const data  = await fetch('/Message/UnreadCount').then(r => r.json());
         const badge = document.getElementById('msgBadge');
-        if (badge) {
-            if (data.count > 0) {
-                badge.textContent = data.count > 9 ? '9+' : data.count;
-                badge.classList.remove('hidden');
-            } else {
-                badge.classList.add('hidden');
-            }
-        }
+        if (!badge) return;
+        if (data.count > 0) { badge.textContent = data.count > 9 ? '9+' : data.count; badge.classList.remove('hidden'); }
+        else badge.classList.add('hidden');
     } catch {}
 }
 
-// ── User search ──────────────────────────────────────────────
-function showDropdown() {
-    document.getElementById('userDropdown').classList.remove('hidden');
-}
+// ── User search dropdown ──────────────────────────────────────
+function showDropdown() { document.getElementById('userDropdown').classList.remove('hidden'); }
 
 function filterUsers(query) {
     const q = query.toLowerCase().trim();
-    const dropdown = document.getElementById('userDropdown');
-    dropdown.classList.remove('hidden');
+    document.getElementById('userDropdown').classList.remove('hidden');
     document.querySelectorAll('.user-option').forEach(el => {
         const name = el.getAttribute('data-name').toLowerCase();
         const type = el.getAttribute('data-type').toLowerCase();
@@ -358,18 +368,24 @@ function filterUsers(query) {
 }
 
 function selectUser(id, name, type) {
-    document.getElementById('userSearch').value = name + ' (' + type + ')';
+    document.getElementById('userSearch').value = '';
     document.getElementById('userDropdown').classList.add('hidden');
     openConversation(id);
 }
 
+// ── Close menus on outside click ─────────────────────────────
 document.addEventListener('click', function(e) {
-    if (!e.target.closest('#newMsgPanel')) {
-        document.getElementById('userDropdown')?.classList.add('hidden');
+    if (!e.target.closest('.msg-menu') && !e.target.closest('.chat-msg-bubble'))
+        document.querySelectorAll('.msg-menu').forEach(m => m.classList.add('hidden'));
+    const gcm = document.getElementById('globalConvoMenu');
+    if (gcm && !e.target.closest('#globalConvoMenu') && !e.target.closest('[id^="dots-"]')) {
+        gcm.style.display = 'none'; _activeConvoMenu = null;
     }
+    if (!e.target.closest('#userSearch') && !e.target.closest('#userDropdown'))
+        document.getElementById('userDropdown')?.classList.add('hidden');
 });
 
-// Init
+// ── Init ─────────────────────────────────────────────────────
 loadConvoList();
 if (activeUserId) openConversation(activeUserId);
 </script>

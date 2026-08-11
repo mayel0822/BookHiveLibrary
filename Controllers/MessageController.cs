@@ -42,7 +42,7 @@ namespace BookHiveLibrary.Controllers
 
             // All users available to message (everyone except self)
             var allUsers = await _userManager.Users
-                .Where(u => u.Id != me.Id && u.IsActive)
+                .Where(u => u.Id != me.Id && u.IsActive && u.UserType != "MIS")
                 .OrderBy(u => u.UserType).ThenBy(u => u.LastName)
                 .ToListAsync();
 

@@ -48,5 +48,7 @@ namespace BookHiveLibrary.Models
         public string? ProfilePicture { get; set; }
 
         public string? DeactivationReason { get; set; }
+
+        public string RegistrationStatus { get; set; } = "Initial";
     }
 }

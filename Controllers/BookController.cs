@@ -4,10 +4,12 @@ using BookHiveLibrary.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
+using Microsoft.AspNetCore.Authorization;
 using QRCoder;
 
 namespace BookHiveLibrary.Controllers
 {
+    [Authorize(Roles = "LIBRARIAN,MIS")]
     public class BookController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -127,10 +129,13 @@ namespace BookHiveLibrary.Controllers
             book.Description = model.Description;
             book.CoverImageUrl = model.CoverImageUrl;
             book.PublishedYear = model.PublishedYear;
-            book.TotalQuantity = model.TotalQuantity;
             book.ISBN = model.ISBN;
-            book.AvailableQuantity = model.AvailableQuantity;
             book.BookFor = model.BookFor;
+            // Calculate available based on actual active borrows, not stored AvailableQuantity
+            var actualBorrowed = await _context.BookReservations
+                .CountAsync(r => r.BookId == book.Id && r.Status == "PickedUp");
+            book.TotalQuantity = model.TotalQuantity;
+            book.AvailableQuantity = Math.Max(0, model.TotalQuantity - actualBorrowed);
             book.IsRoomUseOnly = model.IsRoomUseOnly;
 
             await _context.SaveChangesAsync();
@@ -181,6 +186,7 @@ namespace BookHiveLibrary.Controllers
                     PublishedYear = ws.Cells[row, 7].Text.Trim(),
                     TotalQuantity     = int.TryParse(ws.Cells[row, 8].Text.Trim(), out var qty) ? qty : 1,
                     AvailableQuantity = int.TryParse(ws.Cells[row, 8].Text.Trim(), out var qty2) ? qty2 : 1,
+                    ISBN          = ws.Cells[row, 9].Text.Trim(),
                 };
 
                 _context.Books.Add(book);

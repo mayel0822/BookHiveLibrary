@@ -1,11 +1,11 @@
-@using BookHiveLibrary.Models
+﻿@using BookHiveLibrary.Models
 @{
     Layout = "~/Views/Shared/_LibrarianLayout.cshtml";
     ViewData["Title"] = "Sectioning";
     var sections = ViewBag.Sections as List<Section> ?? new List<Section>();
 }
 
-<div class="grid grid-cols-2 gap-6">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <!-- Left: Create Section Form -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <h2 class="text-2xl font-bold pb-3 mb-5 border-b border-gray-200" class="text-gray-900">Add Section</h2>
@@ -37,6 +37,7 @@
                     </div>
                 </div>
                 <input type="hidden" name="course" id="courseValue" />
+                <input type="hidden" id="courseAbbr" />
             </div>
 
             <div class="mb-4">
@@ -120,7 +121,7 @@
             }
             @foreach (var group in grouped)
             {
-                <div class="sticky top-0 z-10 px-5 py-2 text-xs font-semibold uppercase tracking-widest text-white" style="background-color:#23354D;">
+                <div class="sticky top-0 z-10 px-5 py-2 text-xs font-semibold uppercase tracking-widest text-white" style="background-color:#1234C4;">
                     @(group.Key == "Junior High School" ? "Junior High School" : group.Key == "Senior High School" ? "Senior High School" : "College")
                 </div>
                 <div class="divide-y divide-gray-100">
@@ -157,7 +158,7 @@
 
 <!-- No section warning modal -->
 <div id="noSectionToast" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-xl p-6 w-[360px] shadow-xl text-center">
+    <div class="bg-white rounded-xl p-6 w-full max-w-sm mx-4 shadow-xl text-center">
         <div class="flex items-center justify-center w-12 h-12 rounded-full bg-yellow-100 mx-auto mb-4">
             <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
@@ -172,7 +173,7 @@
 
 <!-- Reset Section Modal -->
 <div id="resetModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-xl p-6 w-[460px] shadow-xl">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-xl">
         <h3 class="text-lg font-semibold text-gray-700 mb-1">Reset Sections</h3>
         <p class="text-sm text-gray-400 mb-5">Select which level to reset. This will delete all sections under that level.</p>
 
@@ -214,41 +215,103 @@
 </div>
 
 <!-- Section Students Modal -->
-<div id="sectionStudentsModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden flex flex-col" style="max-height:90vh;">
+<div id="sectionStudentsModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 px-6 py-6">
+    <div class="bg-white rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col" style="max-width:1100px;height:88vh;">
+
+        <!-- Header -->
         <div class="px-6 py-4 flex items-center justify-between flex-shrink-0" style="background-color:#000147;">
             <div>
-                <h3 id="sm-title" class="text-sm font-semibold text-white"></h3>
+                <h3 id="sm-title" class="text-base font-semibold text-white"></h3>
                 <p id="sm-adviser" class="text-xs text-blue-300 mt-0.5"></p>
             </div>
             <div class="flex items-center gap-3">
-                <button id="sm-add-btn" onclick="toggleAddPanel()" class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-white/20 hover:bg-white/30 text-white transition">
+                <!-- Back button (shown only in add-student view) -->
+                <button id="sm-back-btn" onclick="showEnrolledView()" class="hidden items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-white/20 hover:bg-white/30 text-white transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+                    Back to Section
+                </button>
+                <!-- Add Student button (shown only in enrolled view) -->
+                <button id="sm-add-btn" onclick="showAddView()"
+                        class="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-white/20 hover:bg-white/30 text-white transition">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
                     Add Student
                 </button>
-                <button onclick="closeSectionStudents()" class="text-white/70 hover:text-white">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                <button onclick="closeSectionStudents()" class="text-white/70 hover:text-white transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
         </div>
 
-        <!-- Add Student Panel (collapsible) -->
-        <div id="sm-add-panel" class="hidden flex-shrink-0 border-b border-gray-200 bg-gray-50 px-6 py-4">
-            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Unassigned Students</p>
-            <div class="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-1.5 bg-white mb-2 focus-within:ring-2 focus-within:ring-blue-300">
-                <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/></svg>
-                <input type="text" id="sm-search" placeholder="Search by name, ID, or tap RFID card..."
-                       oninput="filterUnassigned()"
-                       class="flex-1 text-sm outline-none bg-transparent text-gray-700 placeholder-gray-400" />
+        <!-- VIEW 1: Enrolled Students -->
+        <div id="sm-enrolled-panel" class="flex flex-col flex-1 min-h-0">
+            <div class="px-6 py-3 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">Students in Section</p>
+                <span id="sm-student-count" class="text-xs text-gray-400"></span>
             </div>
-            <div id="sm-unassigned-list" class="max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white divide-y divide-gray-100">
-                <p class="px-4 py-3 text-sm text-gray-400 text-center">Loading…</p>
+            <div id="sm-body" class="flex-1 overflow-y-auto divide-y divide-gray-100">
+                <p class="px-6 py-10 text-center text-sm text-gray-400">Loading…</p>
             </div>
         </div>
 
-        <!-- Enrolled students list -->
-        <div id="sm-body" class="divide-y divide-gray-100 overflow-y-auto flex-1">
-            <p class="px-6 py-8 text-center text-sm text-gray-400">Loading…</p>
+        <!-- VIEW 2: Add / Unassigned Students (hidden by default) -->
+        <div id="sm-add-panel" class="hidden flex-col flex-1 min-h-0">
+            <div class="px-6 py-3 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">Unassigned Students</p>
+                <span id="sm-unassigned-count" class="text-xs text-gray-400"></span>
+            </div>
+            <!-- Search bar -->
+            <div class="px-6 py-3 border-b border-gray-100 flex-shrink-0">
+                <div class="flex items-center gap-2 border border-gray-300 rounded-xl px-4 py-2.5 bg-white focus-within:ring-2 focus-within:ring-blue-300">
+                    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/></svg>
+                    <input type="text" id="sm-search" placeholder="Type name or Student ID, or tap RFID card at desk reader…"
+                           oninput="filterUnassigned()"
+                           class="flex-1 text-sm outline-none bg-transparent text-gray-700 placeholder-gray-400" />
+                    <button onclick="document.getElementById('sm-search').value='';filterUnassigned();" class="text-gray-300 hover:text-gray-500 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="sm-unassigned-list" class="flex-1 overflow-y-auto divide-y divide-gray-100">
+                <p class="px-6 py-10 text-center text-sm text-gray-400">Loading…</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Assign Student Preview Popup -->
+<div id="assignPreviewModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-black/50 px-4" onclick="if(event.target===this)closeAssignPreview()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="px-5 py-4 flex items-center justify-between" style="background-color:#000147;">
+            <h3 class="text-sm font-semibold text-white">Add to Section</h3>
+            <button onclick="closeAssignPreview()" class="text-white/70 hover:text-white transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="p-5">
+            <!-- Student info -->
+            <div class="flex items-center gap-3 mb-5 pb-4 border-b border-gray-100">
+                <div id="preview-initial" class="w-12 h-12 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0" style="background-color:#000147;"></div>
+                <div>
+                    <p id="preview-name" class="font-bold text-gray-900 text-base"></p>
+                    <p class="text-xs text-gray-400 mt-0.5">Student</p>
+                </div>
+            </div>
+            <div class="space-y-2 text-sm mb-5">
+                <div class="flex justify-between py-1.5 border-b border-gray-100">
+                    <span class="text-gray-500">Student ID</span>
+                    <span id="preview-idno" class="font-semibold text-gray-800 font-mono"></span>
+                </div>
+                <div class="flex justify-between py-1.5">
+                    <span class="text-gray-500">Assign to</span>
+                    <span id="preview-section" class="font-semibold text-blue-700"></span>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400 mb-4">This will assign the student to the section and activate their account.</p>
+            <div class="flex gap-2">
+                <button onclick="closeAssignPreview()" class="flex-1 py-2 text-sm border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 transition">Cancel</button>
+                <button id="preview-save-btn" onclick="confirmAssignStudent()" class="flex-1 py-2 text-sm text-white rounded-xl font-medium transition" style="background-color:#000147;">Add to Section</button>
+            </div>
         </div>
     </div>
 </div>
@@ -303,89 +366,120 @@ let allUnassigned  = [];
 
 async function openSectionStudents(sectionName, adviserName) {
     currentSection = sectionName;
-    document.getElementById('sm-title').textContent = sectionName + ' — Students';
+    document.getElementById('sm-title').textContent   = sectionName + ' — Students';
     document.getElementById('sm-adviser').textContent = adviserName ? 'Adviser: ' + adviserName : '';
-    document.getElementById('sm-body').innerHTML = '<p class="px-6 py-8 text-center text-sm text-gray-400">Loading…</p>';
-    document.getElementById('sm-add-panel').classList.add('hidden');
-    document.getElementById('sm-search').value = '';
+    document.getElementById('sm-body').innerHTML      = '<p class="px-6 py-10 text-center text-sm text-gray-400">Loading…</p>';
+    // Always start in enrolled view
+    showEnrolledView();
     document.getElementById('sectionStudentsModal').classList.remove('hidden');
     await refreshEnrolledStudents();
 }
 
 async function refreshEnrolledStudents() {
     try {
-        const res   = await fetch('/Librarian/GetStudentsBySection?sectionName=' + encodeURIComponent(currentSection));
-        const list  = await res.json();
+        const res  = await fetch('/Librarian/GetStudentsBySection?sectionName=' + encodeURIComponent(currentSection));
+        const list = await res.json();
+        const countEl = document.getElementById('sm-student-count');
+        if (countEl) countEl.textContent = list.length ? list.length + ' student' + (list.length > 1 ? 's' : '') : '';
         if (!list.length) {
-            document.getElementById('sm-body').innerHTML = '<p class="px-6 py-8 text-center text-sm text-gray-400">No students in this section yet.</p>';
+            document.getElementById('sm-body').innerHTML = '<p class="px-6 py-10 text-center text-sm text-gray-400">No students in this section yet.<br><span class="text-xs text-gray-300">Click "+ Add Student" to assign students.</span></p>';
             return;
         }
         document.getElementById('sm-body').innerHTML = list.map((s, i) => `
-            <div class="flex items-center gap-4 px-6 py-3 hover:bg-gray-50">
-                <span class="text-xs text-gray-400 w-5 text-right flex-shrink-0">${i + 1}</span>
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background-color:#000147;">
+            <div class="flex items-center gap-4 px-6 py-3.5 hover:bg-gray-50 transition">
+                <span class="text-xs text-gray-300 w-6 text-right flex-shrink-0 font-mono">${i + 1}</span>
+                <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style="background-color:#000147;">
                     ${s.name.charAt(0).toUpperCase()}
                 </div>
                 <div class="flex-1 min-w-0">
                     <p class="text-sm font-semibold text-gray-800">${s.name}</p>
-                    <p class="text-xs text-gray-400">${s.idNo || '—'} &bull; ${s.email || ''}</p>
+                    <p class="text-xs text-gray-400 mt-0.5">${s.idNo || '—'}</p>
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${s.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                    <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${s.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
                         ${s.active ? 'Active' : 'Inactive'}
                     </span>
-                    <button onclick="removeStudent('${s.id}', '${s.name.replace(/'/g,"\\'")}', this)"
+                    <button onclick="removeStudent('${s.id}','${s.name.replace(/'/g,"\\'")}',this)"
                             title="Remove from section"
-                            class="p-1 text-red-300 hover:text-red-600 transition">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            class="p-1.5 rounded-lg text-red-300 hover:text-red-600 hover:bg-red-50 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
                     </button>
                 </div>
             </div>`).join('');
     } catch {
-        document.getElementById('sm-body').innerHTML = '<p class="px-6 py-8 text-center text-sm text-gray-400">Could not load students.</p>';
+        document.getElementById('sm-body').innerHTML = '<p class="px-6 py-10 text-center text-sm text-gray-400">Could not load students.</p>';
     }
 }
 
-async function toggleAddPanel() {
-    const panel = document.getElementById('sm-add-panel');
-    if (!panel.classList.contains('hidden')) {
-        panel.classList.add('hidden');
-        return;
-    }
-    panel.classList.remove('hidden');
-    setTimeout(() => document.getElementById('sm-search').focus(), 50);
-    document.getElementById('sm-unassigned-list').innerHTML = '<p class="px-4 py-3 text-sm text-gray-400 text-center">Loading…</p>';
+function showEnrolledView() {
+    document.getElementById('sm-add-panel').classList.add('hidden');
+    document.getElementById('sm-add-panel').classList.remove('flex');
+    document.getElementById('sm-enrolled-panel').classList.remove('hidden');
+    document.getElementById('sm-enrolled-panel').classList.add('flex');
+    document.getElementById('sm-add-btn').classList.remove('hidden');
+    document.getElementById('sm-add-btn').classList.add('flex');
+    document.getElementById('sm-back-btn').classList.add('hidden');
+    document.getElementById('sm-back-btn').classList.remove('flex');
+}
+
+async function showAddView() {
+    document.getElementById('sm-enrolled-panel').classList.add('hidden');
+    document.getElementById('sm-enrolled-panel').classList.remove('flex');
+    document.getElementById('sm-add-panel').classList.remove('hidden');
+    document.getElementById('sm-add-panel').classList.add('flex');
+    document.getElementById('sm-add-btn').classList.add('hidden');
+    document.getElementById('sm-add-btn').classList.remove('flex');
+    document.getElementById('sm-back-btn').classList.remove('hidden');
+    document.getElementById('sm-back-btn').classList.add('flex');
+    const searchEl = document.getElementById('sm-search');
+    searchEl.value = '';
+    searchEl.classList.remove('ring-2', 'ring-blue-400');
+    document.getElementById('sm-unassigned-list').innerHTML = '<p class="px-6 py-10 text-center text-sm text-gray-400">Loading…</p>';
     try {
-        const res   = await fetch('/Librarian/GetUnassignedStudents');
+        const res     = await fetch('/Librarian/GetUnassignedStudents');
         allUnassigned = await res.json();
-        document.getElementById('sm-unassigned-list').innerHTML = '';
+        const countEl = document.getElementById('sm-unassigned-count');
+        if (countEl) countEl.textContent = allUnassigned.length + ' student' + (allUnassigned.length !== 1 ? 's' : '');
+        renderUnassigned(allUnassigned);
+        setTimeout(() => document.getElementById('sm-search').focus(), 50);
     } catch {
-        document.getElementById('sm-unassigned-list').innerHTML = '<p class="px-4 py-3 text-sm text-gray-400 text-center">Could not load students.</p>';
+        document.getElementById('sm-unassigned-list').innerHTML = '<p class="px-6 py-10 text-center text-sm text-gray-400">Could not load students.</p>';
     }
 }
+
+// Keep old name as alias so RFID handler still works
+async function toggleAddPanel() { await showAddView(); }
 
 function renderUnassigned(list) {
     const el = document.getElementById('sm-unassigned-list');
     if (!list.length) {
-        el.innerHTML = '';
+        el.innerHTML = '<p class="px-4 py-8 text-sm text-gray-400 text-center">No unassigned students found</p>';
         return;
     }
     el.innerHTML = list.map(s => `
-        <div class="flex items-center gap-3 px-4 py-2 hover:bg-blue-50 cursor-pointer transition" onclick="assignStudent('${s.id}', '${s.name.replace(/'/g,"\\'")}', this)">
-            <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 bg-gray-400">
+        <div class="flex items-center gap-4 px-6 py-3.5 hover:bg-blue-50 transition group">
+            <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style="background-color:#000147;">
                 ${s.name.charAt(0).toUpperCase()}
             </div>
             <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-800">${s.name}</p>
-                <p class="text-xs text-gray-400">${s.idNo || '—'}${s.rfid ? ' · RFID: ' + s.rfid : ''}</p>
+                <p class="text-sm font-semibold text-gray-800">${s.name}</p>
+                <p class="text-xs text-gray-400 mt-0.5">${s.idNo || '—'}</p>
             </div>
-            <svg class="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            <button onclick="openAssignPreview('${s.id}','${s.name.replace(/'/g,"\\'")}','${s.idNo||''}','${s.rfid||''}')"
+                    class="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white rounded-lg opacity-0 group-hover:opacity-100 transition"
+                    style="background-color:#000147;" title="Add to this section">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                Add
+            </button>
         </div>`).join('');
 }
 
 function filterUnassigned() {
-    const q = document.getElementById('sm-search').value.toLowerCase();
-    if (!q) { document.getElementById('sm-unassigned-list').innerHTML = ''; return; }
+    const q = document.getElementById('sm-search').value.toLowerCase().trim();
+    if (!q) {
+        renderUnassigned(allUnassigned); // show all when search is empty
+        return;
+    }
     renderUnassigned(allUnassigned.filter(s =>
         s.name.toLowerCase().includes(q) ||
         (s.idNo  || '').toLowerCase().includes(q) ||
@@ -393,32 +487,73 @@ function filterUnassigned() {
     ));
 }
 
-async function assignStudent(userId, name, rowEl) {
-    if (!confirm('Assign ' + name + ' to ' + currentSection + '? This will activate their RFID card.')) return;
-    rowEl.closest('[onclick]').style.opacity = '0.4';
-    rowEl.closest('[onclick]').style.pointerEvents = 'none';
+// Preview popup before assigning
+let _previewUserId = '', _previewUserName = '';
+
+function openAssignPreview(userId, name, idNo, rfid) {
+    _previewUserId   = userId;
+    _previewUserName = name;
+    document.getElementById('preview-initial').textContent = name.charAt(0).toUpperCase();
+    document.getElementById('preview-name').textContent    = name;
+    document.getElementById('preview-idno').textContent    = idNo || '—';
+    document.getElementById('preview-section').textContent = currentSection;
+    document.getElementById('assignPreviewModal').classList.remove('hidden');
+}
+
+function closeAssignPreview() {
+    document.getElementById('assignPreviewModal').classList.add('hidden');
+}
+
+async function confirmAssignStudent() {
+    const saveBtn = document.getElementById('preview-save-btn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
     try {
         const res  = await fetch('/Librarian/AssignStudentToSection', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': getAntiForgeryToken() },
-            body: 'userId=' + encodeURIComponent(userId) + '&sectionName=' + encodeURIComponent(currentSection)
+            body: 'userId=' + encodeURIComponent(_previewUserId) + '&sectionName=' + encodeURIComponent(currentSection)
         });
         const json = await res.json();
         if (json.success) {
-            allUnassigned = allUnassigned.filter(s => s.id !== userId);
-            renderUnassigned(allUnassigned.filter(s => {
-                const q = document.getElementById('sm-search').value.toLowerCase();
-                return s.name.toLowerCase().includes(q) || (s.idNo || '').toLowerCase().includes(q);
-            }));
+            closeAssignPreview();
+            // Remove from local unassigned list
+            allUnassigned = allUnassigned.filter(s => s.id !== _previewUserId);
+            // Switch back to enrolled view and refresh
+            showEnrolledView();
             await refreshEnrolledStudents();
         } else {
             alert(json.message || 'Failed to assign student.');
-            rowEl.closest('[onclick]').style.opacity = '';
-            rowEl.closest('[onclick]').style.pointerEvents = '';
         }
     } catch {
         alert('Error assigning student.');
     }
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Add to Section';
+}
+
+// Join the transaction SignalR group so DeskRfidTap events are received here.
+// We wait for _libConnected (the layout's start() promise) so the connection
+// is fully open before invoking — otherwise invoke silently fails mid-connect.
+if (typeof libraryConnection !== 'undefined') {
+    (window._libConnected || Promise.resolve()).then(() => {
+        libraryConnection.invoke('JoinTransaction').catch(err => console.error('JoinTransaction error:', err));
+    });
+
+    libraryConnection.on('DeskRfidTap', function(data) {
+        // Only act when the modal is open AND we are in the Add Student view
+        const modal    = document.getElementById('sectionStudentsModal');
+        const addPanel = document.getElementById('sm-add-panel');
+        if (!modal    || modal.classList.contains('hidden')) return;
+        if (!addPanel || addPanel.classList.contains('hidden')) return;
+
+        // Find the matching student by RFID and show their Student No. in the
+        // search box instead of the raw RFID number.
+        const searchEl = document.getElementById('sm-search');
+        const matched  = allUnassigned.find(s => (s.rfid || '').toLowerCase() === data.rfidNumber.toLowerCase());
+        searchEl.value = matched ? (matched.idNo || data.rfidNumber) : data.rfidNumber;
+        filterUnassigned();
+    });
 }
 
 async function removeStudent(userId, name, btnEl) {
@@ -487,7 +622,8 @@ function toggleCourseDropdown() {
     document.getElementById('courseDropdownMenu').classList.toggle('hidden');
 }
 function selectCourse(abbr, label) {
-    document.getElementById('courseValue').value        = abbr;
+    document.getElementById('courseValue').value        = label; // store full name
+    document.getElementById('courseAbbr').value         = abbr;  // keep abbr for section name
     document.getElementById('courseDropdownLabel').innerHTML = label + ' <strong>(' + abbr + ')</strong>';
     document.getElementById('courseDropdownLabel').classList.remove('text-gray-400');
     document.getElementById('courseDropdownMenu').classList.add('hidden');
@@ -511,12 +647,13 @@ document.getElementById('sectionForm').addEventListener('submit', function(e) {
 
     if (!typed) { e.preventDefault(); alert('Please enter a section name.'); return; }
 
+    const courseAbbr = document.getElementById('courseAbbr').value;
     if (level === 'Junior High School') {
         if (!year) { e.preventDefault(); alert('Please select a year.'); return; }
         sectionInput.value = year + ' - ' + typed;
     } else if (level === 'Senior High School' || level === 'Tertiary') {
         if (!courseVal) { e.preventDefault(); alert('Please select a course/strand.'); return; }
-        sectionInput.value = courseVal + ' - ' + typed;
+        sectionInput.value = courseAbbr + ' - ' + typed; // use abbreviation for section name e.g. BSIT - 702
     }
 });
 
@@ -564,3 +701,4 @@ function onLevelChange() {
 }
 </script>
 }
+

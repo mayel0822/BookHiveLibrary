@@ -107,13 +107,20 @@ namespace BookHiveLibrary.Controllers
             if (user == null)
             {
                 TempData["Error"] = "Your Microsoft account is not registered in the system. Please contact MIS to register your account first.";
-                return RedirectToAction("Login");
+                return RedirectToAction("Index", "Home");
             }
 
             if (!user.IsActive)
             {
                 TempData["Error"] = "Your account has been deactivated. Please contact MIS.";
-                return RedirectToAction("Login");
+                return RedirectToAction("Index", "Home");
+            }
+
+            // MIS users: sign in directly and go to MIS Dashboard
+            if (user.UserType == "MIS")
+            {
+                await _signInManager.SignInAsync(user, isPersistent: false);
+                return RedirectToAction("Dashboard", "MIS");
             }
 
             // All users: check if phone number is set up (first time login)
@@ -177,13 +184,27 @@ namespace BookHiveLibrary.Controllers
                 return View("Login", model);
             }
 
-            var passwordCheck = await _userManager.CheckPasswordAsync(user, model.Password);
-            if (!passwordCheck)
+            // Lockout-aware password check (counts toward 5-attempt lockout)
+            if (await _userManager.IsLockedOutAsync(user))
             {
-                ModelState.AddModelError("", "Password incorrect.");
+                ModelState.AddModelError("", "Account locked due to too many failed attempts. Try again in 1 hour.");
                 return View("Login", model);
             }
 
+            var passwordCheck = await _userManager.CheckPasswordAsync(user, model.Password);
+            if (!passwordCheck)
+            {
+                await _userManager.AccessFailedAsync(user);
+                var attemptsLeft = _userManager.Options.Lockout.MaxFailedAccessAttempts
+                                   - await _userManager.GetAccessFailedCountAsync(user);
+                if (await _userManager.IsLockedOutAsync(user))
+                    ModelState.AddModelError("", "Account locked due to too many failed attempts. Try again in 1 hour.");
+                else
+                    ModelState.AddModelError("", $"Password incorrect. {attemptsLeft} attempt(s) remaining.");
+                return View("Login", model);
+            }
+
+            await _userManager.ResetAccessFailedCountAsync(user);
             await _signInManager.SignInAsync(user, isPersistent: false);
             return RedirectToDashboard(user.UserType);
         }
@@ -222,13 +243,27 @@ namespace BookHiveLibrary.Controllers
                 return View(model);
             }
 
-            var passwordCheck = await _userManager.CheckPasswordAsync(user, model.Password);
-            if (!passwordCheck)
+            // Lockout-aware password check
+            if (await _userManager.IsLockedOutAsync(user))
             {
-                ModelState.AddModelError("", "Password incorrect.");
+                ModelState.AddModelError("", "Account locked due to too many failed attempts. Try again in 1 hour.");
                 return View(model);
             }
 
+            var passwordCheck = await _userManager.CheckPasswordAsync(user, model.Password);
+            if (!passwordCheck)
+            {
+                await _userManager.AccessFailedAsync(user);
+                var attemptsLeft = _userManager.Options.Lockout.MaxFailedAccessAttempts
+                                   - await _userManager.GetAccessFailedCountAsync(user);
+                if (await _userManager.IsLockedOutAsync(user))
+                    ModelState.AddModelError("", "Account locked due to too many failed attempts. Try again in 1 hour.");
+                else
+                    ModelState.AddModelError("", $"Password incorrect. {attemptsLeft} attempt(s) remaining.");
+                return View(model);
+            }
+
+            await _userManager.ResetAccessFailedCountAsync(user);
             // Sign in directly — Microsoft Authenticator handles MFA for real accounts via OAuth
             await _signInManager.SignInAsync(user, isPersistent: false);
             return RedirectToDashboard(user.UserType);
@@ -244,11 +279,11 @@ namespace BookHiveLibrary.Controllers
         [HttpPost]
         public async Task<IActionResult> MISLogin(LoginViewModel model)
         {
+            ModelState.Remove("OutlookEmail");
             if (!ModelState.IsValid)
                 return View(model);
 
             ApplicationUser? user;
-
             if (model.EmailOrUsername.Contains("@"))
                 user = await _userManager.FindByEmailAsync(model.EmailOrUsername);
             else
@@ -256,60 +291,45 @@ namespace BookHiveLibrary.Controllers
 
             if (user == null)
             {
-                ModelState.AddModelError("", "User not found.");
+                TempData["Error"] = "Account not found.";
                 return View(model);
             }
 
             if (user.UserType != "MIS")
             {
-                ModelState.AddModelError("", "This login is for MIS accounts only.");
+                TempData["Error"] = "This login is for MIS accounts only.";
+                return View(model);
+            }
+
+            if (!user.IsActive)
+            {
+                TempData["Error"] = "Your account has been deactivated.";
+                return View(model);
+            }
+
+            // Lockout-aware password check
+            if (await _userManager.IsLockedOutAsync(user))
+            {
+                TempData["Error"] = "Account locked due to too many failed attempts. Try again in 1 hour.";
                 return View(model);
             }
 
             var passwordCheck = await _userManager.CheckPasswordAsync(user, model.Password);
             if (!passwordCheck)
             {
-                ModelState.AddModelError("", "Password incorrect.");
+                await _userManager.AccessFailedAsync(user);
+                var attemptsLeft = _userManager.Options.Lockout.MaxFailedAccessAttempts
+                                   - await _userManager.GetAccessFailedCountAsync(user);
+                if (await _userManager.IsLockedOutAsync(user))
+                    TempData["Error"] = "Account locked due to too many failed attempts. Try again in 1 hour.";
+                else
+                    TempData["Error"] = $"Incorrect password. {attemptsLeft} attempt(s) remaining.";
                 return View(model);
             }
 
-            if (string.IsNullOrEmpty(model.OutlookEmail))
-            {
-                ModelState.AddModelError("OutlookEmail", "Please enter your Microsoft Outlook email to receive the OTP.");
-                return View(model);
-            }
-
-            string outlookEmail = model.OutlookEmail;
-
-            string otpCode = GenerateOtp();
-            _context.OtpVerifications.Add(new OtpVerification
-            {
-                Email = outlookEmail,
-                Code = otpCode,
-                ExpirationTime = DateTime.Now.AddMinutes(5),
-                IsUsed = false
-            });
-            await _context.SaveChangesAsync();
-
-            bool emailSent = false;
-            try
-            {
-                await _emailService.SendOtpAsync(outlookEmail, otpCode);
-                emailSent = true;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[EMAIL ERROR] {ex.Message}");
-            }
-
-            TempData["OtpFallback"] = emailSent
-                ? $"OTP sent to {outlookEmail}. Code: {otpCode}"
-                : $"Email could not be sent. Your OTP code is: {otpCode}";
-
-            TempData["Email"] = outlookEmail;
-            TempData["AccountEmail"] = user.Email;
-            TempData["PendingOutlookEmail"] = string.IsNullOrEmpty(user.OutlookEmail) ? outlookEmail : null;
-            return RedirectToAction("VerifyOtp");
+            await _userManager.ResetAccessFailedCountAsync(user);
+            await _signInManager.SignInAsync(user, isPersistent: false);
+            return RedirectToAction("Dashboard", "MIS");
         }
 
         // ── Verify Email OTP (returning admin users) ─────────────────────────
@@ -359,7 +379,7 @@ namespace BookHiveLibrary.Controllers
             if (!user.IsActive)
             {
                 TempData["Error"] = "Your account has been deactivated. Please contact MIS.";
-                return RedirectToAction("Login");
+                return RedirectToAction("Index", "Home");
             }
 
             await _signInManager.SignInAsync(user, isPersistent: false);
@@ -430,9 +450,10 @@ namespace BookHiveLibrary.Controllers
                 return View(model);
             }
 
-            if (user.PhoneOTPCode != model.Code)
+            // Lockout check (shared counter with password attempts)
+            if (await _userManager.IsLockedOutAsync(user))
             {
-                ModelState.AddModelError("", "Invalid verification code.");
+                ModelState.AddModelError("", "Account locked due to too many failed attempts. Try again in 1 hour.");
                 return View(model);
             }
 
@@ -442,11 +463,25 @@ namespace BookHiveLibrary.Controllers
                 return View(model);
             }
 
+            if (user.PhoneOTPCode != model.Code)
+            {
+                await _userManager.AccessFailedAsync(user);
+                var attemptsLeft = _userManager.Options.Lockout.MaxFailedAccessAttempts
+                                   - await _userManager.GetAccessFailedCountAsync(user);
+                if (await _userManager.IsLockedOutAsync(user))
+                    ModelState.AddModelError("", "Account locked due to too many failed attempts. Try again in 1 hour.");
+                else
+                    ModelState.AddModelError("", $"Invalid verification code. {attemptsLeft} attempt(s) remaining.");
+                return View(model);
+            }
+
             if (!user.IsActive)
             {
                 ModelState.AddModelError("", "Your account has been deactivated. Please contact MIS.");
                 return View(model);
             }
+
+            await _userManager.ResetAccessFailedCountAsync(user);
 
             // Phone is confirmed — mark it verified and complete first-login setup
             user.PhoneVerified = true;

@@ -30,7 +30,14 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
-    options.SignIn.RequireConfirmedAccount = false)
+{
+    options.SignIn.RequireConfirmedAccount = false;
+
+    // Lock account after 5 failed attempts for 1 hour
+    options.Lockout.AllowedForNewUsers    = true;
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan  = TimeSpan.FromHours(1);
+})
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
@@ -58,6 +65,9 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddHttpClient<SmsService>();
 builder.Services.AddScoped<GraphService>();
 builder.Services.AddHostedService<BookHiveLibrary.Services.ReminderBackgroundService>();
+
+// Set server timezone to Philippine Standard Time so DateTime.Now = PH time everywhere
+Environment.SetEnvironmentVariable("TZ", "Asia/Manila");
 
 var app = builder.Build();
 

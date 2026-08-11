@@ -29,36 +29,38 @@
                     </svg>
                 </button>
             </form>
-            <a href="@Url.Action("Registration","Librarian")"
-               class="px-4 py-2 text-sm text-white rounded-full" style="background-color:#000147;">+ Add User</a>
         </div>
     </div>
 
     <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-            <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
+        <table class="bh-table">
+            <thead>
                 <tr>
-                    <th class="px-4 py-3 text-left">Stud/Emp ID</th>
-                    <th class="px-4 py-3 text-left">Name</th>
-                    <th class="px-4 py-3 text-left">Email</th>
-                    <th class="px-4 py-3 text-left">Phone</th>
-                    <th class="px-4 py-3 text-left">Section</th>
-                    <th class="px-4 py-3 text-left">Type</th>
-                    <th class="px-4 py-3 text-left">Status</th>
-                    <th class="px-4 py-3 text-center"></th>
+                    <th>Stud/Emp ID</th>
+                    <th class="min-w-[180px]">Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Section</th>
+                    <th>Course</th>
+                    <th>Yr. Level</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Registration</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody>
                 @foreach (var user in Model)
                 {
-                    <tr class="hover:bg-gray-50">
+                    <tr>
                         <td class="px-4 py-3 text-gray-600">
                             @(user.UserType == "Student" ? user.StudentNumber : user.EmployeeNumber)
                         </td>
-                        <td class="px-4 py-3 font-medium text-gray-800">@user.LastName, @user.FirstName @(string.IsNullOrEmpty(user.MiddleName) ? "" : user.MiddleName[0] + ".")</td>
+                        <td class="px-4 py-3 font-medium text-gray-800 whitespace-nowrap min-w-[180px]">@user.LastName, @user.FirstName @(string.IsNullOrEmpty(user.MiddleName) ? "" : user.MiddleName[0] + ".")</td>
                         <td class="px-4 py-3 text-gray-600">@user.Email</td>
                         <td class="px-4 py-3 text-gray-600">@user.PhoneNumber</td>
                         <td class="px-4 py-3 text-gray-600">@(string.IsNullOrEmpty(user.Section) ? "—" : user.Section)</td>
+                        <td class="px-4 py-3 text-gray-600">@(user.UserType == "Student" && !string.IsNullOrEmpty(user.Course) ? user.Course : "—")</td>
+                        <td class="px-4 py-3 text-gray-600">@(user.UserType == "Student" && !string.IsNullOrEmpty(user.Level) ? user.Level : "—")</td>
                         <td class="px-4 py-3">
                             <span class="text-sm font-medium text-gray-900">@user.UserType</span>
                         </td>
@@ -73,13 +75,14 @@
                             }
                         </td>
                         <td class="px-4 py-3">
-                            <div class="flex gap-2 items-center">
-                                <button type="button"
-                                        onclick="openUserDetail('@user.Id','@(user.LastName), @user.FirstName @(string.IsNullOrEmpty(user.MiddleName) ? "" : user.MiddleName[0] + ".")','@user.Email','@user.PhoneNumber','@user.UserType','@(user.IsActive ? "Active" : "Inactive")','@(user.UserType == "Student" ? user.StudentNumber : user.EmployeeNumber)','@user.Section','@user.CreatedAt.ToString("MMMM dd, yyyy")')"
-                                        class="flex items-center justify-center w-7 h-7 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition flex-shrink-0">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                                </button>
-                            </div>
+                            @if (user.RegistrationStatus == "Verified")
+                            {
+                                <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">Verified</span>
+                            }
+                            else
+                            {
+                                <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">Initial</span>
+                            }
                         </td>
                     </tr>
                 }
@@ -93,49 +96,56 @@
 </div>
 
 <!-- User Detail Modal -->
-<div id="userDetailModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black bg-opacity-40">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+<div id="userDetailModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black bg-opacity-40 px-4" onclick="if(event.target===this)closeUserDetail()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+
+        <!-- Header -->
         <div class="px-6 py-4 flex items-center justify-between" style="background-color:#000147;">
-            <h3 class="text-sm font-semibold text-white">Account Details</h3>
-            <button onclick="closeUserDetail()" class="text-white/70 hover:text-white">
+            <h3 class="text-sm font-semibold text-white tracking-wide">Account Details</h3>
+            <button onclick="closeUserDetail()" class="text-white/70 hover:text-white transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
-        <div class="p-6">
-            <!-- Avatar + Name -->
-            <div class="flex items-center gap-4 mb-6">
-                <div id="ud-avatar" class="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0" style="background-color:#000147;"></div>
-                <div>
-                    <p id="ud-name" class="font-semibold text-gray-800 text-base"></p>
-                    <div class="flex items-center gap-2 mt-1">
-                        <span id="ud-type-badge" class="px-2 py-0.5 rounded-full text-xs font-medium"></span>
-                        <span id="ud-status-badge" class="px-2 py-0.5 rounded-full text-xs font-medium"></span>
-                    </div>
+
+        <!-- Avatar + Name row -->
+        <div class="flex items-center gap-4 px-6 py-5 border-b border-gray-100">
+            <div id="ud-avatar" class="w-14 h-14 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0" style="background-color:#000147;"></div>
+            <div class="min-w-0">
+                <p id="ud-name" class="font-bold text-gray-900 text-lg leading-tight"></p>
+                <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <span id="ud-type-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold"></span>
+                    <span id="ud-status-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold"></span>
                 </div>
             </div>
-            <!-- Details grid -->
-            <div class="space-y-3 text-sm">
-                <div class="flex justify-between border-b border-gray-100 pb-2">
-                    <span id="ud-idno-label" class="text-gray-500">Student ID</span>
-                    <span id="ud-idno" class="font-medium text-gray-800"></span>
-                </div>
-                <div class="flex justify-between border-b border-gray-100 pb-2">
-                    <span class="text-gray-500">Email</span>
-                    <span id="ud-email" class="font-medium text-gray-800 break-all text-right max-w-[60%]"></span>
-                </div>
-                <div class="flex justify-between border-b border-gray-100 pb-2">
-                    <span class="text-gray-500">Phone</span>
-                    <span id="ud-phone" class="font-medium text-gray-800"></span>
-                </div>
-                <div id="ud-section-row" class="flex justify-between border-b border-gray-100 pb-2">
-                    <span class="text-gray-500">Section</span>
-                    <span id="ud-section" class="font-medium text-gray-800"></span>
-                </div>
-                <div class="flex justify-between pb-2">
-                    <span class="text-gray-500">Member Since</span>
-                    <span id="ud-since" class="font-medium text-gray-800"></span>
-                </div>
+        </div>
+
+        <!-- Details -->
+        <div class="px-6 py-4 space-y-0 text-sm divide-y divide-gray-100">
+            <div class="flex justify-between py-3">
+                <span id="ud-idno-label" class="text-gray-500 font-medium">Student ID</span>
+                <span id="ud-idno" class="font-semibold text-gray-800 font-mono"></span>
             </div>
+            <div class="flex justify-between py-3">
+                <span class="text-gray-500 font-medium flex-shrink-0 mr-4">Email</span>
+                <span id="ud-email" class="font-medium text-gray-800 break-all text-right"></span>
+            </div>
+            <div class="flex justify-between py-3">
+                <span class="text-gray-500 font-medium">Phone</span>
+                <span id="ud-phone" class="font-semibold text-gray-800"></span>
+            </div>
+            <div id="ud-section-row" class="flex justify-between py-3">
+                <span class="text-gray-500 font-medium">Section</span>
+                <span id="ud-section" class="font-semibold text-gray-800"></span>
+            </div>
+            <div class="flex justify-between py-3">
+                <span class="text-gray-500 font-medium">Member Since</span>
+                <span id="ud-since" class="font-semibold text-gray-800"></span>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end">
+            <button onclick="closeUserDetail()" class="px-5 py-2 text-sm border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 transition">Close</button>
         </div>
     </div>
 </div>
@@ -160,10 +170,8 @@
                 </select>
             </div>
             <div class="flex justify-end gap-3">
-                <button type="button" onclick="closeActivateModal()"
-                        class="px-5 py-2 border border-gray-300 text-gray-600 rounded-xl text-sm hover:bg-gray-50">Cancel</button>
-                <button type="submit"
-                        class="px-5 py-2 text-white rounded-xl text-sm font-medium" style="background-color:#000147;">Activate</button>
+                <button type="button" onclick="closeActivateModal()" class="btn-secondary">Cancel</button>
+                <button type="submit" class="btn-primary">Activate</button>
             </div>
         </form>
     </div>

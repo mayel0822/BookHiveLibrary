@@ -6,21 +6,22 @@
 }
 
 <div class="bg-white rounded-2xl shadow overflow-hidden overflow-x-auto">
-    <table class="w-full text-sm">
-        <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
+    <table class="bh-table">
+        <thead>
             <tr>
-                <th class="px-5 py-3 text-left">ID / Emp. No.</th>
-                <th class="px-5 py-3 text-left">Last Name</th>
-                <th class="px-5 py-3 text-left">First Name</th>
-                <th class="px-5 py-3 text-left">Role</th>
-                <th class="px-5 py-3 text-left">Email</th>
-                <th class="px-5 py-3 text-left">Restore</th>
+                <th>ID / Emp. No.</th>
+                <th>Last Name</th>
+                <th>First Name</th>
+                <th>Role</th>
+                <th>Email</th>
+                <th>Restore</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var user in Model)
             {
-                <tr class="border-b hover:bg-gray-50">
+                <tr class="border-b hover:bg-blue-50 cursor-pointer transition"
+                    onclick="window.location='@Url.Action("ArchivedDetail","MIS", new { id = user.Id })'">
                     <td class="px-5 py-3 text-gray-500 font-mono text-xs">
                         @(user.UserType == "Student" ? user.StudentNumber : user.EmployeeNumber)
                     </td>
@@ -35,7 +36,7 @@
                         </span>
                     </td>
                     <td class="px-5 py-3 text-gray-500">@user.Email</td>
-                    <td class="px-5 py-3">
+                    <td class="px-5 py-3" onclick="event.stopPropagation()">
                         <form method="post" asp-action="RestoreUser" asp-controller="MIS">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@user.Id" />

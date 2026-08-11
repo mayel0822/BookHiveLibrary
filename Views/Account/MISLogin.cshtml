@@ -1,49 +1,49 @@
-﻿@{
+@model BookHiveLibrary.ViewModels.LoginViewModel
+@{
     ViewData["Title"] = "MIS Login";
 }
 
-<div class="min-h-screen flex items-center justify-center"
-     style="background: linear-gradient(135deg, #4f46e5, #6d28d9);">
+<div class="min-h-screen bg-gradient-to-br from-indigo-700 to-purple-700 flex items-center justify-center relative">
 
-    <div class="bg-white rounded-3xl sm:rounded-[70px] shadow-2xl text-center w-full max-w-2xl mx-4 px-6 py-12 sm:px-20 sm:py-20">
+    <div class="bg-white rounded-3xl sm:rounded-[70px] shadow-2xl w-full max-w-3xl mx-4 flex flex-col items-center pt-10 px-6 sm:px-20 pb-10">
 
         <!-- Logo -->
-        <div class="flex flex-col items-center">
-            <img src="/images/bookhive_logo_v2.png" class="w-[220px] mb-4" />
-            <h3 class="text-2xl mb-8">MIS Portal Login</h3>
-        </div>
+        <img src="/images/bookhive_logo_v2.png" class="w-full max-w-lg mb-4" />
+        <p class="text-gray-500 text-sm mb-8 font-medium tracking-wide uppercase">MIS Facilitator Portal</p>
 
         @if (TempData["Error"] != null)
         {
-            <div class="bg-red-50 border border-red-300 text-red-700 text-sm px-4 py-3 rounded-xl mb-6 text-center">
+            <div class="w-full max-w-md bg-red-50 border border-red-300 text-red-700 text-sm px-4 py-3 rounded-xl mb-4 text-center">
                 @TempData["Error"]
             </div>
         }
 
-        <!-- Sign in Button -->
-        <div class="flex justify-center mt-10">
-            <a asp-controller="Account"
-               asp-action="MicrosoftLogin"
-               class="w-full h-[70px] bg-white border-2 border-gray-200 rounded-3xl shadow-md flex items-center justify-center gap-4 text-xl hover:bg-gray-50 transition">
+        <!-- Login Form -->
+        <form asp-action="MISLogin" asp-controller="Account" method="post"
+              class="flex flex-col items-center w-full">
+            @Html.AntiForgeryToken()
 
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 21 21">
-                    <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
-                    <rect x="11" y="1" width="9" height="9" fill="#00a4ef"/>
-                    <rect x="1" y="11" width="9" height="9" fill="#7fba00"/>
-                    <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
-                </svg>
+            <input asp-for="EmailOrUsername"
+                   type="text"
+                   placeholder="Email or Username"
+                   class="w-full max-w-md h-[58px] px-6 bg-gray-100 rounded-2xl text-lg outline-none shadow-sm mb-4" />
 
-                Sign in with Microsoft
+            <input asp-for="Password"
+                   type="password"
+                   placeholder="Password"
+                   class="w-full max-w-md h-[58px] px-6 bg-gray-100 rounded-2xl text-lg outline-none shadow-sm mb-6" />
 
-            </a>
-        </div>
+            <button type="submit"
+                    class="w-full max-w-md h-[65px] rounded-3xl text-white text-2xl font-medium shadow-lg hover:opacity-90 transition"
+                    style="background-color:#000147;">
+                Sign In
+            </button>
+        </form>
 
         <!-- Back -->
-        <div class="flex justify-end mt-10">
-            <a asp-controller="Account"
-               asp-action="Login"
-               class="text-violet-700 text-lg no-underline hover:text-violet-900">
-                â† Back
+        <div class="mt-6">
+            <a href="/Account/Login" class="text-gray-400 text-sm hover:text-gray-600 underline">
+                Back to Login
             </a>
         </div>
 

@@ -1,4 +1,4 @@
-@using BookHiveLibrary.Models
+﻿@using BookHiveLibrary.Models
 @model IEnumerable<BookReservation>
 @{
     Layout = "~/Views/Shared/_LibrarianLayout.cshtml";
@@ -9,7 +9,7 @@
     var advisers     = ViewBag.SectionAdvisers     as Dictionary<string,string> ?? new Dictionary<string,string>();
 }
 
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
     <!-- Pending Reservations Panel -->
     <div class="col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="max-height:420px;">
         <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
@@ -75,37 +75,6 @@
         </div>
     </div>
 
-    <!-- Send Reminder Panel -->
-    <div class="col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="max-height:420px;">
-        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
-            <div class="flex items-center gap-2">
-                <h2 class="font-semibold" class="text-gray-900">Send Reminder</h2>
-                <span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">@sendReminder.Count</span>
-            </div>
-            <form method="post" action="@Url.Action("SendReminder","Borrow")">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="px-3 py-1.5 text-xs text-white rounded-lg" style="background-color:#000147;">Send Reminder</button>
-            </form>
-        </div>
-        <div class="flex-1 overflow-y-auto divide-y divide-gray-100">
-            @if (!sendReminder.Any())
-            {
-                <p class="px-5 py-8 text-center text-gray-400 text-sm">No books due within 12 hours</p>
-            }
-            @foreach (var r in sendReminder)
-            {
-                var hoursLeft = (r.DueDate - DateTime.Now)?.TotalHours ?? 0;
-                <div class="px-4 py-3">
-                    <p class="text-sm font-medium text-gray-800">@r.User?.LastName, @r.User?.FirstName</p>
-                    <p class="text-xs text-gray-500 truncate">📖 @r.Book?.Title</p>
-                    <p class="text-xs @(hoursLeft < 2 ? "text-red-500 font-semibold" : "text-yellow-600") mt-0.5">
-                        Due: @r.DueDate?.ToString("MMM dd, hh:mm tt") (@(hoursLeft < 0 ? "Overdue" : $"{(int)hoursLeft}h left"))
-                    </p>
-                </div>
-            }
-        </div>
-    </div>
-
     <!-- Books Due Panel -->
     <div class="col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="max-height:420px;">
         <div class="px-5 py-4 border-b border-gray-100 flex-shrink-0">
@@ -151,29 +120,28 @@
 <div class="bg-white rounded-xl shadow-sm border border-gray-100">
     <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 class="font-semibold" class="text-gray-900">Borrowed Books</h2>
-        <button onclick="openBorrowModal()"
-                class="px-4 py-2 text-sm text-white rounded-lg" style="background-color:#000147;">+ Borrow Book</button>
+        <button onclick="openBorrowModal()" class="btn-primary">+ Borrow Book</button>
     </div>
     <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-            <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
+        <table class="bh-table">
+            <thead>
                 <tr>
-                    <th class="px-4 py-3 text-left">Stud ID</th>
-                    <th class="px-4 py-3 text-left">Name</th>
-                    <th class="px-4 py-3 text-left">Level</th>
-                    <th class="px-4 py-3 text-left">Course</th>
-                    <th class="px-4 py-3 text-left">Section</th>
-                    <th class="px-4 py-3 text-left">Book Title</th>
-                    <th class="px-4 py-3 text-left">Borrow Date</th>
-                    <th class="px-4 py-3 text-left">Due Date</th>
-                    <th class="px-4 py-3 text-left">Status</th>
-                    <th class="px-4 py-3 text-left">Action</th>
+                    <th>Stud ID</th>
+                    <th>Name</th>
+                    <th>Level</th>
+                    <th>Course</th>
+                    <th>Section</th>
+                    <th>Book Title</th>
+                    <th>Borrow Date</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                    <th>Action</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody>
                 @foreach (var r in Model)
                 {
-                    <tr class="@(r.Status == "ReturnedLate" ? "bg-orange-50 hover:bg-orange-100" : "hover:bg-gray-50")">
+                    <tr class="@(r.Status == "ReturnedLate" ? "bh-selected" : "")">
                         <td class="px-4 py-3 text-gray-600 text-xs">@r.User?.StudentNumber</td>
                         <td class="px-4 py-3 font-medium text-gray-800">
                             @r.User?.FirstName @r.User?.LastName
@@ -240,7 +208,7 @@
 
 <!-- Borrow Slip Modal (RFID pickup confirmation) -->
 <div id="borrowSlipModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-xl w-[480px] shadow-xl overflow-hidden">
+    <div class="bg-white rounded-xl w-full max-w-lg mx-4 shadow-xl overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between" style="background-color:#000147;">
             <h3 class="text-base font-semibold text-white">Borrow Slip — Pickup Confirmation</h3>
             <button onclick="closeSlip()" class="text-white/70 hover:text-white">
@@ -285,12 +253,8 @@
                 @Html.AntiForgeryToken()
                 <input type="hidden" id="slipReservationId" name="id" value="" />
                 <div class="flex gap-3">
-                    <button type="button" onclick="closeSlip()"
-                            class="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">Cancel</button>
-                    <button type="submit"
-                            class="flex-1 py-2.5 text-white rounded-lg text-sm font-medium" style="background-color:#000147;">
-                        Confirm Pickup
-                    </button>
+                    <button type="button" onclick="closeSlip()" class="btn-secondary flex-1 justify-center">Cancel</button>
+                    <button type="submit" class="btn-primary flex-1 justify-center">Confirm Pickup</button>
                 </div>
             </form>
         </div>
@@ -299,7 +263,7 @@
 
 <!-- Borrow Book Modal -->
 <div id="borrowModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl shadow-xl w-[520px] overflow-hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-xl mx-4 overflow-hidden">
 
         <!-- Header -->
         <div class="px-6 py-4 flex items-center justify-between" style="background-color:#000147;">
@@ -345,12 +309,13 @@
                         <p id="borrowRfidError" class="text-xs text-red-500 mt-1 hidden"></p>
                     </div>
                     <!-- Professor: search -->
-                    <div id="professorSelectArea" class="hidden flex-1">
+                    <div id="professorSelectArea" class="hidden flex-1 relative">
                         <p class="text-xs text-gray-400 mb-1">Employee No. / Name</p>
                         <input id="professorSearch" type="text" placeholder="Type to search..."
-                               oninput="onProfessorSearch()"
-                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" autocomplete="off" />
-                        <div id="professorDropdown" class="hidden absolute z-50 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-40 overflow-y-auto w-64"></div>
+                               oninput="onProfessorSearch()" autocomplete="off"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                        <div id="professorDropdown" class="hidden absolute left-0 right-0 top-full z-50 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-44 overflow-y-auto"></div>
+                        <p id="professorError" class="text-xs text-red-500 mt-1 hidden"></p>
                     </div>
                 </div>
 
@@ -359,6 +324,10 @@
 
                 <!-- Slip Fields -->
                 <div class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                    <div class="col-span-2">
+                        <p class="text-xs text-gray-400 mb-0.5">Student / Employee No.</p>
+                        <p id="infoStudentNo" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 hidden">—</p>
+                    </div>
                     <div>
                         <p class="text-xs text-gray-400 mb-0.5">Last Name</p>
                         <p id="infoLastName" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 hidden">—</p>
@@ -418,10 +387,9 @@
 
             <!-- Footer -->
             <div class="px-6 py-4 border-t border-gray-100 flex gap-3">
-                <button type="button" onclick="closeBorrowModal()"
-                        class="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">Cancel</button>
+                <button type="button" onclick="closeBorrowModal()" class="btn-secondary flex-1 justify-center">Cancel</button>
                 <button type="submit" id="borrowSubmitBtn" disabled
-                        class="flex-1 py-2.5 text-white rounded-lg text-sm font-medium opacity-50 cursor-not-allowed" style="background-color:#000147;">
+                        class="btn-primary flex-1 justify-center opacity-50 cursor-not-allowed">
                     Confirm Borrow
                 </button>
             </div>
@@ -435,6 +403,31 @@ const rfidInput = document.getElementById('rfidInput');
 const rfidError = document.getElementById('rfidError');
 let rfidBuffer = '';
 let rfidTimer = null;
+
+// ── Desk ESP32 reader — SignalR bridge ───────────────────────────────────
+// When desk ESP32 scans a card, server pushes the RFID here and
+// we auto-trigger the same lookup as a keyboard-reader tap
+if (typeof libraryConnection !== 'undefined') {
+    function _joinTransactionBorrow() {
+        libraryConnection.invoke("JoinTransaction").catch(err => console.error(err));
+    }
+    (window._libConnected || Promise.resolve()).then(_joinTransactionBorrow);
+    libraryConnection.onreconnected(() => _joinTransactionBorrow());
+
+    libraryConnection.on("DeskRfidTap", function(data) {
+        const borrowModal  = document.getElementById('borrowModal');
+        const isBorrowOpen = borrowModal && !borrowModal.classList.contains('hidden');
+        if (isBorrowOpen && currentBorrowType === 'Student') {
+            // Borrow slip open + Student mode — fill student info via RFID
+            lookupBorrowRfid(data.rfidNumber);
+        } else if (!isBorrowOpen) {
+            // Borrow slip closed — confirm pending reservation pickup
+            lookupRfid(data.rfidNumber);
+        }
+        // If borrow slip open but Professor mode, ignore tap (professor uses name/empno search)
+    });
+}
+// ─────────────────────────────────────────────────────────────────────────
 
 // RFID readers type characters rapidly then send Enter
 rfidInput.addEventListener('keydown', function(e) {
@@ -554,15 +547,15 @@ function resetBorrowModal() {
 }
 
 function showSlipFields(show) {
-    // Display elements (student)
-    ['infoLastName','infoFirstName','infoMI','infoSection','infoAdviser'].forEach(id => {
+    // Both student and professor use the read-only display fields after lookup
+    ['infoStudentNo','infoLastName','infoFirstName','infoMI','infoSection','infoAdviser'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.classList.toggle('hidden', !show || currentBorrowType !== 'Student');
+        if (el) el.classList.toggle('hidden', !show);
     });
-    // Input elements (professor)
+    // Manual input fields are never used — always hidden
     ['inputLastName','inputFirstName','inputMI','inputSection','inputAdviser'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.classList.toggle('hidden', !show || currentBorrowType !== 'Professor');
+        if (el) el.classList.add('hidden');
     });
 }
 
@@ -576,36 +569,19 @@ function onBorrowTypeChange() {
     clearBorrowerInfo();
 
     if (currentBorrowType === 'Student') {
-        showSlipFields(false); // will show after RFID tap
+        showSlipFields(false); // shows after RFID tap
         setTimeout(() => document.getElementById('borrowRfidInput')?.focus(), 50);
     } else if (currentBorrowType === 'Professor') {
-        // Show manual input fields immediately
-        showSlipFields(true);
-        // Professor: enable submit when they start typing — watch inputs
-        enableSubmitOnProfessorInput();
+        showSlipFields(false); // shows after professor is selected from search
+        setTimeout(() => document.getElementById('professorSearch')?.focus(), 50);
     } else {
         showSlipFields(false);
     }
 }
 
-function enableSubmitOnProfessorInput() {
-    const btn = document.getElementById('borrowSubmitBtn');
-    ['inputLastName','inputFirstName'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.oninput = () => {
-                const ln = document.getElementById('inputLastName').value.trim();
-                const fn = document.getElementById('inputFirstName').value.trim();
-                btn.disabled = !(ln && fn);
-                btn.classList.toggle('opacity-50', btn.disabled);
-                btn.classList.toggle('cursor-not-allowed', btn.disabled);
-            };
-        }
-    });
-}
 
 function clearBorrowerInfo() {
-    ['infoLastName','infoFirstName','infoMI','infoSection','infoAdviser'].forEach(id => {
+    ['infoStudentNo','infoLastName','infoFirstName','infoMI','infoSection','infoAdviser'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.textContent = '—';
     });
@@ -616,6 +592,7 @@ function clearBorrowerInfo() {
 }
 
 function fillBorrowerInfo(data) {
+    document.getElementById('infoStudentNo').textContent = data.studentNumber || data.employeeNumber || '—';
     document.getElementById('infoLastName').textContent  = data.lastName   || '—';
     document.getElementById('infoFirstName').textContent = data.firstName  || '—';
     document.getElementById('infoMI').textContent        = data.middleName ? data.middleName[0] + '.' : '—';
@@ -671,7 +648,7 @@ async function lookupBorrowRfid(rfid) {
 
 // Professor search
 function onProfessorSearch() {
-    const q = document.getElementById('professorSearch').value.toLowerCase().trim();
+    const q  = document.getElementById('professorSearch').value.toLowerCase().trim();
     const dd = document.getElementById('professorDropdown');
     if (!q) { dd.classList.add('hidden'); return; }
 
@@ -682,21 +659,36 @@ function onProfessorSearch() {
     if (!matches.length) { dd.classList.add('hidden'); return; }
 
     dd.innerHTML = matches.map(p => `
-        <div class="px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer"
-             onclick="selectProfessor('${p.id}','${p.ln}','${p.fn}','${p.mn}','${p.section}')">
-            ${p.ln}, ${p.fn} <span class="text-gray-400 text-xs">${p.empno}</span>
+        <div class="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer transition"
+             onclick="selectProfessor('${p.id}','${p.ln.replace(/'/g,"\\'")}','${p.fn.replace(/'/g,"\\'")}','${p.mn.replace(/'/g,"\\'")}','${p.section.replace(/'/g,"\\'")}','${p.empno}')">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:#000147;">
+                ${p.ln.charAt(0).toUpperCase()}
+            </div>
+            <div class="min-w-0">
+                <p class="font-medium truncate">${p.ln}, ${p.fn}</p>
+                <p class="text-xs text-gray-400">${p.empno || 'Professor'}</p>
+            </div>
         </div>`).join('');
     dd.classList.remove('hidden');
 }
 
-function selectProfessor(id, ln, fn, mn, section) {
+function selectProfessor(id, ln, fn, mn, section, empno) {
+    // Fill search box to confirm selection
     document.getElementById('professorSearch').value = ln + ', ' + fn;
     document.getElementById('professorDropdown').classList.add('hidden');
-    document.getElementById('inputLastName').value  = ln;
-    document.getElementById('inputFirstName').value = fn;
-    document.getElementById('inputMI').value        = mn ? mn[0] : '';
-    document.getElementById('inputSection').value   = section;
-    document.getElementById('borrowUserId').value   = id;
+    const errEl = document.getElementById('professorError');
+    if (errEl) errEl.classList.add('hidden');
+
+    // Fill read-only info fields (same as student RFID fill)
+    document.getElementById('infoStudentNo').textContent = empno || '—';
+    document.getElementById('infoLastName').textContent  = ln || '—';
+    document.getElementById('infoFirstName').textContent = fn || '—';
+    document.getElementById('infoMI').textContent        = mn ? mn[0] + '.' : '—';
+    document.getElementById('infoSection').textContent   = section || '—';
+    document.getElementById('infoAdviser').textContent   = empno || '—';
+    document.getElementById('borrowUserId').value        = id;
+
+    showSlipFields(true);
     const btn = document.getElementById('borrowSubmitBtn');
     btn.disabled = false;
     btn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -718,3 +710,4 @@ libraryConnection.on('NewReservation', function() {
 });
 </script>
 }
+

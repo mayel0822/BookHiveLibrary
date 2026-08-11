@@ -150,9 +150,9 @@
             <div class="max-w-2xl space-y-6">
 
                 <!-- Avatar Card -->
-                <div class="bg-white rounded-2xl shadow p-8 flex items-center gap-6">
+                <div class="bg-white rounded-2xl shadow p-5 sm:p-8 flex items-center gap-4 sm:gap-6">
                     <div class="relative flex-shrink-0">
-                        <div id="avatarPreview" class="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center text-white text-3xl font-bold" style="background-color:#000147;">
+                        <div id="avatarPreview" class="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden flex items-center justify-center text-white text-3xl font-bold" style="background-color:#000147;">
                             @if (!string.IsNullOrEmpty(Model?.ProfilePicture))
                             {
                                 <img src="@Model.ProfilePicture" class="w-full h-full object-cover" />
@@ -169,21 +169,21 @@
                             </svg>
                         </button>
                     </div>
-                    <div>
-                        <p class="text-base font-bold text-gray-800">@userName</p>
-                        <p class="text-sm text-gray-400">@Model?.Email</p>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-base font-bold text-gray-800 truncate">@userName</p>
+                        <p class="text-sm text-gray-400 truncate">@Model?.Email</p>
                         <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold mt-1 inline-block">@(Model?.UserType ?? "Student")</span>
                     </div>
                 </div>
 
                 <!-- Account Info (read-only document style) -->
-                <div class="bg-white rounded-2xl shadow p-8 space-y-6">
+                <div class="bg-white rounded-2xl shadow p-5 sm:p-8 space-y-6">
                     <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-widest">Account Information</h2>
 
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
                         <div>
                             <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">First Name</p>
-                            <p class="text-sm font-semibold text-gray-800">@(string.IsNullOrEmpty(Model?.FirstName) ? "—" : Model.FirstName)</p>
+                            <p class="text-sm font-semibold text-gray-800 break-words">@(string.IsNullOrEmpty(Model?.FirstName) ? "—" : Model.FirstName)</p>
                         </div>
                         <div>
                             <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Middle Name</p>
@@ -197,7 +197,7 @@
 
                     <div class="border-t border-gray-100 pt-5">
                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Email</p>
-                        <p class="text-sm font-semibold text-gray-800">@Model?.Email</p>
+                        <p class="text-sm font-semibold text-gray-800 break-all">@Model?.Email</p>
                     </div>
 
                     <div class="border-t border-gray-100 pt-5">
@@ -217,10 +217,6 @@
                     </div>
 
                     <div class="border-t border-gray-100 pt-5 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">RFID Card No.</p>
-                            <p class="text-sm font-semibold text-gray-800">@(string.IsNullOrEmpty(Model?.RFIDNumber) ? "—" : Model.RFIDNumber)</p>
-                        </div>
                         <div>
                             <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Member Since</p>
                             <p class="text-sm font-semibold text-gray-800">@Model?.CreatedAt.ToString("MMMM dd, yyyy")</p>

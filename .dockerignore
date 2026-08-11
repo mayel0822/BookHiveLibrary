@@ -1,9 +1,0 @@
-node_modules/
-bin/
-obj/
-.vs/
-*.user
-*.suo
-.git/
-.gitignore
-README.md

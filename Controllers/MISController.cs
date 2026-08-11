@@ -14,18 +14,28 @@ namespace BookHiveLibrary.Controllers
     public class MISController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly GraphService _graphService;
         private readonly ApplicationDbContext _context;
 
-        public MISController(UserManager<ApplicationUser> userManager, GraphService graphService, ApplicationDbContext context)
+        public MISController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, GraphService graphService, ApplicationDbContext context)
         {
             _userManager  = userManager;
+            _signInManager = signInManager;
             _graphService = graphService;
             _context      = context;
         }
 
         public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
+            var user = await _userManager.GetUserAsync(context.HttpContext.User);
+            if (user != null && !user.IsActive)
+            {
+                await _signInManager.SignOutAsync();
+                context.Result = RedirectToAction("Index", "Home");
+                return;
+            }
+
             await SetCurrentUserViewBag();
             await next();
         }
@@ -47,15 +57,15 @@ namespace BookHiveLibrary.Controllers
 
         public async Task<IActionResult> Dashboard()
         {
-            ViewBag.TotalLibrarians  = await _userManager.Users.CountAsync(u => u.UserType == "Librarian");
-            ViewBag.TotalStudents    = await _userManager.Users.CountAsync(u => u.UserType == "Student");
-            ViewBag.TotalProfessors  = await _userManager.Users.CountAsync(u => u.UserType == "Professor");
+            ViewBag.TotalLibrarians  = await _userManager.Users.CountAsync(u => u.UserType == "Librarian" && u.IsActive);
+            ViewBag.TotalStudents    = await _userManager.Users.CountAsync(u => u.UserType == "Student"   && u.IsActive);
+            ViewBag.TotalProfessors  = await _userManager.Users.CountAsync(u => u.UserType == "Professor" && u.IsActive);
             ViewBag.ActiveLibrarians = await _userManager.Users.CountAsync(u => u.UserType == "Librarian" && u.IsActive);
             ViewBag.ActiveStudents   = await _userManager.Users.CountAsync(u => u.UserType == "Student"   && u.IsActive);
             ViewBag.ActiveProfessors = await _userManager.Users.CountAsync(u => u.UserType == "Professor" && u.IsActive);
 
             ViewBag.RecentUsers = await _userManager.Users
-                .Where(u => u.UserType == "Librarian" || u.UserType == "Student" || u.UserType == "Professor")
+                .Where(u => u.IsActive && (u.UserType == "Librarian" || u.UserType == "Student" || u.UserType == "Professor"))
                 .OrderByDescending(u => u.CreatedAt)
                 .Take(8)
                 .ToListAsync();
@@ -72,7 +82,7 @@ namespace BookHiveLibrary.Controllers
         public async Task<IActionResult> RegisterUser(
             string role, string firstName, string lastName, string middleName,
             string email, string studentNumber, string employeeNumber, string section,
-            string rfidNumber, string adviserEmail)
+            string rfidNumber, string adviserEmail, string? course, string? level)
         {
             if (await _userManager.FindByEmailAsync(email) != null)
             {
@@ -95,9 +105,12 @@ namespace BookHiveLibrary.Controllers
                 Section        = section ?? "",
                 RFIDNumber     = rfidNumber ?? "",
                 AdviserEmail   = adviserEmail ?? "",
-                EmailConfirmed = true,
-                IsActive       = true,
-                IsFirstLogin   = true
+                Course         = course ?? "",
+                Level          = level ?? "",
+                EmailConfirmed     = true,
+                IsActive           = true,
+                IsFirstLogin       = true,
+                RegistrationStatus = "Initial"
             };
 
             // Generate a random internal password — users log in via Microsoft, not password
@@ -163,6 +176,35 @@ namespace BookHiveLibrary.Controllers
                 TempData["Success"] = $"{user.FirstName} {user.LastName} has been archived.";
             }
             return RedirectToAction("UserInformation");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ArchivedDetail(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return NotFound();
+
+            ViewBag.RFIDLogs = await _context.RFIDLogs
+                .Where(r => r.UserId == id)
+                .OrderByDescending(r => r.TapInTime)
+                .Take(20)
+                .ToListAsync();
+
+            ViewBag.BookReservations = await _context.BookReservations
+                .Include(r => r.Book)
+                .Where(r => r.UserId == id)
+                .OrderByDescending(r => r.ReservationDate)
+                .Take(20)
+                .ToListAsync();
+
+            ViewBag.ComputerSessions = await _context.ComputerSessions
+                .Include(r => r.ComputerUnit)
+                .Where(r => r.UserId == id)
+                .OrderByDescending(r => r.StartTime)
+                .Take(20)
+                .ToListAsync();
+
+            return View(user);
         }
 
         [HttpPost]
@@ -252,17 +294,103 @@ namespace BookHiveLibrary.Controllers
             OfficeOpenXml.ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
             var results = new List<string[]>();
 
+            // Check if edited rows were submitted from the preview table
+            var editedHeadersJson = Request.Form["editedHeaders"].FirstOrDefault();
+            List<string[]>? editedDataRows = null;
+            List<string>? editedHeaders = null;
+
+            if (!string.IsNullOrEmpty(editedHeadersJson))
+            {
+                editedHeaders = System.Text.Json.JsonSerializer.Deserialize<List<string>>(editedHeadersJson);
+                editedDataRows = new List<string[]>();
+                int ri = 0;
+                while (Request.Form.ContainsKey($"editedRow_{ri}"))
+                {
+                    var rowJson = Request.Form[$"editedRow_{ri}"].FirstOrDefault();
+                    if (rowJson != null)
+                        editedDataRows.Add(System.Text.Json.JsonSerializer.Deserialize<string[]>(rowJson)!);
+                    ri++;
+                }
+            }
+
+            // Helper: get value by column name from either edited rows or Excel
+            Dictionary<string, int>? headerIndex = null;
+            if (editedHeaders != null)
+            {
+                headerIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < editedHeaders.Count; i++)
+                    if (!headerIndex.ContainsKey(editedHeaders[i]))
+                        headerIndex[editedHeaders[i]] = i;
+            }
+
+            string CellFromEdited(string[] row, string name)
+            {
+                if (headerIndex == null || !headerIndex.TryGetValue(name, out int idx)) return "";
+                return idx < row.Length ? row[idx].Trim() : "";
+            }
+
+            var validTypes = new[] { "Student", "Professor", "Librarian" };
+
+            if (editedDataRows != null)
+            {
+                // Use the edited preview data
+                foreach (var editedRow in editedDataRows)
+                {
+                    string userType    = CellFromEdited(editedRow, "UserType");
+                    string firstName   = CellFromEdited(editedRow, "FirstName");
+                    string middleName  = CellFromEdited(editedRow, "MiddleName");
+                    string lastName    = CellFromEdited(editedRow, "LastName");
+                    string email       = CellFromEdited(editedRow, "Email");
+                    string password    = CellFromEdited(editedRow, "Password");
+                    string phone       = CellFromEdited(editedRow, "Phone");
+                    string studentNum  = CellFromEdited(editedRow, "StudentNumber");
+                    string employeeNum = CellFromEdited(editedRow, "EmployeeNumber");
+                    string rfid        = CellFromEdited(editedRow, "RFIDNumber");
+
+                    string fullName = $"{firstName} {lastName}";
+                    string idNum    = !string.IsNullOrEmpty(studentNum) ? studentNum : employeeNum;
+
+                    if (!validTypes.Contains(userType, StringComparer.OrdinalIgnoreCase))
+                    {
+                        results.Add(new[] { userType, fullName, email, idNum, "Skipped (invalid UserType)" });
+                        continue;
+                    }
+                    userType = validTypes.First(t => t.Equals(userType, StringComparison.OrdinalIgnoreCase));
+
+                    if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+                    {
+                        results.Add(new[] { userType, fullName, email, idNum, "Skipped (missing email or password)" });
+                        continue;
+                    }
+
+                    var existing = await _userManager.FindByEmailAsync(email);
+                    if (existing != null) { results.Add(new[] { userType, fullName, email, idNum, "Already exists" }); continue; }
+
+                    var user = new ApplicationUser
+                    {
+                        UserName = email, Email = email, FirstName = firstName, LastName = lastName,
+                        MiddleName = middleName, UserType = userType, StudentNumber = studentNum,
+                        EmployeeNumber = employeeNum, PhoneNumber = phone, RFIDNumber = rfid,
+                        IsActive = true, EmailConfirmed = true, IsFirstLogin = true,
+                        CreatedAt = DateTime.Now, RegistrationStatus = "Initial"
+                    };
+                    var result = await _userManager.CreateAsync(user, password);
+                    results.Add(new[] { userType, fullName, email, idNum,
+                        result.Succeeded ? "Registered" : string.Join(", ", result.Errors.Select(e => e.Description)) });
+                }
+            }
+            else
+            {
+            // Fall back to reading directly from Excel (no edits)
             using var stream = new MemoryStream();
             await file.CopyToAsync(stream);
             using var package = new OfficeOpenXml.ExcelPackage(stream);
-            // Pick the first sheet that has more than 1 row (data + headers)
             var sheet = package.Workbook.Worksheets
                 .OrderByDescending(s => s.Dimension?.Rows ?? 0)
                 .First();
             int rowCount = sheet.Dimension?.Rows ?? 0;
             int colCount = sheet.Dimension?.Columns ?? 0;
 
-            // Build header→column index map from row 1 (case-insensitive)
             var headers = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             for (int c = 1; c <= colCount; c++)
             {
@@ -276,8 +404,6 @@ namespace BookHiveLibrary.Controllers
                 if (!headers.TryGetValue(name, out int col)) return "";
                 return sheet.Cells[row, col].Text.Trim();
             }
-
-            var validTypes = new[] { "Student", "Professor", "Librarian" };
 
             for (int row = 2; row <= rowCount; row++)
             {
@@ -329,16 +455,20 @@ namespace BookHiveLibrary.Controllers
                     EmployeeNumber = employeeNum,
                     PhoneNumber    = phone,
                     RFIDNumber     = rfid,
-                    IsActive       = true,
-                    EmailConfirmed = true,
-                    IsFirstLogin   = true,
-                    CreatedAt      = DateTime.Now
+                    IsActive           = true,
+                    EmailConfirmed     = true,
+                    IsFirstLogin       = true,
+                    CreatedAt          = DateTime.Now,
+                    RegistrationStatus = "Initial"
                 };
 
                 var result = await _userManager.CreateAsync(user, password);
+                if (result.Succeeded)
+                    await _userManager.AddToRoleAsync(user, userType);
                 results.Add(new[] { userType, fullName, email, idNum,
                     result.Succeeded ? "Registered" : string.Join(", ", result.Errors.Select(e => e.Description)) });
             }
+            } // end else (Excel path)
 
             int registered = results.Count(r => r[4] == "Registered");
             TempData["Success"] = $"Import complete, {registered} new user(s) has been successfully registered.";
@@ -381,9 +511,10 @@ namespace BookHiveLibrary.Controllers
                 AdviserEmail    = model.AdviserEmail,
                 Level           = model.Level,
                 Course          = model.Course,
-                EmailConfirmed  = true,
-                IsActive        = true,
-                IsFirstLogin    = true
+                EmailConfirmed     = true,
+                IsActive           = true,
+                IsFirstLogin       = true,
+                RegistrationStatus = "Initial"
             };
 
             var result = await _userManager.CreateAsync(user, model.Password);
@@ -403,12 +534,76 @@ namespace BookHiveLibrary.Controllers
 
         // ── Detail ───────────────────────────────────────────────────────────
 
+        // Map old course abbreviations to full names
+        private static readonly Dictionary<string, string> CourseFullNames = new()
+        {
+            ["BSCS"]   = "Bachelor of Science in Computer Science",
+            ["BSIT"]   = "Bachelor of Science in Information Technology",
+            ["BSCpE"]  = "Bachelor of Science in Computer Engineering",
+            ["BSBA"]   = "Bachelor of Science in Business Administration",
+            ["BSRTCS"] = "Bachelor of Science in Retail Technology and Consumer Science",
+            ["BACOMM"] = "Bachelor of Arts in Communication",
+            ["BAP"]    = "Bachelor of Arts in Psychology",
+            ["BSTM"]   = "Bachelor of Science in Tourism Management",
+            ["ACT"]    = "2-yr. Associate in Computer Technology",
+            ["ART"]    = "2-yr. Associate in Retail Technology",
+            ["ABM"]    = "Accountancy, Business, and Management",
+            ["STEM"]   = "Science, Technology, Engineering, and Mathematics",
+            ["HUMSS"]  = "Humanities and Social Sciences",
+            ["GA"]     = "General Academic",
+            ["ICT"]    = "IT in Mobile App and Web Development",
+            ["DA"]     = "Digital Arts",
+        };
+
         [HttpGet]
         public async Task<IActionResult> Detail(string id)
         {
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return NotFound();
+
+            // Auto-fill Course and Level from the section record if missing
+            if (!string.IsNullOrEmpty(user.Section) &&
+                (string.IsNullOrEmpty(user.Course) || string.IsNullOrEmpty(user.Level)))
+            {
+                var section = await _context.Sections.FirstOrDefaultAsync(s => s.SectionName == user.Section);
+                if (section != null)
+                {
+                    if (string.IsNullOrEmpty(user.Course)) user.Course = section.Course;
+                    if (string.IsNullOrEmpty(user.Level))  user.Level  = section.Level;
+                    await _userManager.UpdateAsync(user);
+                }
+            }
+
+            // Expand abbreviation to full course name if stored as short code
+            if (!string.IsNullOrEmpty(user.Course) && CourseFullNames.TryGetValue(user.Course, out var fullName))
+            {
+                user.Course = fullName;
+                await _userManager.UpdateAsync(user);
+            }
+
             return View(user);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveUserDetails(string id, string rfidNumber,
+            string? section, string? course, string? level)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) { TempData["Error"] = "User not found."; return RedirectToAction("UserInformation"); }
+
+            user.RFIDNumber = rfidNumber ?? "";
+            if (section  != null) user.Section = section;
+            if (course   != null) user.Course  = course;
+            if (level    != null) user.Level   = level;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (result.Succeeded)
+                TempData["Success"] = "User details updated successfully.";
+            else
+                TempData["Error"] = string.Join(", ", result.Errors.Select(e => e.Description));
+
+            return RedirectToAction("Detail", new { id });
         }
 
         [HttpPost]
@@ -593,6 +788,26 @@ namespace BookHiveLibrary.Controllers
                 TempData["Success"] = $"{displayName}'s account has been deleted.";
             }
             return RedirectToAction(returnAction);
+        }
+
+        // ── One-time role repair: assigns missing roles to all users ──────────
+        // Visit /MIS/RepairRoles once to fix existing accounts, then it's safe to leave.
+        public async Task<IActionResult> RepairRoles()
+        {
+            var users = await _userManager.Users.ToListAsync();
+            int repaired = 0;
+            foreach (var u in users)
+            {
+                if (string.IsNullOrEmpty(u.UserType)) continue;
+                var roles = await _userManager.GetRolesAsync(u);
+                if (!roles.Contains(u.UserType))
+                {
+                    await _userManager.AddToRoleAsync(u, u.UserType);
+                    repaired++;
+                }
+            }
+            TempData["Success"] = $"Role repair complete — {repaired} account(s) were fixed.";
+            return RedirectToAction("UserInformation");
         }
     }
 }

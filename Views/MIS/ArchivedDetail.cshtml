@@ -1,0 +1,248 @@
+@using BookHiveLibrary.Models
+@model ApplicationUser
+@{
+    Layout = "~/Views/Shared/_MISLayout.cshtml";
+    ViewData["Title"] = $"{Model.FirstName} {Model.LastName} — Archived";
+    var rfidLogs = ViewBag.RFIDLogs as List<RFIDLog> ?? new();
+    var bookReservations = ViewBag.BookReservations as List<BookReservation> ?? new();
+    var computerSessions = ViewBag.ComputerSessions as List<ComputerSession> ?? new();
+}
+
+<div class="mb-4">
+    <a href="@Url.Action("ArchivedUsers","MIS")" class="text-sm text-blue-600 hover:underline flex items-center gap-1">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        Back to Archived Users
+    </a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch mb-6">
+
+    <!-- Left: Profile card -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center text-center gap-3">
+        <div class="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center text-white text-2xl font-bold flex-shrink-0" style="background-color:#000147;">
+            @if (!string.IsNullOrEmpty(Model.ProfilePicture))
+            {
+                <img src="@Model.ProfilePicture" class="w-full h-full object-cover" />
+            }
+            else
+            {
+                @(Model.FirstName?.Length > 0 ? Model.FirstName[0].ToString().ToUpper() : "?")
+            }
+        </div>
+        <div>
+            <p class="text-sm font-bold text-gray-800 leading-snug">@($"{Model.LastName}, {Model.FirstName} {Model.MiddleName}".Trim())</p>
+            <span class="text-xs px-2.5 py-1 rounded-full font-semibold mt-1 inline-block
+                @(Model.UserType == "Librarian" ? "bg-indigo-100 text-indigo-700" :
+                  Model.UserType == "Student"   ? "bg-green-100 text-green-700"   :
+                  "bg-blue-100 text-blue-700")">
+                @Model.UserType
+            </span>
+        </div>
+        <div class="w-full pt-2 border-t border-gray-100 text-sm text-gray-500 space-y-1 text-left">
+            <p><span class="font-medium text-gray-700">Status:</span> <span class="text-red-500 font-medium">Deactivated</span></p>
+            <p><span class="font-medium text-gray-700">Registered:</span> @Model.CreatedAt.ToString("MMM dd, yyyy")</p>
+            @if (!string.IsNullOrEmpty(Model.DeactivationReason))
+            {
+                <p><span class="font-medium text-gray-700">Reason:</span> @Model.DeactivationReason</p>
+            }
+        </div>
+        <div class="w-full pt-3 border-t border-gray-100">
+            <form method="post" action="/MIS/RestoreUser">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button type="submit" class="w-full py-2 text-sm font-medium rounded-xl border border-green-300 text-green-700 hover:bg-green-50 transition">
+                    Restore Account
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right: Account Info -->
+    <div class="lg:col-span-2 flex flex-col gap-6 h-full">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1">
+            <h3 class="text-sm font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100">Account Information</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div class="min-w-0">
+                    <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Email</p>
+                    <p class="text-gray-700 truncate" title="@(Model.Email ?? "")">@(Model.Email ?? "—")</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Phone Number</p>
+                    <p class="text-gray-700">@(string.IsNullOrEmpty(Model.PhoneNumber) ? "—" : Model.PhoneNumber)</p>
+                </div>
+                @if (Model.UserType == "Student")
+                {
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Student Number</p>
+                        <p class="text-gray-700 font-mono">@(string.IsNullOrEmpty(Model.StudentNumber) ? "—" : Model.StudentNumber)</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Section</p>
+                        <p class="text-gray-700">@(string.IsNullOrEmpty(Model.Section) ? "—" : Model.Section)</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Course</p>
+                        <p class="text-gray-700">@(string.IsNullOrEmpty(Model.Course) ? "—" : Model.Course)</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Year Level</p>
+                        <p class="text-gray-700">@(string.IsNullOrEmpty(Model.Level) ? "—" : Model.Level)</p>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Employee Number</p>
+                        <p class="text-gray-700 font-mono">@(string.IsNullOrEmpty(Model.EmployeeNumber) ? "—" : Model.EmployeeNumber)</p>
+                    </div>
+                }
+                <div>
+                    <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">RFID Number</p>
+                    <p class="text-gray-700 font-mono">@(string.IsNullOrEmpty(Model.RFIDNumber) ? "—" : Model.RFIDNumber)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction History Tabs -->
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 flex gap-4" style="background-color:#000147;">
+        <button onclick="showTab('tap')" id="tab-tap"
+                class="tab-btn text-sm font-medium px-4 py-1.5 rounded-lg text-white bg-white/20">
+            Tap In/Out (@rfidLogs.Count)
+        </button>
+        <button onclick="showTab('book')" id="tab-book"
+                class="tab-btn text-sm font-medium px-4 py-1.5 rounded-lg text-blue-200 hover:text-white">
+            Book Reservations (@bookReservations.Count)
+        </button>
+        <button onclick="showTab('computer')" id="tab-computer"
+                class="tab-btn text-sm font-medium px-4 py-1.5 rounded-lg text-blue-200 hover:text-white">
+            Computer Sessions (@computerSessions.Count)
+        </button>
+    </div>
+
+    <!-- Tap In/Out -->
+    <div id="panel-tap" class="tab-panel overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="text-xs uppercase text-gray-500 bg-gray-50 border-b border-gray-100">
+                <tr>
+                    <th class="px-5 py-3 text-left">#</th>
+                    <th class="px-5 py-3 text-left">Tap In</th>
+                    <th class="px-5 py-3 text-left">Tap Out</th>
+                    <th class="px-5 py-3 text-left">Duration</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                @if (!rfidLogs.Any())
+                {
+                    <tr><td colspan="4" class="px-5 py-8 text-center text-gray-400">No tap records found.</td></tr>
+                }
+                @{ int n = 1; }
+                @foreach (var log in rfidLogs)
+                {
+                    var duration = log.TapOutTime.HasValue
+                        ? (log.TapOutTime.Value - log.TapInTime).ToString(@"hh\:mm\:ss")
+                        : "Still inside";
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-5 py-3 text-gray-400 text-xs">@(n++)</td>
+                        <td class="px-5 py-3 text-gray-700">@log.TapInTime.ToString("MMM dd, yyyy hh:mm tt")</td>
+                        <td class="px-5 py-3 text-gray-700">@(log.TapOutTime.HasValue ? log.TapOutTime.Value.ToString("MMM dd, yyyy hh:mm tt") : "—")</td>
+                        <td class="px-5 py-3 text-gray-500">@duration</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Book Reservations -->
+    <div id="panel-book" class="tab-panel hidden overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="text-xs uppercase text-gray-500 bg-gray-50 border-b border-gray-100">
+                <tr>
+                    <th class="px-5 py-3 text-left">#</th>
+                    <th class="px-5 py-3 text-left">Book</th>
+                    <th class="px-5 py-3 text-left">Reserved</th>
+                    <th class="px-5 py-3 text-left">Due Date</th>
+                    <th class="px-5 py-3 text-left">Returned</th>
+                    <th class="px-5 py-3 text-left">Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                @if (!bookReservations.Any())
+                {
+                    <tr><td colspan="6" class="px-5 py-8 text-center text-gray-400">No book reservations found.</td></tr>
+                }
+                @{ n = 1; }
+                @foreach (var r in bookReservations)
+                {
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-5 py-3 text-gray-400 text-xs">@(n++)</td>
+                        <td class="px-5 py-3 font-medium text-gray-800">@(r.Book?.Title ?? "—")</td>
+                        <td class="px-5 py-3 text-gray-600">@r.ReservationDate.ToString("MMM dd, yyyy")</td>
+                        <td class="px-5 py-3 text-gray-600">@(r.DueDate.HasValue ? r.DueDate.Value.ToString("MMM dd, yyyy") : "—")</td>
+                        <td class="px-5 py-3 text-gray-600">@(r.ActualReturnDate.HasValue ? r.ActualReturnDate.Value.ToString("MMM dd, yyyy") : "—")</td>
+                        <td class="px-5 py-3">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium
+                                @(r.Status == "Returned" ? "bg-green-100 text-green-700" :
+                                  r.Status == "Overdue"  ? "bg-red-100 text-red-700" :
+                                  r.Status == "PickedUp" ? "bg-blue-100 text-blue-700" :
+                                  "bg-gray-100 text-gray-600")">
+                                @r.Status
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Computer Sessions -->
+    <div id="panel-computer" class="tab-panel hidden overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="text-xs uppercase text-gray-500 bg-gray-50 border-b border-gray-100">
+                <tr>
+                    <th class="px-5 py-3 text-left">#</th>
+                    <th class="px-5 py-3 text-left">Computer</th>
+                    <th class="px-5 py-3 text-left">Start</th>
+                    <th class="px-5 py-3 text-left">End</th>
+                    <th class="px-5 py-3 text-left">Duration</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                @if (!computerSessions.Any())
+                {
+                    <tr><td colspan="5" class="px-5 py-8 text-center text-gray-400">No computer sessions found.</td></tr>
+                }
+                @{ n = 1; }
+                @foreach (var s in computerSessions)
+                {
+                    var dur = s.EndTime.HasValue
+                        ? (s.EndTime.Value - s.StartTime).ToString(@"hh\:mm\:ss")
+                        : "Active";
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-5 py-3 text-gray-400 text-xs">@(n++)</td>
+                        <td class="px-5 py-3 text-gray-700">@(s.ComputerUnit?.ComputerNumber ?? "—")</td>
+                        <td class="px-5 py-3 text-gray-600">@s.StartTime.ToString("MMM dd, yyyy hh:mm tt")</td>
+                        <td class="px-5 py-3 text-gray-600">@(s.EndTime.HasValue ? s.EndTime.Value.ToString("MMM dd, yyyy hh:mm tt") : "—")</td>
+                        <td class="px-5 py-3 text-gray-500">@dur</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function showTab(name) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('bg-white/20', 'text-white');
+        b.classList.add('text-blue-200');
+    });
+    document.getElementById('panel-' + name).classList.remove('hidden');
+    const btn = document.getElementById('tab-' + name);
+    btn.classList.add('bg-white/20', 'text-white');
+    btn.classList.remove('text-blue-200');
+}
+</script>

@@ -99,10 +99,37 @@
                 </div>
             }
 
+            @if (TempData["Error"] != null)
+            {
+                <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
+                    @TempData["Error"]
+                </div>
+            }
+            @if (TempData["Success"] != null)
+            {
+                <div class="mb-4 px-4 py-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">
+                    @TempData["Success"]
+                </div>
+            }
+
             <div class="mt-auto flex justify-end">
-                <a href="@Url.Action("BookViewing","Student")" class="inline-block bg-[#000147] hover:bg-[#000147]/80 text-white px-8 py-3 rounded-xl font-medium text-sm transition">
-                    Reserve
-                </a>
+                @if (isAvail)
+                {
+                    <form method="post" asp-action="Reserve" asp-controller="Student">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="bookId" value="@Model.Id" />
+                        <input type="hidden" name="returnToDetail" value="true" />
+                        <button type="submit" class="inline-block bg-[#000147] hover:bg-[#000147]/80 text-white px-8 py-3 rounded-xl font-medium text-sm transition">
+                            Reserve
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <button disabled class="inline-block bg-gray-300 text-gray-500 px-8 py-3 rounded-xl font-medium text-sm cursor-not-allowed">
+                        Not Available
+                    </button>
+                }
             </div>
         </div>
     </div>

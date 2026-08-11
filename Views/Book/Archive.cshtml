@@ -1,4 +1,4 @@
-@using BookHiveLibrary.Models
+﻿@using BookHiveLibrary.Models
 @model IEnumerable<Book>
 @{
     Layout = "~/Views/Shared/_LibrarianLayout.cshtml";
@@ -32,21 +32,21 @@
     </div>
 
     <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-            <thead style="background-color:#23354D;" class="text-white">
+        <table class="bh-table">
+            <thead>
                 <tr>
-                    <th class="px-5 py-3 text-left font-semibold">BookID</th>
-                    <th class="px-5 py-3 text-left font-semibold">BookTitle</th>
-                    <th class="px-5 py-3 text-left font-semibold">Author</th>
-                    <th class="px-5 py-3 text-left font-semibold">Published Year</th>
-                    <th class="px-5 py-3 text-left font-semibold">Reason</th>
-                    <th class="px-5 py-3 text-left font-semibold">Action</th>
+                    <th>BookID</th>
+                    <th>BookTitle</th>
+                    <th>Author</th>
+                    <th>Published Year</th>
+                    <th>Reason</th>
+                    <th>Action</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody>
                 @foreach (var book in Model)
                 {
-                    <tr class="hover:bg-gray-50">
+                    <tr>
                         <td class="px-5 py-3 text-gray-600 font-mono text-xs">@book.CallNumber</td>
                         <td class="px-5 py-3 font-medium text-gray-800">@book.Title</td>
                         <td class="px-5 py-3 text-gray-600">@book.Author</td>
@@ -70,3 +70,4 @@
         </table>
     </div>
 </div>
+

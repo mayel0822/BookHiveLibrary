@@ -135,6 +135,10 @@ namespace BookHiveLibrary.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("RegistrationStatus")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Section")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");

@@ -89,14 +89,17 @@
                         <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Student Number</p>
                         <p class="text-gray-700 font-mono">@(string.IsNullOrEmpty(Model.StudentNumber) ? "—" : Model.StudentNumber)</p>
                     </div>
+                    <!-- Section (inline editable) -->
                     <div>
                         <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Section</p>
                         <p class="text-gray-700">@(string.IsNullOrEmpty(Model.Section) ? "—" : Model.Section)</p>
                     </div>
+                    <!-- Course (inline editable) -->
                     <div>
                         <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Course</p>
                         <p class="text-gray-700">@(string.IsNullOrEmpty(Model.Course) ? "—" : Model.Course)</p>
                     </div>
+                    <!-- Year Level (inline editable) -->
                     <div>
                         <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">Year Level</p>
                         <p class="text-gray-700">@(string.IsNullOrEmpty(Model.Level) ? "—" : Model.Level)</p>
@@ -113,10 +116,28 @@
                         <p class="text-gray-700 font-mono">@(string.IsNullOrEmpty(Model.EmployeeNumber) ? "—" : Model.EmployeeNumber)</p>
                     </div>
                 }
-                <div>
+
+                <!-- RFID Number — read-only with edit toggle -->
+                <div class="col-span-2">
                     <p class="text-xs text-gray-400 uppercase font-medium mb-0.5">RFID Number</p>
-                    <p class="text-gray-700 font-mono">@(string.IsNullOrEmpty(Model.RFIDNumber) ? "—" : Model.RFIDNumber)</p>
+                    <form id="rfidForm" method="post" action="@Url.Action("SaveUserDetails","MIS")" class="flex items-center gap-2">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <input type="text" name="rfidNumber" value="@Model.RFIDNumber"
+                               id="rfidDetailInput" readonly
+                               class="w-full border border-transparent rounded-lg px-3 py-1.5 text-xs font-mono bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                        <button type="button" id="rfidEditBtn" onclick="startRfidEdit()"
+                                class="flex-shrink-0 px-3 py-1.5 text-xs border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition whitespace-nowrap">
+                            Edit
+                        </button>
+                        <button type="submit" id="rfidSaveBtn"
+                                class="hidden flex-shrink-0 px-3 py-1.5 text-xs text-white rounded-lg hover:opacity-90 transition whitespace-nowrap"
+                                style="background-color:#000147;">
+                            Save
+                        </button>
+                    </form>
                 </div>
+
             </div>
         </div>
 
@@ -181,4 +202,22 @@ function submitDeactivate() {
     document.getElementById('deactivateReasonInput').value = r;
     document.getElementById('deactivateForm').submit();
 }
+
+
+
+// RFID edit toggle
+function startRfidEdit() {
+    const inp = document.getElementById('rfidDetailInput');
+    const editBtn = document.getElementById('rfidEditBtn');
+    const saveBtn = document.getElementById('rfidSaveBtn');
+    inp.readOnly = false;
+    inp.classList.remove('border-transparent', 'bg-gray-50');
+    inp.classList.add('border-gray-300', 'bg-white');
+    inp.focus();
+    editBtn.classList.add('hidden');
+    saveBtn.classList.remove('hidden');
+}
+
+
+// After form submit (page reload), field stays read-only by default — no extra JS needed.
 </script>

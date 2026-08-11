@@ -5,13 +5,6 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
 <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', sans-serif; }
-    .hero-bg {
-        background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 50%, #f5f0ff 100%);
-        position: relative;
-        overflow: hidden;
-    }
     .hero-bg::before {
         content: '';
         position: absolute;
@@ -28,171 +21,258 @@
         background: rgba(139,92,246,0.08);
         border-radius: 50%;
     }
-    .nav-link:hover { color: #4f46e5; }
-    .feature-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.10); }
-    .feature-card { transition: all 0.25s ease; }
 </style>
 
 <!-- Navbar -->
-<nav style="background:#000147;display:flex;align-items:center;justify-content:space-between;padding:14px 32px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
-    <div style="display:flex;align-items:center;gap:10px;">
-        <span style="font-family:'Dancing Script',cursive;font-size:1.9rem;font-weight:800;color:white;line-height:1;">BookHive</span>
-        <span style="color:#93c5fd;font-size:0.85rem;">| STI San Jose Del Monte</span>
+<nav class="flex items-center justify-between px-4 sm:px-8 py-3.5 sticky top-0 shadow-md" style="background:#000147;z-index:100;">
+    <div class="flex items-center gap-2">
+        <span class="text-white leading-none" style="font-family:'Dancing Script',cursive;font-size:1.6rem;font-weight:900;">BookHive</span>
+        <span class="text-blue-300 text-xs hidden sm:inline">| STI San Jose Del Monte</span>
     </div>
-    <div style="display:flex;align-items:center;gap:28px;">
-        <a href="#features" style="color:#93c5fd;text-decoration:none;font-size:0.9rem;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#93c5fd'">Features</a>
-        <a href="#about" style="color:#93c5fd;text-decoration:none;font-size:0.9rem;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#93c5fd'">About</a>
+    <div class="flex items-center gap-4 sm:gap-7">
+        <a href="#features" class="text-blue-300 no-underline text-sm hover:text-white transition-colors">Features</a>
+        <a href="#about" class="text-blue-300 no-underline text-sm hover:text-white transition-colors">About</a>
         <button onclick="openLoginModal()"
-                style="background:#fff;color:#000147;border:none;border-radius:999px;padding:8px 22px;font-size:0.9rem;font-weight:600;cursor:pointer;transition:background 0.15s;"
-                onmouseover="this.style.background='#e8eeff'" onmouseout="this.style.background='#fff'">
+                class="bg-white border-0 rounded-full px-4 py-2 text-sm font-semibold cursor-pointer transition-colors hover:bg-indigo-50"
+                style="color:#000147;">
             Log in
         </button>
     </div>
 </nav>
 
 <!-- Hero Section -->
-<section class="hero-bg py-16 px-8 md:px-16">
-    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-12">
-        <!-- Left: Text -->
-        <div class="flex-1">
-            <span class="inline-block bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">Library Management System</span>
-            <h1 style="color:#000147;font-size:3rem;font-weight:900;line-height:1.1;" class="mb-4">
-                Your Smart<br/>
-                <span style="color:#4f46e5;">Library</span> Hub
-            </h1>
-            <p class="text-gray-500 text-lg mb-8 leading-relaxed">
-                Access books, reserve computers, and manage your library account — all in one place at STI San Jose Del Monte.
-            </p>
-            <div class="flex flex-wrap gap-4 mb-8">
-                <div class="flex items-center gap-2 text-gray-600 text-sm">
-                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    Online Book Reservation
-                </div>
-                <div class="flex items-center gap-2 text-gray-600 text-sm">
-                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    Computer Slot Booking
-                </div>
-                <div class="flex items-center gap-2 text-gray-600 text-sm">
-                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    SMS Due Date Reminders
-                </div>
-                <div class="flex items-center gap-2 text-gray-600 text-sm">
-                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    Microsoft 365 Sign-In
-                </div>
-            </div>
+@if (TempData["Error"] != null)
+{
+    <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-100 border border-red-400 text-red-700 px-6 py-3 rounded-lg shadow-lg text-sm">
+        @TempData["Error"]
+    </div>
+}
+
+<section class="hero-bg relative py-24 px-8 md:px-16" style="background:linear-gradient(135deg,#f0f4ff 0%,#e8eeff 50%,#f5f0ff 100%);overflow:clip;">
+    <!-- Decorative blobs -->
+    <div class="absolute top-0 left-0 w-96 h-96 rounded-full opacity-20 pointer-events-none" style="background:radial-gradient(circle,#6366f1,transparent);transform:translate(-30%,-30%);"></div>
+    <div class="absolute bottom-0 right-0 w-80 h-80 rounded-full opacity-20 pointer-events-none" style="background:radial-gradient(circle,#818cf8,transparent);transform:translate(30%,30%);"></div>
+
+    <div class="max-w-4xl mx-auto text-center relative">
+        <!-- Badge -->
+        <span class="inline-block bg-indigo-100 text-indigo-700 text-xs font-semibold px-4 py-1.5 rounded-full mb-6 uppercase tracking-widest">
+            STI San Jose Del Monte — Library Management System
+        </span>
+
+        <!-- Headline -->
+        <h1 class="font-black mb-6" style="color:#000147;font-size:clamp(2.5rem,6vw,4rem);line-height:1.1;">
+            The Smarter Way to<br/>
+            <span style="color:#4f46e5;">Manage Your Library</span>
+        </h1>
+
+        <!-- Subtext -->
+        <p class="text-gray-500 text-lg mb-10 leading-relaxed max-w-2xl mx-auto">
+            BookHive brings your entire library experience online — reserve books, check computer slot, track book due dates, and sign in securely with your Microsoft 365 account. No paperwork. No waiting in line.
+        </p>
+
+        <!-- CTA -->
+        <div class="flex flex-wrap justify-center gap-4">
             <button onclick="openLoginModal()"
                     style="background:#000147;"
-                    class="px-8 py-3 text-white rounded-full font-semibold text-base hover:opacity-90 transition shadow-lg">
+                    class="px-10 py-3.5 text-white rounded-full font-semibold text-base hover:opacity-90 transition shadow-lg">
                 Get Started →
             </button>
-        </div>
-
-        <!-- Right: Illustration -->
-        <div class="flex-1 flex justify-center">
-            <div style="background:linear-gradient(135deg,#e8eeff,#ede9fe);border-radius:32px;padding:48px;max-width:380px;width:100%;" class="flex flex-col items-center gap-6 shadow-xl">
-                <!-- Book icon -->
-                <div style="background:#000147;border-radius:20px;padding:24px;">
-                    <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                    </svg>
-                </div>
-                <div class="text-center">
-                    <p class="font-bold text-gray-800 text-lg">BookHive Library</p>
-                    <p class="text-gray-500 text-sm">STI San Jose Del Monte</p>
-                </div>
-                <!-- Mini stats -->
-                <div class="grid grid-cols-3 gap-3 w-full">
-                    <div class="bg-white rounded-xl p-3 text-center shadow-sm">
-                        <p style="color:#000147;" class="font-bold text-xl">Books</p>
-                        <p class="text-gray-400 text-xs">Catalog</p>
-                    </div>
-                    <div class="bg-white rounded-xl p-3 text-center shadow-sm">
-                        <p style="color:#000147;" class="font-bold text-xl">PCs</p>
-                        <p class="text-gray-400 text-xs">Available</p>
-                    </div>
-                    <div class="bg-white rounded-xl p-3 text-center shadow-sm">
-                        <p style="color:#000147;" class="font-bold text-xl">SMS</p>
-                        <p class="text-gray-400 text-xs">Alerts</p>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </section>
 
+<!-- Circular Photo Carousel Section -->
+<section class="py-16 bg-white" style="overflow-x:clip;">
+    <div class="max-w-5xl mx-auto text-center px-8">
+        <div style="position:relative;height:320px;perspective:900px;">
+            <div id="heroCarousel3d" style="position:absolute;inset:0;transform-style:preserve-3d;"></div>
+        </div>
+
+        <div style="height:36px;margin-top:100px;position:relative;">
+            <p id="heroCarouselTitle" style="font-size:1rem;font-weight:700;color:#000147;opacity:0;transform:translateY(8px);transition:opacity .4s ease,transform .4s ease;"></p>
+        </div>
+        <div id="heroCarouselDots" class="flex justify-center gap-2 mt-3"></div>
+    </div>
+</section>
+
+
+<style>
+.c-item {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform-origin: center center;
+    transition: transform .7s cubic-bezier(.4,0,.2,1),
+                filter .7s ease,
+                opacity .7s ease,
+                box-shadow .7s ease;
+    cursor: pointer;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 4px solid white;
+}
+.c-item .c-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+.c-item img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
+</style>
+
 <!-- Features Section -->
 <section id="features" class="py-16 px-8 md:px-16 bg-gray-50">
-    <div class="max-w-6xl mx-auto">
-        <div class="text-center mb-12">
-            <h2 style="color:#000147;" class="text-3xl font-bold mb-3">What You Can Do</h2>
-            <p class="text-gray-500">Everything you need to manage your library experience</p>
+    <div class="max-w-4xl mx-auto">
+        <div class="text-center mb-14">
+            <h2 class="text-3xl font-bold mb-3" style="color:#000147;">What You Can Do</h2>
+            <p class="text-gray-500">Click any feature to learn more</p>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            <!-- Feature 1 -->
-            <div class="feature-card bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
-                <div style="background:#eef2ff;" class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8" style="color:#4f46e5;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                    </svg>
+
+        <!-- Icon grid wrapper — relative so panel can overlay -->
+        <div class="relative" id="featGrid">
+
+            <!-- Default: icons centered in a row -->
+            <div class="flex justify-center gap-12 flex-wrap" id="featIcons">
+
+                <div class="feat-item flex flex-col items-center gap-3 cursor-pointer select-none" onclick="openFeat(0)">
+                    <div class="feat-icon w-20 h-20 rounded-2xl flex items-center justify-center transition-transform duration-300 hover:scale-110" style="background:#000147;">
+                        <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    </div>
+                    <span class="text-sm font-semibold text-center leading-tight" style="color:#000147;">Browse Books</span>
                 </div>
-                <h3 class="font-bold text-gray-800 mb-2">Browse Books</h3>
-                <p class="text-gray-500 text-sm">Search and browse the full library catalog anytime, and reserve books online before visiting.</p>
-            </div>
-            <!-- Feature 2 -->
-            <div class="feature-card bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
-                <div style="background:#f0fdf4;" class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                    </svg>
+
+                <div class="feat-item flex flex-col items-center gap-3 cursor-pointer select-none" onclick="openFeat(1)">
+                    <div class="feat-icon w-20 h-20 rounded-2xl flex items-center justify-center transition-transform duration-300 hover:scale-110" style="background:#000147;">
+                        <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    </div>
+                    <span class="text-sm font-semibold text-center leading-tight" style="color:#000147;">Computer Access</span>
                 </div>
-                <h3 class="font-bold text-gray-800 mb-2">Computer Access</h3>
-                <p class="text-gray-500 text-sm">Check available computers in real time and use library PCs during your visit.</p>
-            </div>
-            <!-- Feature 3 -->
-            <div class="feature-card bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
-                <div style="background:#fff7ed;" class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                    </svg>
+
+                <div class="feat-item flex flex-col items-center gap-3 cursor-pointer select-none" onclick="openFeat(2)">
+                    <div class="feat-icon w-20 h-20 rounded-2xl flex items-center justify-center transition-transform duration-300 hover:scale-110" style="background:#000147;">
+                        <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    </div>
+                    <span class="text-sm font-semibold text-center leading-tight" style="color:#000147;">Return Reminders</span>
                 </div>
-                <h3 class="font-bold text-gray-800 mb-2">SMS Reminders</h3>
-                <p class="text-gray-500 text-sm">Get automatic text notifications before your borrowed books are due so you never miss a return.</p>
-            </div>
-            <!-- Feature 4 -->
-            <div class="feature-card bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
-                <div style="background:#fdf4ff;" class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                    </svg>
+
+                <div class="feat-item flex flex-col items-center gap-3 cursor-pointer select-none" onclick="openFeat(3)">
+                    <div class="feat-icon w-20 h-20 rounded-2xl flex items-center justify-center transition-transform duration-300 hover:scale-110" style="background:#000147;">
+                        <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    </div>
+                    <span class="text-sm font-semibold text-center leading-tight" style="color:#000147;">Messaging</span>
                 </div>
-                <h3 class="font-bold text-gray-800 mb-2">Messaging</h3>
-                <p class="text-gray-500 text-sm">Send messages directly to librarians or MIS staff through the built-in messaging system.</p>
+
             </div>
+
+            <!-- Expanded panel — overlays icon row, hidden by default -->
+            <div id="featPanel" style="display:none;position:absolute;inset:0;z-index:10;opacity:0;transition:opacity .35s ease;">
+                <div class="rounded-3xl overflow-hidden flex shadow-xl" style="background:#fff;border:1px solid #e0e3f8;min-height:180px;">
+                    <!-- Icon + name left (dark bg) -->
+                    <div class="flex flex-col items-center justify-center gap-3 p-8 flex-shrink-0 cursor-pointer" style="background:#000147;min-width:140px;" onclick="closeFeat()">
+                        <div id="featPanelIcon" class="w-16 h-16 rounded-2xl flex items-center justify-center" style="background:rgba(255,255,255,0.15);"></div>
+                        <span id="featPanelName" class="text-white text-sm font-bold text-center leading-snug"></span>
+                    </div>
+                    <!-- Details right (light bg) -->
+                    <div class="p-8 flex-1 flex flex-col justify-center">
+                        <h3 id="featPanelTitle" class="text-xl font-black mb-3" style="color:#000147;"></h3>
+                        <p id="featPanelDesc" class="text-gray-600 text-sm leading-relaxed"></p>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </section>
 
 <!-- About Section -->
-<section id="about" style="background:#000147;" class="py-16 px-8 md:px-16">
-    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-12">
-        <div class="flex-1">
-            <div style="background:rgba(255,255,255,0.08);border-radius:24px;padding:40px;" class="flex flex-col gap-4">
-                <svg class="w-12 h-12 text-blue-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/>
-                </svg>
-                <p class="text-white text-xl font-bold">STI San Jose Del Monte</p>
-                <p class="text-blue-200 text-sm leading-relaxed">Leveraging modern technology to bring a smarter, more efficient library experience to every student, professor, and staff member.</p>
+<section id="about" class="py-20 px-8 md:px-16" style="background:#000147;">
+    <div class="max-w-5xl mx-auto">
+
+        <!-- Header -->
+        <div class="text-center mb-14">
+            <span class="inline-block text-xs font-semibold px-4 py-1.5 rounded-full mb-4 uppercase tracking-widest" style="background:rgba(255,255,255,0.1);color:#93c5fd;">About BookHive</span>
+            <h2 class="text-white text-4xl font-black mb-4">A Modern Library for a Modern Campus</h2>
+            <p class="text-blue-200 text-lg leading-relaxed max-w-3xl mx-auto">
+                BookHive is the official digital library management system of <strong class="text-white">STI San Jose Del Monte</strong> — built to replace slow, paper-based library processes with a fast, connected, and fully digital experience.
+            </p>
+        </div>
+
+        <!-- Description blocks -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-14">
+
+            <div class="rounded-2xl p-6" style="background:rgba(255,255,255,0.07);">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style="background:rgba(255,255,255,0.12);">
+                    <svg class="w-5 h-5 text-blue-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                </div>
+                <h3 class="text-white font-bold text-lg mb-2">What It Is</h3>
+                <p class="text-blue-200 text-sm leading-relaxed">BookHive is a web-based Library Management System that allows students and professors to browse the book catalog, reserve books online, and manage their borrowing — all from any device, anytime.</p>
+            </div>
+
+            <div class="rounded-2xl p-6" style="background:rgba(255,255,255,0.07);">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style="background:rgba(255,255,255,0.12);">
+                    <svg class="w-5 h-5 text-blue-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                </div>
+                <h3 class="text-white font-bold text-lg mb-2">How It Works</h3>
+                <p class="text-blue-200 text-sm leading-relaxed">Students and professors log in securely using their Microsoft 365 school account. RFID cards handle physical tap-in and tap-out at the library entrance. Every action is recorded and tracked in real time.</p>
+            </div>
+
+            <div class="rounded-2xl p-6" style="background:rgba(255,255,255,0.07);">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style="background:rgba(255,255,255,0.12);">
+                    <svg class="w-5 h-5 text-blue-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </div>
+                <h3 class="text-white font-bold text-lg mb-2">Who It Is For</h3>
+                <p class="text-blue-200 text-sm leading-relaxed">BookHive serves the entire STI San Jose Del Monte community — students who need books and computers, professors who monitor activity, librarians who manage transactions, and MIS staff who oversee accounts.</p>
+            </div>
+
+        </div>
+
+        <!-- Key highlights row -->
+        <div class="rounded-3xl p-8 mb-10" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);">
+            <p class="text-blue-300 text-xs font-semibold uppercase tracking-widest mb-6">Key Highlights</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="flex items-start gap-3">
+                    <span class="mt-1 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style="background:#4f46e5;">
+                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                    <p class="text-blue-100 text-sm leading-relaxed">Online book reservation — reserve before you visit, pick up at the counter</p>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="mt-1 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style="background:#4f46e5;">
+                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                    <p class="text-blue-100 text-sm leading-relaxed">RFID tap in/tap out — automatic attendance tracking at the library entrance</p>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="mt-1 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style="background:#4f46e5;">
+                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                    <p class="text-blue-100 text-sm leading-relaxed">Computer session management — timed PC use with real-time monitoring</p>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="mt-1 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style="background:#4f46e5;">
+                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                    <p class="text-blue-100 text-sm leading-relaxed">SMS return reminders — automated text alerts before due dates</p>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="mt-1 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style="background:#4f46e5;">
+                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                    <p class="text-blue-100 text-sm leading-relaxed">Microsoft 365 sign-in — secure school account authentication for librarians and MIS</p>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="mt-1 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style="background:#4f46e5;">
+                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                    <p class="text-blue-100 text-sm leading-relaxed">Real-time dashboard — librarians see all activity, sessions, and borrowing status live</p>
+                </div>
             </div>
         </div>
-        <div class="flex-1">
-            <h2 class="text-white text-3xl font-bold mb-4">A Modern Library for a Modern Campus</h2>
-            <p class="text-blue-200 text-base leading-relaxed mb-6">BookHive replaces manual library processes with a fully digital system — from book reservations and borrowing to computer session management — all secured with Microsoft 365 authentication and OTP verification.</p>
-            <button onclick="openLoginModal()"
-                    class="px-6 py-3 bg-white text-[#000147] rounded-full font-semibold text-sm hover:bg-blue-50 transition">
-                Log in to BookHive →
-            </button>
-        </div>
+
     </div>
 </section>
 
@@ -202,21 +282,17 @@
 </footer>
 
 <!-- Login Modal -->
-<div id="loginModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.25);width:100%;max-width:400px;margin:16px;overflow:hidden;">
-        <!-- Header -->
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid #f0f0f0;">
-            <span style="font-size:1.1rem;font-weight:600;color:#111;">Log in</span>
-            <button onclick="closeLoginModal()" style="background:none;border:none;cursor:pointer;color:#999;padding:4px;line-height:1;">
+<div id="loginModal" class="fixed inset-0 bg-black/50 items-center justify-center" style="display:none;z-index:9999;">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm m-4 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+            <span class="text-lg font-semibold text-gray-900">Log in</span>
+            <button onclick="closeLoginModal()" class="bg-transparent border-0 cursor-pointer text-gray-400 p-1 leading-none">
                 <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
-        <!-- Body -->
-        <div style="padding:24px;display:flex;flex-direction:column;gap:12px;">
-            <!-- Office 365 -->
+        <div class="p-6 flex flex-col gap-3">
             <a href="@Url.Action("MicrosoftLogin","Account")"
-               style="display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px;border:1.5px solid #d1d5db;border-radius:10px;text-decoration:none;color:#374151;font-size:0.95rem;font-weight:500;background:#fff;"
-               onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='#fff'">
+               class="flex items-center justify-center gap-3 w-full py-3.5 border border-gray-300 rounded-xl no-underline text-gray-700 text-sm font-medium bg-white hover:bg-gray-50 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 21 21">
                     <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
                     <rect x="11" y="1" width="9" height="9" fill="#00a4ef"/>
@@ -225,15 +301,13 @@
                 </svg>
                 Log in with Office 365
             </a>
-            <!-- Admin — Microsoft only -->
             <a href="@Url.Action("MicrosoftLogin","Account")"
-               style="display:flex;align-items:center;justify-content:center;width:100%;padding:14px;border-radius:10px;text-decoration:none;color:#fff;font-size:0.95rem;font-weight:600;background:#1a7f8e;"
-               onmouseover="this.style.background='#166a77'" onmouseout="this.style.background='#1a7f8e'">
+               class="flex items-center justify-center w-full py-3.5 rounded-xl no-underline text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+               style="background:#1a7f8e;">
                 Admin log in
             </a>
-            <!-- MIS -->
-            <div style="text-align:center;margin-top:4px;">
-                <a href="@Url.Action("MISLogin","Account")" style="color:#9ca3af;font-size:0.8rem;text-decoration:underline;">MIS Portal</a>
+            <div class="text-center mt-1">
+                <a href="@Url.Action("MicrosoftLogin","Account")" class="text-gray-400 text-xs underline">MIS Portal</a>
             </div>
         </div>
     </div>
@@ -241,13 +315,60 @@
 
 <script>
 
-function openLoginModal() {
-    const m = document.getElementById('loginModal');
-    m.style.display = 'flex';
+const _featData = [
+    {
+        name: 'Browse Books',
+        title: 'Browse Library Books',
+        desc: 'Search and browse the full library catalog anytime. Reserve books online before your visit so they are ready when you arrive — no more waiting or finding an empty shelf.',
+        iconSvg: '<svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>'
+    },
+    {
+        name: 'Computer Access',
+        title: 'Computer Access',
+        desc: 'See which library computers are available in real time. The librarian assigns you a unit through BookHive, and a timer on the screen tracks your session — no manual logging needed.',
+        iconSvg: '<svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>'
+    },
+    {
+        name: 'Return Reminders',
+        title: 'Return Reminders',
+        desc: 'Receive automatic SMS notifications to your phone before your borrowed books are due. Never forget a return date or incur a late fee again — BookHive reminds you in advance.',
+        iconSvg: '<svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>'
+    },
+    {
+        name: 'Messaging',
+        title: 'Messaging',
+        desc: 'Send messages directly to librarians or MIS staff through the built-in messaging system. Ask questions, request assistance, or follow up on your reservations — all without leaving the app.',
+        iconSvg: '<svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>'
+    }
+];
+
+let _activeFeat = null;
+
+function openFeat(idx) {
+    const panel   = document.getElementById('featPanel');
+    const iconRow = document.getElementById('featIcons');
+    if (_activeFeat === idx) { closeFeat(); return; }
+    const d = _featData[idx];
+    _activeFeat = idx;
+    document.getElementById('featPanelIcon').innerHTML   = d.iconSvg;
+    document.getElementById('featPanelName').textContent = d.name;
+    document.getElementById('featPanelTitle').textContent = d.title;
+    document.getElementById('featPanelDesc').textContent  = d.desc;
+    panel.style.height  = iconRow.offsetHeight + 'px';
+    panel.style.display = 'block';
+    requestAnimationFrame(() => { panel.style.opacity = '1'; });
 }
-function closeLoginModal() {
-    document.getElementById('loginModal').style.display = 'none';
+
+function closeFeat() {
+    const panel = document.getElementById('featPanel');
+    panel.style.opacity = '0';
+    _activeFeat = null;
+    setTimeout(() => { panel.style.display = 'none'; }, 350);
 }
+
+function openLoginModal()  { document.getElementById('loginModal').style.display = 'flex'; }
+function closeLoginModal() { document.getElementById('loginModal').style.display = 'none'; }
+
 document.getElementById('loginModal').addEventListener('click', function(e) {
     if (e.target === this) closeLoginModal();
 });
@@ -257,4 +378,120 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
         document.querySelector(this.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
     });
 });
+
+// ── 3D Circular Photo Carousel ──────────────────────────────────────────────
+(function() {
+    const items = [
+        {
+            label: 'BookHive Library',
+            img:   '/uploads/slide-library.jpg',
+            bg:    '#000147',
+            icon:  `<svg style="width:64px;height:64px;color:white;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/></svg>`
+        },
+        {
+            label: 'Computer Viewing',
+            img:   '/uploads/slide-computer.jpg',
+            bg:    '#bbf7d0',
+            icon:  `<svg style="width:44px;height:44px;color:#16a34a;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>`
+        },
+        {
+            label: 'Book Reservation',
+            img:   '/uploads/slide-books.jpg',
+            bg:    '#c7d2fe',
+            icon:  `<svg style="width:44px;height:44px;color:#4f46e5;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>`
+        },
+        {
+            label: 'Tap In / Tap Out',
+            img:   '/uploads/slide-rfid.jpg',
+            bg:    '#e9d5ff',
+            icon:  `<svg style="width:44px;height:44px;color:#7c3aed;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2"/></svg>`
+        },
+        {
+            label: 'Return Reminder',
+            img:   '/uploads/slide-sms.jpg',
+            bg:    '#fed7aa',
+            icon:  `<svg style="width:44px;height:44px;color:#ea580c;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>`
+        },
+    ];
+
+    const N      = items.length;
+    const track  = document.getElementById('heroCarousel3d');
+    const titleEl = document.getElementById('heroCarouselTitle');
+    const dotsEl  = document.getElementById('heroCarouselDots');
+    if (!track) return;
+    const stageH = 320;
+    const rX     = Math.min(320, window.innerWidth * 0.42);
+    const rY     = 60;
+    let current  = 0;
+    let autoT    = null;
+
+    const els = items.map((item, i) => {
+        const el = document.createElement('div');
+        el.className = 'c-item';
+        el.innerHTML = `
+            <img src="${item.img}" alt="${item.label}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+            <div class="c-fallback" style="background:${item.bg};position:absolute;inset:0;border-radius:50%;">${item.icon}</div>`;
+        el.addEventListener('click', () => { jumpTo(i); resetAuto(); });
+        track.appendChild(el);
+        return el;
+    });
+
+    const dots = items.map((_, i) => {
+        const d = document.createElement('button');
+        d.style.cssText = 'width:10px;height:10px;border-radius:50%;border:none;cursor:pointer;transition:all .3s;background:#d1d5db;padding:0;';
+        d.addEventListener('click', () => { jumpTo(i); resetAuto(); });
+        dotsEl.appendChild(d);
+        return d;
+    });
+
+    function render() {
+        items.forEach((_, i) => {
+            const angle = ((i - current + N) % N) / N * Math.PI * 2;
+            const x = Math.sin(angle) * rX;
+            const y = -Math.cos(angle) * rY;
+            const z = Math.cos(angle);
+            const sizeFront = 240, sizeBack = 90;
+            const size = sizeBack + (sizeFront - sizeBack) * ((z + 1) / 2);
+            const blur = z >= 0.98 ? 0 : (1 - z) * 4;
+            const opacity = 0.35 + 0.65 * ((z + 1) / 2);
+            const zIndex = Math.round((z + 1) * 50);
+            const shadow = z >= 0.95 ? '0 24px 60px rgba(0,0,24,.25)' : '0 4px 16px rgba(0,0,24,.10)';
+            const border = z >= 0.95 ? '4px solid #4f46e5' : '4px solid white';
+            const el = els[i];
+            el.style.width      = size + 'px';
+            el.style.height     = size + 'px';
+            el.style.marginLeft = -(size / 2) + 'px';
+            el.style.marginTop  = -(size / 2) + 'px';
+            el.style.transform  = `translate(${x}px, ${y}px)`;
+            el.style.filter     = `blur(${blur.toFixed(2)}px) brightness(${(0.6 + 0.4 * ((z+1)/2)).toFixed(2)})`;
+            el.style.opacity    = opacity.toFixed(2);
+            el.style.zIndex     = zIndex;
+            el.style.boxShadow  = shadow;
+            el.style.border     = border;
+        });
+        titleEl.style.opacity   = '0';
+        titleEl.style.transform = 'translateY(8px)';
+        setTimeout(() => {
+            titleEl.textContent     = items[current].label;
+            titleEl.style.opacity   = '1';
+            titleEl.style.transform = 'translateY(0)';
+        }, 200);
+        dots.forEach((d, i) => {
+            d.style.background = i === current ? '#000147' : '#d1d5db';
+            d.style.width      = i === current ? '12px' : '10px';
+            d.style.height     = i === current ? '12px' : '10px';
+        });
+    }
+
+    function jumpTo(idx) { current = idx; render(); }
+    function resetAuto() {
+        clearInterval(autoT);
+        autoT = setInterval(() => { current = (current + 1) % N; render(); }, 3000);
+    }
+
+    render();
+    resetAuto();
+    window.goSlide = jumpTo;
+})();
+
 </script>

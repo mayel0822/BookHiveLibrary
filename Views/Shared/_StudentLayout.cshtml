@@ -13,7 +13,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - BookHive</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="~/css/output.css" asp-append-version="true" />
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
 </head>
@@ -72,10 +72,12 @@
 
             <div class="flex items-center gap-4">
                 <!-- Messages -->
-                <a href="/Message/Index" class="relative flex items-center text-gray-500 hover:text-gray-700">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                    <span id="msgBadge" class="hidden absolute -top-1 -right-1 w-4 h-4 text-white text-[10px] font-bold rounded-full flex items-center justify-center" style="background:#e53e3e;"></span>
-                </a>
+                <div class="relative flex items-center" id="msgWrapper">
+                    <button id="msgBtn" onclick="toggleMsgPanel()" class="relative flex items-center text-gray-500 hover:text-gray-700 focus:outline-none">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        <span id="msgBadge" class="hidden absolute -top-1 -right-1 w-4 h-4 text-white text-[10px] font-bold rounded-full flex items-center justify-center" style="background:#e53e3e;"></span>
+                    </button>
+                </div>
                 <!-- Bell -->
                 <div class="relative flex items-center text-gray-500">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
@@ -126,7 +128,7 @@
         </header>
 
         <!-- Page content -->
-        <div class="flex-1 p-6 overflow-y-auto">
+        <div class="flex-1 px-4 py-4 sm:px-6 sm:py-6 overflow-y-auto">
             @RenderBody()
         </div>
 
@@ -159,14 +161,283 @@ const stuConnection = new signalR.HubConnectionBuilder()
 
 stuConnection.on('ReceiveMessage', function(msg) {
     const badge = document.getElementById('msgBadge');
-    if (!badge) return;
-    const current = parseInt(badge.textContent) || 0;
-    const next = current + 1;
-    badge.textContent = next > 9 ? '9+' : next;
-    badge.classList.remove('hidden');
+    if (badge) {
+        const current = parseInt(badge.textContent) || 0;
+        const next = current + 1;
+        badge.textContent = next > 9 ? '9+' : next;
+        badge.classList.remove('hidden');
+    }
+    if (_chatUserId && msg.senderId === _chatUserId) loadChatMessages();
 });
 
-stuConnection.start().catch(err => console.error('SignalR error:', err));
+stuConnection.start().then(() => pollMsgBadge()).catch(err => console.error('SignalR error:', err));
+
+// ── Message Panel ──────────────────────────────────────────────────────
+let msgPanelOpen = false, _chatUserId = '', _chatMyId = '', _msgConvos = [];
+
+async function pollMsgBadge() {
+    try { const d = await fetch('/Message/UnreadCount').then(r=>r.json()); updateMsgBadge(d.count); } catch {}
+}
+function updateMsgBadge(count) {
+    const b = document.getElementById('msgBadge'); if (!b) return;
+    if (count > 0) { b.textContent = count > 9 ? '9+' : count; b.classList.remove('hidden'); } else b.classList.add('hidden');
+}
+function escQ(s) { return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+const _tok = () => document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+
+function msgConvoRow(c, active) {
+    return `<div class="msg-convo-row flex items-center gap-3 px-4 py-3 cursor-pointer transition ${active?'bg-blue-50':'hover:bg-gray-50'}"
+         id="mconvo-${c.userId}" onclick="openMsgChat('${c.userId}','${escQ(c.name)}','${c.userType}')">
+        <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style="background-color:#000147;">${c.name.charAt(0).toUpperCase()}</div>
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-semibold text-gray-800 truncate" id="mconvo-name-${c.userId}">${c.name}</p>
+                <span class="text-[10px] text-gray-400 ml-2 flex-shrink-0">${c.sentAt}</span>
+            </div>
+            <p class="text-xs text-gray-500 truncate">${c.lastMsgUnsent?'<em>Message unsent</em>':(c.lastMsg||'…')}</p>
+        </div>
+        <div class="flex items-center gap-1 flex-shrink-0">
+            ${c.unread>0?`<span class="w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center" style="background:#e53e3e;">${c.unread}</span>`:''}
+            <button onclick="event.stopPropagation();showConvoMenuModal(event,'${c.userId}')"
+                    id="mdots-${c.userId}"
+                    class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition flex-shrink-0">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zm0 6a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5z"/></svg>
+            </button>
+        </div>
+    </div>`;
+}
+
+async function toggleMsgPanel() {
+    msgPanelOpen = !msgPanelOpen;
+    const panel = document.getElementById('msgPanel');
+    if (!msgPanelOpen) { panel.classList.add('hidden'); return; }
+    const btn = document.getElementById('msgBtn'), rect = btn.getBoundingClientRect();
+    panel.style.top = (rect.bottom + 6) + 'px';
+    panel.style.right = (window.innerWidth - rect.right) + 'px';
+    panel.style.left = 'auto';
+    panel.classList.remove('hidden');
+    const list = document.getElementById('msgPanelList');
+    list.innerHTML = '<p class="px-4 py-6 text-center text-sm text-gray-400">Loading…</p>';
+    try {
+        _msgConvos = await fetch('/Message/GetConversationList').then(r=>r.json());
+        list.innerHTML = _msgConvos.length ? _msgConvos.map(c=>msgConvoRow(c,false)).join('') : '<p class="px-4 py-6 text-center text-sm text-gray-400">No messages yet</p>';
+    } catch { list.innerHTML = '<p class="px-4 py-6 text-center text-sm text-red-400">Could not load</p>'; }
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#msgWrapper') && !e.target.closest('#msgPanel')) { document.getElementById('msgPanel')?.classList.add('hidden'); msgPanelOpen = false; }
+    if (!e.target.closest('.chat-msg-bubble') && !e.target.closest('.chat-msg-menu'))
+        document.querySelectorAll('.chat-msg-menu').forEach(m => m.classList.add('hidden'));
+    const gcm = document.getElementById('globalConvoMenuModal');
+    if (gcm && !e.target.closest('#globalConvoMenuModal') && !e.target.closest('[id^="mdots-"]')) { gcm.style.display='none'; _activeConvoMenuUser=null; }
+});
+
+// ── Conversation 3-dot menu ───────────────────────────────────────────────
+let _activeConvoMenuUser = null;
+
+function _ensureConvoMenu() {
+    if (document.getElementById('globalConvoMenuModal')) return;
+    const m = document.createElement('div');
+    m.id = 'globalConvoMenuModal';
+    m.style.cssText = 'position:fixed;z-index:10000;background:white;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:180px;overflow:hidden;font-size:13px;display:none;';
+    m.innerHTML = `
+        <div style="padding:7px 14px 5px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f3f4f6;">Conversation</div>
+        <button id="gcmm-important" class="w-full text-left px-4 py-2.5 hover:bg-amber-50 flex items-center gap-3" style="color:#b45309;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/></svg>
+            Mark as Important
+        </button>
+        <div style="height:1px;background:#f3f4f6;margin:2px 0;"></div>
+        <button id="gcmm-delete" class="w-full text-left px-4 py-2.5 hover:bg-red-50 flex items-center gap-3" style="color:#dc2626;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+            Delete Conversation
+        </button>`;
+    document.body.appendChild(m);
+}
+
+function showConvoMenuModal(event, userId) {
+    _ensureConvoMenu();
+    const menu = document.getElementById('globalConvoMenuModal');
+    if (_activeConvoMenuUser === userId && menu.style.display !== 'none') { menu.style.display='none'; _activeConvoMenuUser=null; return; }
+    _activeConvoMenuUser = userId;
+    document.getElementById('gcmm-important').onclick = (e) => { e.stopPropagation(); markImportantModal(userId); menu.style.display='none'; _activeConvoMenuUser=null; };
+    document.getElementById('gcmm-delete').onclick    = (e) => { e.stopPropagation(); deleteConversationModal(userId); menu.style.display='none'; _activeConvoMenuUser=null; };
+    const btn = event.target.closest('button') || event.currentTarget;
+    const rect = btn ? btn.getBoundingClientRect() : { right: event.clientX, bottom: event.clientY };
+    menu.style.display = 'block';
+    menu.style.left = Math.min(rect.right - 180, window.innerWidth - 190) + 'px';
+    menu.style.top  = Math.min(rect.bottom + 4, window.innerHeight - 100) + 'px';
+}
+
+function markImportantModal(userId) {
+    const el = document.getElementById('mconvo-name-'+userId);
+    if (el && !el.textContent.startsWith('⭐')) el.textContent = '⭐ ' + el.textContent;
+}
+
+async function deleteConversationModal(userId) {
+    if (!confirm('Delete this entire conversation? This cannot be undone.')) return;
+    const fd = new FormData();
+    fd.append('otherUserId', userId); fd.append('__RequestVerificationToken', _tok());
+    const res = await fetch('/Message/DeleteConversation', { method: 'POST', body: fd });
+    if (!res.ok) return;
+    _msgConvos = _msgConvos.filter(c => c.userId !== userId);
+    document.getElementById('chat-sidebar').innerHTML = _msgConvos.map(c=>msgConvoRow(c,c.userId===_chatUserId)).join('');
+    if (_chatUserId === userId) {
+        _chatUserId = '';
+        document.getElementById('chat-messages').innerHTML = '<p class="text-center text-sm text-gray-400 py-8">Select a conversation to start</p>';
+        document.getElementById('chat-name').textContent = 'Select a conversation';
+        document.getElementById('chat-type').textContent = '';
+        document.getElementById('chat-avatar').textContent = '';
+    }
+}
+
+// ── Message bubble right-click menu ──────────────────────────────────────
+function showMsgMenuModal(event, menuId) {
+    event.preventDefault();
+    document.querySelectorAll('.chat-msg-menu').forEach(m => m.classList.add('hidden'));
+    const menu = document.getElementById(menuId); if (!menu) return;
+    menu.classList.remove('hidden');
+    menu.style.left = Math.min(event.clientX, window.innerWidth - 175) + 'px';
+    menu.style.top  = Math.min(event.clientY + 4, window.innerHeight - 110) + 'px';
+}
+
+async function unsendMsgModal(id) {
+    document.querySelectorAll('.chat-msg-menu').forEach(m => m.classList.add('hidden'));
+    if (!confirm('Unsend this message for everyone?')) return;
+    const fd = new FormData(); fd.append('id', id); fd.append('__RequestVerificationToken', _tok());
+    const res = await fetch('/Message/Unsend', { method: 'POST', body: fd });
+    if (res.ok) await loadChatMessages();
+}
+
+async function deleteForMeModal(id) {
+    document.querySelectorAll('.chat-msg-menu').forEach(m => m.classList.add('hidden'));
+    const fd = new FormData(); fd.append('id', id); fd.append('__RequestVerificationToken', _tok());
+    const res = await fetch('/Message/DeleteForMe', { method: 'POST', body: fd });
+    if (res.ok) document.getElementById('chatmsg-'+id)?.remove();
+}
+
+async function openMsgChat(userId, name, userType) {
+    document.getElementById('msgPanel').classList.add('hidden'); msgPanelOpen = false;
+    _chatUserId = userId;
+    document.getElementById('chat-avatar').textContent = name.charAt(0).toUpperCase();
+    document.getElementById('chat-name').textContent   = name;
+    document.getElementById('chat-type').textContent   = userType;
+    document.getElementById('chat-messages').innerHTML = '<p class="text-center text-sm text-gray-400 py-8">Loading…</p>';
+    if (!_msgConvos.length) { try { _msgConvos = await fetch('/Message/GetConversationList').then(r=>r.json()); } catch {} }
+    document.getElementById('chat-sidebar').innerHTML = _msgConvos.map(c=>msgConvoRow(c,c.userId===userId)).join('');
+    document.getElementById('msgChatModal').classList.remove('hidden');
+    await loadChatMessages();
+    document.getElementById('chat-input').focus();
+}
+
+function closeMsgChat() {
+    document.getElementById('msgChatModal').classList.add('hidden');
+    _chatUserId=''; _msgConvos=[];
+    document.querySelectorAll('.chat-msg-menu').forEach(m => m.classList.add('hidden'));
+    const gcm = document.getElementById('globalConvoMenuModal'); if (gcm) gcm.style.display='none';
+    pollMsgBadge();
+}
+
+async function loadChatMessages() {
+    if (!_chatUserId) return;
+    try {
+        const data = await fetch('/Message/GetConversation?otherUserId='+encodeURIComponent(_chatUserId)).then(r=>r.json());
+        _chatMyId = data.myId;
+        const box = document.getElementById('chat-messages');
+        if (!data.messages.length) { box.innerHTML='<p class="text-center text-sm text-gray-400 py-8">No messages yet. Say hi!</p>'; return; }
+        box.innerHTML = data.messages.map(m => {
+            const isMe=m.senderId===_chatMyId, unsent=m.isUnsent;
+            if (unsent) return `<div class="flex ${isMe?'justify-end':'justify-start'}" id="chatmsg-${m.id}"><span class="text-xs italic text-gray-400 px-3 py-1 border border-gray-200 rounded-2xl">Message unsent</span></div>`;
+            const _icoUnsend = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>`;
+            const _icoTrash  = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>`;
+            const _menuHdr   = `<div style="padding:7px 14px 5px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f3f4f6;">Message</div>`;
+            const _menuDiv   = `<div style="height:1px;background:#f3f4f6;margin:2px 0;"></div>`;
+            const menuItems = isMe
+                ? `${_menuHdr}
+                   <button onclick="unsendMsgModal(${m.id})" class="w-full text-left px-4 py-2.5 hover:bg-red-50 flex items-center gap-3" style="font-size:13px;color:#dc2626;">${_icoUnsend} Unsend for everyone</button>
+                   ${_menuDiv}
+                   <button onclick="deleteForMeModal(${m.id})" class="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3" style="font-size:13px;color:#6b7280;">${_icoTrash} Delete for me</button>`
+                : `${_menuHdr}
+                   <button onclick="deleteForMeModal(${m.id})" class="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3" style="font-size:13px;color:#6b7280;">${_icoTrash} Delete for me</button>`;
+            return `<div class="flex ${isMe?'justify-end':'justify-start'}" id="chatmsg-${m.id}">
+                <div class="max-w-[72%] relative">
+                    <div class="chat-msg-bubble px-4 py-2 rounded-2xl text-sm cursor-pointer select-none ${isMe?'text-white rounded-br-sm':'bg-white border border-gray-200 text-gray-800 rounded-bl-sm'}"
+                         style="${isMe?'background-color:#000147;':''}"
+                         oncontextmenu="showMsgMenuModal(event,'cmmenu-${m.id}')"
+                         ondblclick="showMsgMenuModal(event,'cmmenu-${m.id}')">
+                        ${escHtml(m.content)}
+                    </div>
+                    <p class="text-[10px] mt-0.5 text-gray-400 ${isMe?'text-right':''}">${m.sentAt}</p>
+                    <div id="cmmenu-${m.id}" class="chat-msg-menu hidden" style="position:fixed;z-index:10001;background:white;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:175px;overflow:hidden;">${menuItems}</div>
+                </div>
+            </div>`;
+        }).join('');
+        box.scrollTop = box.scrollHeight;
+        try { _msgConvos=await fetch('/Message/GetConversationList').then(r=>r.json()); document.getElementById('chat-sidebar').innerHTML=_msgConvos.map(c=>msgConvoRow(c,c.userId===_chatUserId)).join(''); } catch {}
+        updateMsgBadge(0);
+    } catch { document.getElementById('chat-messages').innerHTML='<p class="text-center text-sm text-red-400 py-8">Could not load</p>'; }
+}
+
+async function sendChatMsg() {
+    const input=document.getElementById('chat-input'), text=input.value.trim();
+    if (!text||!_chatUserId) return; input.value='';
+    try { const fd=new FormData(); fd.append('receiverId',_chatUserId); fd.append('content',text); fd.append('__RequestVerificationToken',_tok()); await fetch('/Message/Send',{method:'POST',body:fd}); await loadChatMessages(); } catch { input.value=text; }
+}
 </script>
+
+<!-- Message Dropdown (fixed, overlays header) -->
+<div id="msgPanel" class="hidden fixed z-[9997] bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden" style="width:380px;">
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between" style="background-color:#000147;">
+        <span class="text-sm font-semibold text-white">Messages</span>
+        <a href="/Message/Index" class="text-xs text-blue-200 hover:text-white transition">See all</a>
+    </div>
+    <div id="msgPanelList" class="divide-y divide-gray-100 overflow-y-auto" style="max-height:240px;">
+        <p class="px-4 py-6 text-center text-sm text-gray-400">Loading…</p>
+    </div>
+</div>
+
+<!-- Message Chat Modal (two-panel) -->
+<div id="msgChatModal" class="fixed inset-0 z-[9998] hidden flex items-center justify-center bg-black/40 px-4" onclick="if(event.target===this)closeMsgChat()">
+    <div class="bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden w-full" style="max-width:780px;height:580px;">
+
+        <!-- Full-width header row -->
+        <div class="flex items-center justify-between px-5 py-3.5 flex-shrink-0" style="background-color:#000147;">
+            <p class="text-sm font-semibold text-white tracking-wide">Messages</p>
+            <button onclick="closeMsgChat()" class="text-white/70 hover:text-white transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <!-- Two-column body -->
+        <div class="flex flex-1 min-h-0 overflow-hidden">
+
+        <!-- Left sidebar -->
+        <div class="flex flex-col border-r border-gray-200 flex-shrink-0" style="width:260px;">
+            <div id="chat-sidebar" class="flex-1 overflow-y-auto divide-y divide-gray-100"></div>
+        </div>
+        <!-- Right conversation -->
+        <div class="flex flex-col flex-1 min-w-0">
+            <!-- Chat sub-header -->
+            <div class="px-5 py-3 flex items-center gap-3 flex-shrink-0 border-b border-gray-100">
+                <div id="chat-avatar" class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style="background-color:#000147;"></div>
+                <div class="flex-1 min-w-0">
+                    <p id="chat-name" class="text-sm font-semibold text-gray-800 truncate">Select a conversation</p>
+                    <p id="chat-type" class="text-xs text-gray-400"></p>
+                </div>
+            </div>
+            <div id="chat-messages" class="flex-1 overflow-y-auto px-4 py-4 space-y-2 bg-gray-50">
+                <p class="text-center text-sm text-gray-400 py-8">Select a conversation to start</p>
+            </div>
+            <div class="px-4 py-3 border-t border-gray-200 flex gap-2 flex-shrink-0 bg-white">
+                @Html.AntiForgeryToken()
+                <input id="chat-input" type="text" placeholder="Type a message…"
+                       class="flex-1 border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                       onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMsg();}"/>
+                <button onclick="sendChatMsg()" class="px-4 py-2 text-sm text-white rounded-xl font-medium flex-shrink-0 transition hover:opacity-90" style="background-color:#000147;">Send</button>
+            </div>
+        </div>
+        </div><!-- end two-column body -->
+    </div>
+</div>
 </body>
 </html>

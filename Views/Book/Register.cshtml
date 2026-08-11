@@ -1,4 +1,4 @@
-@model BookHiveLibrary.ViewModels.BookFormViewModel
+﻿@model BookHiveLibrary.ViewModels.BookFormViewModel
 @{
     Layout = "~/Views/Shared/_LibrarianLayout.cshtml";
     ViewData["Title"] = "Book Registration";
@@ -36,7 +36,7 @@
 
     <!-- Import Excel Modal -->
     <div id="importModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-xl shadow-xl w-[600px] overflow-hidden">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4 overflow-hidden">
             <div class="px-6 py-4 flex items-center justify-between border-b border-gray-100">
                 <h3 class="text-base font-semibold text-gray-800">Import from Excel</h3>
                 <button type="button" onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600">
@@ -75,7 +75,7 @@
             <div asp-validation-summary="All" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm"></div>
         }
 
-        <div class="grid grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
             <!-- Cover Image Preview -->
             <div class="flex flex-col items-center gap-4">
                 <div id="coverPreview" class="w-48 h-64 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
@@ -285,3 +285,5 @@ function handleDrop(e) {
 
 </script>
 }
+
+

@@ -9,17 +9,23 @@
 <div class="bg-white rounded-xl shadow-sm border border-gray-100">
     <div class="px-5 py-4">
         <div class="flex flex-wrap gap-3 items-center justify-between mb-4">
-            <h2 class="text-3xl font-bold" class="text-gray-900">Student Activity Log</h2>
-            <form method="get" id="activityFilterForm" class="flex gap-2 flex-wrap">
-            <input type="date" name="date" value="@ViewBag.Date" onchange="document.getElementById('activityFilterForm').submit()"
-                   class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
-            <select name="logType" onchange="document.getElementById('activityFilterForm').submit()"
-                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-                <option value="Library" selected="@(logType == "Library" ? "selected" : null)">Library Log</option>
-                <option value="Computer" selected="@(logType == "Computer" ? "selected" : null)">Computer Log</option>
-                <option value="Book" selected="@(logType == "Book" ? "selected" : null)">Book Log</option>
-            </select>
-        </form>
+            <h2 class="text-3xl font-bold text-gray-900">Student Activity Log</h2>
+            <div class="flex gap-2 flex-wrap items-center">
+                <form method="get" id="activityFilterForm" class="flex gap-2 flex-wrap">
+                    <input type="date" name="date" value="@ViewBag.Date" onchange="document.getElementById('activityFilterForm').submit()"
+                           class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                    <select name="logType" onchange="document.getElementById('activityFilterForm').submit()"
+                            class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        <option value="Library" selected="@(logType == "Library" ? "selected" : null)">Library Log</option>
+                        <option value="Computer" selected="@(logType == "Computer" ? "selected" : null)">Computer Log</option>
+                        <option value="Book" selected="@(logType == "Book" ? "selected" : null)">Book Log</option>
+                    </select>
+                </form>
+                <a href="/Librarian/ExportActivity?date=@ViewBag.Date&logType=@logType"
+                   class="btn-primary">
+                    Export Excel
+                </a>
+            </div>
         </div>
         <hr class="border-gray-200">
     </div>
@@ -29,8 +35,8 @@
         @if (logType == "Computer")
         {
             var sessions = ViewBag.ComputerSessions as List<ComputerSession> ?? new List<ComputerSession>();
-            <table class="w-full text-sm">
-                <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
+            <table class="bh-table">
+                <thead>
                     <tr>
                         <th class="px-4 py-3 text-left">Stud/Emp ID</th>
                         <th class="px-4 py-3 text-left">Name</th>
@@ -40,10 +46,10 @@
                         <th class="px-4 py-3 text-left">Status</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody>
                     @foreach (var s in sessions)
                     {
-                        <tr class="hover:bg-gray-50">
+                        <tr>
                             <td class="px-4 py-3 text-gray-600">@(s.User?.StudentNumber ?? s.User?.EmployeeNumber)</td>
                             <td class="px-4 py-3 font-medium text-gray-800">
                                 @s.User?.LastName, @s.User?.FirstName @(string.IsNullOrEmpty(s.User?.MiddleName) ? "" : s.User!.MiddleName![0] + ".")
@@ -73,8 +79,8 @@
         else if (logType == "Book")
         {
             var bookLogs = ViewBag.BookLogs as List<BookReservation> ?? new List<BookReservation>();
-            <table class="w-full text-sm">
-                <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
+            <table class="bh-table">
+                <thead>
                     <tr>
                         <th class="px-4 py-3 text-left">Stud/Emp ID</th>
                         <th class="px-4 py-3 text-left">Last Name</th>
@@ -87,10 +93,10 @@
                         <th class="px-4 py-3 text-left">Status</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody>
                     @foreach (var r in bookLogs)
                     {
-                        <tr class="hover:bg-gray-50">
+                        <tr>
                             <td class="px-4 py-3 text-gray-600">@(r.User?.StudentNumber ?? r.User?.EmployeeNumber)</td>
                             <td class="px-4 py-3 font-medium text-gray-800">@r.User?.LastName</td>
                             <td class="px-4 py-3 text-gray-800">@r.User?.FirstName</td>
@@ -123,8 +129,8 @@
         }
         else
         {
-            <table class="w-full text-sm">
-                <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
+            <table class="bh-table">
+                <thead>
                     <tr>
                         <th class="px-4 py-3 text-left">Stud ID</th>
                         <th class="px-4 py-3 text-left">Last Name</th>
@@ -139,10 +145,10 @@
                         <th class="px-4 py-3 text-left">Status</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
+                <tbody>
                     @foreach (var log in Model)
                     {
-                        <tr class="hover:bg-gray-50">
+                        <tr>
                             <td class="px-4 py-3 text-gray-600">@log.User?.StudentNumber</td>
                             <td class="px-4 py-3 font-medium text-gray-800">@log.User?.LastName</td>
                             <td class="px-4 py-3 text-gray-800">@log.User?.FirstName</td>

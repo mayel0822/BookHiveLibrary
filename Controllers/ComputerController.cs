@@ -4,10 +4,12 @@ using BookHiveLibrary.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookHiveLibrary.Controllers
 {
+    [Authorize(Roles = "LIBRARIAN")]
     public class ComputerController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -92,6 +94,7 @@ namespace BookHiveLibrary.Controllers
             {
                 found = true,
                 userId = user.Id,
+                studentNumber = user.UserType == "Student" ? user.StudentNumber : user.EmployeeNumber,
                 firstName = user.FirstName,
                 lastName = user.LastName,
                 middleName = user.MiddleName ?? "",
@@ -109,6 +112,7 @@ namespace BookHiveLibrary.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(string computerNumber, bool isAvailable = true)
         {
             if (string.IsNullOrWhiteSpace(computerNumber))
@@ -134,13 +138,27 @@ namespace BookHiveLibrary.Controllers
 
         // Start a session (librarian assigns student to a computer)
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> StartSession(int computerId, string userId)
         {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                TempData["Error"] = "No student selected. Please tap the RFID card first.";
+                return RedirectToAction("Transaction");
+            }
+
             var computer = await _context.ComputerUnits.FindAsync(computerId);
             if (computer == null || !computer.IsAvailable)
             {
-                TempData["Error"] = "Computer not available.";
-                return RedirectToAction("Index");
+                TempData["Error"] = "Computer is not available.";
+                return RedirectToAction("Transaction");
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                TempData["Error"] = "Student not found.";
+                return RedirectToAction("Transaction");
             }
 
             _context.ComputerSessions.Add(new ComputerSession
@@ -153,12 +171,13 @@ namespace BookHiveLibrary.Controllers
             computer.IsAvailable = false;
             await _context.SaveChangesAsync();
             await PushComputerEvent("ComputerSessionUpdated", new { action = "Started", computerId });
-            TempData["Success"] = "Session started.";
+            TempData["Success"] = $"Session started for {user.FirstName} {user.LastName}.";
             return RedirectToAction("Transaction");
         }
 
         // Auto-end session via AJAX (called by librarian UI when timer expires)
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> EndSessionAjax(int sessionId)
         {
             var session = await _context.ComputerSessions
@@ -176,7 +195,8 @@ namespace BookHiveLibrary.Controllers
             return Json(new { success = true, computerId = session.ComputerUnitId });
         }
 
-        // Kiosk page — fullscreen LAN page on student computer
+        // Kiosk page — fullscreen LAN page on student computer (no login needed)
+        [AllowAnonymous]
         [HttpGet]
         public IActionResult Kiosk(string pc)
         {
@@ -184,7 +204,8 @@ namespace BookHiveLibrary.Controllers
             return View();
         }
 
-        // Kiosk status poll endpoint
+        // Kiosk status poll endpoint (no login needed — called from student kiosk PC)
+        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> KioskStatus(string pc)
         {
@@ -214,6 +235,7 @@ namespace BookHiveLibrary.Controllers
 
         // Extend session time
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ExtendTime(int sessionId, int minutes)
         {
             var session = await _context.ComputerSessions.FindAsync(sessionId);
@@ -228,6 +250,7 @@ namespace BookHiveLibrary.Controllers
 
         // End session
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> EndSession(int sessionId)
         {
             var session = await _context.ComputerSessions
@@ -250,6 +273,7 @@ namespace BookHiveLibrary.Controllers
 
         // Archive Computer
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Archive(int id, string reason)
         {
             var computer = await _context.ComputerUnits.FindAsync(id);
@@ -277,6 +301,7 @@ namespace BookHiveLibrary.Controllers
 
         // Permanently delete archived computer
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
         {
             var computer = await _context.ComputerUnits.FindAsync(id);
@@ -291,6 +316,7 @@ namespace BookHiveLibrary.Controllers
 
         // Restore from archive
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Restore(int id)
         {
             var computer = await _context.ComputerUnits.FindAsync(id);

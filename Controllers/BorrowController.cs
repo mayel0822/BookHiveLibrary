@@ -4,10 +4,12 @@ using BookHiveLibrary.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookHiveLibrary.Controllers
 {
+    [Authorize(Roles = "LIBRARIAN")]
     public class BorrowController : Controller
     {
         private const int MaxBooksPerUser = 3;
@@ -147,6 +149,7 @@ namespace BookHiveLibrary.Controllers
 
         // Librarian creates a borrow record directly (walk-up)
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateBorrow(string userId, int bookId)
         {
             var user = await _userManager.FindByIdAsync(userId);
@@ -200,6 +203,7 @@ namespace BookHiveLibrary.Controllers
 
         // Send reminder emails to all borrowers whose books are due within 12 hours
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> SendReminder()
         {
             var dueCutoff = DateTime.Now.AddHours(12);
@@ -331,6 +335,7 @@ namespace BookHiveLibrary.Controllers
 
         // Student places an online reservation
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Reserve(int bookId)
         {
             var userId = _userManager.GetUserId(User);
@@ -379,6 +384,7 @@ namespace BookHiveLibrary.Controllers
 
         // Grant reservation — student is physically present, hand over the book
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Approve(int id)
         {
             var reservation = await _context.BookReservations
@@ -425,6 +431,7 @@ namespace BookHiveLibrary.Controllers
 
         // Deny reservation
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Deny(int id, string? remarks)
         {
             var reservation = await _context.BookReservations.FindAsync(id);
@@ -441,6 +448,7 @@ namespace BookHiveLibrary.Controllers
 
         // Confirm pickup — student physically collected the book
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ConfirmPickup(int id)
         {
             var reservation = await _context.BookReservations
@@ -466,6 +474,7 @@ namespace BookHiveLibrary.Controllers
 
         // Confirm return
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ConfirmReturn(int id)
         {
             var reservation = await _context.BookReservations
@@ -490,6 +499,7 @@ namespace BookHiveLibrary.Controllers
 
         // Acknowledge late return — librarian dismisses the ReturnedLate record
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> AcknowledgeLateReturn(int id)
         {
             var reservation = await _context.BookReservations.FindAsync(id);

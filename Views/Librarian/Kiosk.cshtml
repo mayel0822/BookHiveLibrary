@@ -1,0 +1,136 @@
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BookHive — Library Kiosk</title>
+    <link rel="stylesheet" href="~/css/output.css" asp-append-version="true" />
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <style>
+        @@keyframes fadeIn { from { opacity:0; transform:scale(.97); } to { opacity:1; transform:scale(1); } }
+        #card { animation: fadeIn .35s ease; }
+    </style>
+</head>
+<body class="m-0 font-sans overflow-hidden" style="background:#000147;">
+
+<div id="clock" class="fixed top-6 right-8 font-mono text-lg" style="color:rgba(255,255,255,.3);"></div>
+<div id="progressBar" class="fixed bottom-0 left-0 h-1 w-full bg-blue-400 origin-left" style="transform:scaleX(0)"></div>
+
+<!-- Idle screen -->
+<div id="idle" class="flex flex-col items-center justify-center h-screen text-white gap-2" style="transition:opacity .4s;">
+    <div style="font-size:6rem;font-family:'Dancing Script',cursive;font-weight:700;">BookHive</div>
+    <div class="text-sm" style="color:rgba(255,255,255,.6);">STI San Jose Del Monte — Library</div>
+    <div class="mt-10 text-4xl font-light" style="color:rgba(255,255,255,.3);">Tap your RFID card</div>
+</div>
+
+<!-- Tap card -->
+<div id="card" class="flex-col items-center justify-center h-screen gap-5" style="display:none;">
+    <span id="actionBadge"></span>
+    <div id="avatarWrap"></div>
+    <div id="userName" class="text-white font-extrabold text-center" style="font-size:2.8rem;line-height:1.1;"></div>
+    <div id="userId" class="font-mono" style="font-size:1.2rem;color:rgba(255,255,255,.6);"></div>
+    <div id="userMeta" class="uppercase" style="font-size:.95rem;color:rgba(255,255,255,.45);letter-spacing:.08em;"></div>
+    <div id="timeLabel" class="mt-2" style="font-size:1rem;color:rgba(255,255,255,.35);"></div>
+</div>
+
+<script>
+// ── Clock ────────────────────────────────────────────────────────────────
+function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+        now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── SignalR ──────────────────────────────────────────────────────────────
+let clearTimer = null;
+
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl("/hubs/library")
+    .withAutomaticReconnect()
+    .build();
+
+connection.on("KioskTap", function(data) {
+    showCard(data);
+});
+
+connection.start().then(() => {
+    connection.invoke("JoinKiosk");
+}).catch(err => console.error(err));
+
+// ── Show tap card ─────────────────────────────────────────────────────────
+function showCard(data) {
+    if (clearTimer) clearTimeout(clearTimer);
+
+    const isIncomplete = data.action === "incomplete";
+    const isIn = data.action === "TapIn";
+
+    // Badge
+    const badge = document.getElementById('actionBadge');
+    if (isIncomplete) {
+        badge.textContent = "⚠ Account Incomplete";
+        badge.className = "text-sm font-bold uppercase px-5 py-1.5 rounded-full text-white bg-red-500";
+    } else {
+        badge.textContent = isIn ? "✓ Welcome" : "✗ Goodbye";
+        badge.className = "text-sm font-bold uppercase px-5 py-1.5 rounded-full text-white " + (isIn ? "bg-green-500" : "bg-amber-400");
+    }
+    badge.style.letterSpacing = ".15em";
+
+    // Avatar
+    const wrap = document.getElementById('avatarWrap');
+    if (data.profilePic) {
+        wrap.innerHTML = `<img src="${data.profilePic}" class="w-40 h-40 rounded-full object-cover" style="border:5px solid rgba(255,255,255,.2)" />`;
+    } else {
+        wrap.innerHTML = `<div class="w-40 h-40 rounded-full flex items-center justify-center font-bold text-white" style="font-size:5rem;background:rgba(255,255,255,.15);border:5px solid rgba(255,255,255,.2)">${data.initial}</div>`;
+    }
+
+    // Info
+    document.getElementById('userName').textContent = data.name;
+    document.getElementById('userId').textContent   = data.studentNumber || "";
+
+    if (isIncomplete) {
+        document.getElementById('userMeta').textContent = "Please proceed to the librarian to complete your account";
+        document.getElementById('userMeta').style.color = "rgba(255,180,180,.9)";
+        document.getElementById('userMeta').style.fontSize = "1.1rem";
+        document.getElementById('userMeta').style.textTransform = "none";
+    } else {
+        document.getElementById('userMeta').textContent = [data.userType, data.section].filter(Boolean).join(" · ");
+        document.getElementById('userMeta').style.color = "rgba(255,255,255,.45)";
+        document.getElementById('userMeta').style.fontSize = ".95rem";
+        document.getElementById('userMeta').style.textTransform = "uppercase";
+    }
+    document.getElementById('timeLabel').textContent = data.time;
+
+    // Switch screens
+    document.getElementById('idle').style.display = 'none';
+    const card = document.getElementById('card');
+    card.style.display = 'flex';
+    card.style.animation = 'none';
+    card.offsetHeight; // reflow
+    card.style.animation = '';
+
+    // Progress bar countdown (8 s for incomplete so they have time to read, 5 s otherwise)
+    const duration = isIncomplete ? 8 : 5;
+    const bar = document.getElementById('progressBar');
+    bar.style.transition = 'none';
+    bar.style.transform  = 'scaleX(1)';
+    bar.offsetHeight;
+    bar.style.transition = `transform ${duration}s linear`;
+    bar.style.transform  = 'scaleX(0)';
+
+    clearTimer = setTimeout(showIdle, duration * 1000);
+}
+
+function showIdle() {
+    document.getElementById('card').style.display = 'none';
+    document.getElementById('idle').style.display = 'flex';
+    document.getElementById('progressBar').style.transform = 'scaleX(0)';
+}
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-@{
+﻿@{
     Layout = "~/Views/Shared/_MISLayout.cshtml";
     ViewData["Title"] = "Registration";
     var activeTab = (Context.Request.Query["tab"].ToString() ?? "student").ToLower();
@@ -9,15 +9,13 @@
 <!-- Header with dropdown and Import button -->
 <div class="flex items-center gap-3 mb-6">
     <select id="userTypeDropdown" onchange="switchTab(this.value)"
-            class="border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
-            style="min-width:160px;">
+            class="border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white min-w-40">
         <option value="student" selected="@(activeTab == "student")">Student</option>
         <option value="professor" selected="@(activeTab == "professor")">Professor</option>
         <option value="librarian" selected="@(activeTab == "librarian")">Librarian</option>
     </select>
     <button type="button" onclick="document.getElementById('importModal').classList.remove('hidden')"
-            class="ml-auto px-4 py-2 text-sm text-white rounded-xl font-medium flex items-center gap-2"
-            style="background-color:#000147;">
+            class="btn-primary ml-auto">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
         Import Excel
     </button>
@@ -32,28 +30,33 @@
 
 <!-- Student Form -->
 <div id="form-student" class="tab-form bg-white rounded-2xl shadow w-full @(activeTab != "student" ? "hidden" : "")">
-    <div class="px-8 pt-8 pb-5 border-b border-gray-200 mb-6">
+    <div class="px-4 sm:px-8 pt-8 pb-5 border-b border-gray-200 mb-6">
         <h2 class="text-3xl font-bold text-gray-900">Student Registration</h2>
         <p class="text-sm text-gray-400 mt-1">Fields marked <span class="text-red-500">*</span> are required. Phone number is set by the student on first login.</p>
     </div>
-    <div class="px-8 pb-8">
+    <div class="px-4 sm:px-8 pb-8">
     <form method="post" action="@Url.Action("RegisterUser","MIS")">
         @Html.AntiForgeryToken()
         <input type="hidden" name="role" value="Student" />
 
         <!-- RFID -->
         <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-600 mb-1">RFID Card No. <span class="text-red-500">*</span></label>
-            <div class="flex items-center gap-2 border border-gray-300 rounded-xl px-4 py-2 bg-gray-50 focus-within:ring-2 focus-within:ring-blue-400 cursor-text"
-                 onclick="document.getElementById('studentRfidTap').focus()">
-                <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-                </svg>
-                <input id="studentRfidTap" type="text" placeholder="Tap RFID card or type manually..."
-                       class="text-sm w-full focus:outline-none bg-transparent text-gray-700" autocomplete="off" required />
+            <label class="block text-sm font-medium text-gray-600 mb-1">RFID Card No.</label>
+            <div class="flex gap-2">
+                <input type="text" id="rfidInput-student" name="rfidNumber"
+                       placeholder="Type or tap card..."
+                       class="flex-1 border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                <button type="button" onclick="startRfidListen('student')"
+                        id="rfidBtn-student"
+                        class="px-4 py-2 text-sm font-medium text-white rounded-xl flex items-center gap-2 transition"
+                        style="background-color:#000147;">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+                    </svg>
+                    Tap Card
+                </button>
             </div>
-            <input type="hidden" id="studentRfidValue" name="rfidNumber" />
-            <p id="studentRfidStatus" class="text-xs text-green-600 mt-1 hidden">✓ RFID card detected</p>
+            <p id="rfidStatus-student" class="text-xs mt-1 text-gray-400"></p>
         </div>
 
         <div class="mb-4">
@@ -92,11 +95,11 @@
 
 <!-- Professor Form -->
 <div id="form-professor" class="tab-form bg-white rounded-2xl shadow w-full @(activeTab != "professor" ? "hidden" : "")">
-    <div class="px-8 pt-8 pb-5 border-b border-gray-200 mb-6">
+    <div class="px-4 sm:px-8 pt-8 pb-5 border-b border-gray-200 mb-6">
         <h2 class="text-3xl font-bold text-gray-900">Professor Registration</h2>
         <p class="text-sm text-gray-400 mt-1">Fields marked <span class="text-red-500">*</span> are required. Phone number is set by the professor on first login.</p>
     </div>
-    <div class="px-8 pb-8">
+    <div class="px-4 sm:px-8 pb-8">
     <form method="post" action="@Url.Action("RegisterUser","MIS")">
         @Html.AntiForgeryToken()
         <input type="hidden" name="role" value="Professor" />
@@ -143,11 +146,11 @@
 
 <!-- Librarian Form -->
 <div id="form-librarian" class="tab-form bg-white rounded-2xl shadow w-full @(activeTab != "librarian" ? "hidden" : "")">
-    <div class="px-8 pt-8 pb-5 border-b border-gray-200 mb-6">
+    <div class="px-4 sm:px-8 pt-8 pb-5 border-b border-gray-200 mb-6">
         <h2 class="text-3xl font-bold text-gray-900">Librarian Registration</h2>
         <p class="text-sm text-gray-400 mt-1">Fields marked <span class="text-red-500">*</span> are required. Phone number is set by the librarian on first login.</p>
     </div>
-    <div class="px-8 pb-8">
+    <div class="px-4 sm:px-8 pb-8">
     <form method="post" action="@Url.Action("RegisterUser","MIS")">
         @Html.AntiForgeryToken()
         <input type="hidden" name="role" value="Librarian" />
@@ -194,9 +197,9 @@
             <span id="previewCount" class="text-xs text-blue-200"></span>
         </div>
         <div class="overflow-auto flex-1">
-            <table class="w-full text-sm">
-                <thead id="previewHead" class="text-xs uppercase sticky top-0" style="background-color:#23354D;color:white;"></thead>
-                <tbody id="previewBody" class="divide-y divide-gray-100"></tbody>
+            <table class="bh-table">
+                <thead id="previewHead" class="sticky top-0"></thead>
+                <tbody id="previewBody"></tbody>
             </table>
         </div>
         <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 flex-shrink-0">
@@ -208,7 +211,7 @@
 
 <!-- Import Excel Modal -->
 <div id="importModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl shadow-xl w-[580px] overflow-hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-xl mx-4 overflow-hidden">
         <div class="px-6 py-4 flex items-center justify-between border-b border-gray-100">
             <h3 class="text-base font-semibold text-gray-800">Import Users from Excel</h3>
             <button type="button" onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600">
@@ -237,33 +240,6 @@
 @section Scripts {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-(function() {
-    const tapInput = document.getElementById('studentRfidTap');
-    const hidden   = document.getElementById('studentRfidValue');
-    const status   = document.getElementById('studentRfidStatus');
-    let buffer = '', timer = null;
-
-    tapInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            commitRfid(buffer.trim());
-            buffer = '';
-        }
-    });
-    tapInput.addEventListener('input', function() {
-        buffer = this.value;
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-            if (buffer.length >= 4) { commitRfid(buffer.trim()); buffer = ''; }
-        }, 150);
-    });
-    function commitRfid(val) {
-        if (!val) return;
-        hidden.value = val;
-        tapInput.value = val;
-        status.classList.remove('hidden');
-    }
-})();
 
 function switchTab(tab) {
     document.querySelectorAll('.tab-form').forEach(f => f.classList.add('hidden'));
@@ -333,12 +309,19 @@ function previewExcel() {
             `<th class="px-4 py-2 text-left font-medium whitespace-nowrap">${h}</th>`
         ).join('') + '</tr>';
 
-        // Build data rows
+        // Build editable data rows (only RFID No, Student No, Employee Number are editable)
+        const editableCols = ['rfid', 'rfidno', 'rfid no', 'rfid no.', 'rfidnumber', 'rfid number',
+                              'studentno', 'student no', 'student no.', 'studentnumber', 'student number', 'student id',
+                              'employeeno', 'employee no', 'employee no.', 'employeenumber', 'employee number', 'employee id'];
         const tbody = document.getElementById('previewBody');
-        tbody.innerHTML = dataRows.map(row =>
-            '<tr class="hover:bg-gray-50">' + headers.map((_, i) =>
-                `<td class="px-4 py-2 text-gray-700 whitespace-nowrap">${row[i] ?? ''}</td>`
-            ).join('') + '</tr>'
+        tbody.innerHTML = dataRows.map((row, ri) =>
+            `<tr class="hover:bg-gray-50" data-row="${ri}">` + headers.map((h, i) => {
+                const isEditable = editableCols.includes(h.toLowerCase().trim());
+                return `<td ${isEditable ? 'contenteditable="true"' : 'contenteditable="false"'}
+                     data-col="${i}"
+                     class="px-4 py-2 text-gray-700 whitespace-nowrap rounded ${isEditable ? 'border border-transparent focus:border-blue-400 focus:bg-blue-50 focus:outline-none cursor-text' : 'cursor-default select-none'}"
+                     >${row[i] ?? ''}</td>`;
+            }).join('') + '</tr>'
         ).join('');
 
         document.getElementById('previewCount').textContent = `${dataRows.length} row(s) found`;
@@ -349,5 +332,94 @@ function previewExcel() {
     };
     reader.readAsArrayBuffer(file);
 }
+
+function submitImport() {
+    // Read current (possibly edited) cell values back into the hidden form inputs
+    const tbody = document.getElementById('previewBody');
+    const thead = document.getElementById('previewHead');
+    const headers = [...thead.querySelectorAll('th')].map(th => th.textContent.trim());
+    const rows = [...tbody.querySelectorAll('tr')].map(tr =>
+        [...tr.querySelectorAll('td')].map(td => td.innerText.trim())
+    );
+
+    // Rebuild a CSV-like hidden input so the server reads the edited data
+    // We inject the edited rows into the existing hidden inputs on importForm
+    const form = document.getElementById('importForm');
+
+    // Remove any previously injected edited-row inputs
+    form.querySelectorAll('.edited-row-input').forEach(el => el.remove());
+
+    // Add header row
+    const headerInput = document.createElement('input');
+    headerInput.type = 'hidden';
+    headerInput.name = 'editedHeaders';
+    headerInput.className = 'edited-row-input';
+    headerInput.value = JSON.stringify(headers);
+    form.appendChild(headerInput);
+
+    rows.forEach((row, i) => {
+        const inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = `editedRow_${i}`;
+        inp.className = 'edited-row-input';
+        inp.value = JSON.stringify(row);
+        form.appendChild(inp);
+    });
+
+    form.submit();
+}
+
+// RFID tap-to-fill
+let rfidListening = false;
+
+function startRfidListen(role) {
+    rfidListening = true;
+    const btn = document.getElementById(`rfidBtn-${role}`);
+    const status = document.getElementById(`rfidStatus-${role}`);
+    if (btn) {
+        btn.innerHTML = `<svg class="w-4 h-4 animate-pulse" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg> Waiting...`;
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+    }
+    if (status) status.textContent = 'Tap the RFID card at the reader now...';
+}
+
+// Bind RFID tap handler — misConnection is defined in _MISLayout.cshtml
+function bindRfidHandler() {
+    if (typeof misConnection === 'undefined') return;
+    misConnection.on('UnregisteredRfidTap', function (data) {
+        const input  = document.getElementById('rfidInput-student');
+        const btn    = document.getElementById('rfidBtn-student');
+        const status = document.getElementById('rfidStatus-student');
+
+        if (input) input.value = data.rfidNumber;
+
+        if (btn) {
+            btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Got it`;
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            setTimeout(() => {
+                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg> Tap Card`;
+            }, 2000);
+        }
+        if (status) {
+            status.textContent = `Card UID filled: ${data.rfidNumber}`;
+            status.classList.remove('text-gray-400');
+            status.classList.add('text-green-600');
+        }
+        rfidListening = false;
+
+        // Switch to student tab if not already there
+        const studentTab = document.getElementById('form-student');
+        if (studentTab && studentTab.classList.contains('hidden')) {
+            switchTab('student');
+            document.getElementById('userTypeDropdown').value = 'student';
+        }
+    });
+}
+bindRfidHandler();
+
 </script>
 }
+
+

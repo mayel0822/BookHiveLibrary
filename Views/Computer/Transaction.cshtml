@@ -1,4 +1,4 @@
-@using BookHiveLibrary.Models
+﻿@using BookHiveLibrary.Models
 @model IEnumerable<ComputerUnit>
 @{
     Layout = "~/Views/Shared/_LibrarianLayout.cshtml";
@@ -8,6 +8,11 @@
         pc,
         sess = pc.Sessions.FirstOrDefault(s => s.IsActive)
     }).Where(x => x.sess != null).ToList();
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">@TempData["Error"]</div>
 }
 
 <div class="flex gap-5">
@@ -38,7 +43,7 @@
                         @if (inUse && sess?.User != null)
                         {
                             <p class="text-[11px] text-gray-500 truncate leading-tight">@sess.User.LastName, @sess.User.FirstName</p>
-                            <span class="duration-badge inline-block mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:#000147; color:white;" data-start="@sess.StartTime.ToString("o")">—</span>
+                            <span class="duration-badge inline-block mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded" style="background:#000147; color:white;" data-start="@sess.StartTime.ToUniversalTime().ToString("o")">—</span>
                         }
                         <!-- Button: bottom right -->
                         <div class="flex justify-end mt-2">
@@ -51,7 +56,7 @@
                             }
                             @if (inUse && sess != null)
                             {
-                                <button onclick="showSlip(@pc.Id, '@pc.ComputerNumber', '@(sess.User?.LastName)', '@(sess.User?.FirstName)', '@(sess.User?.MiddleName ?? "")', '@sect', '@adviser', '@sess.StartTime.ToString("o")', @sess.Id)"
+                                <button onclick="showSlip(@pc.Id, '@pc.ComputerNumber', '@(sess.User?.LastName)', '@(sess.User?.FirstName)', '@(sess.User?.MiddleName ?? "")', '@sect', '@adviser', '@sess.StartTime.ToUniversalTime().ToString("o")', @sess.Id)"
                                         class="px-3 py-1 text-[11px] font-medium rounded-lg border border-blue-300 text-blue-700 bg-white hover:bg-blue-50">
                                     View Slip
                                 </button>
@@ -97,7 +102,7 @@
                         </div>
                         <!-- Duration timer -->
                         <span class="session-timer text-xl font-bold tabular-nums block mb-2" style="color:#111827;"
-                              data-start="@x.sess.StartTime.ToString("o")"
+                              data-start="@x.sess.StartTime.ToUniversalTime().ToString("o")"
                               data-allowed="@(totalAllowed * 60)"
                               data-sessid="@x.sess.Id">00:00:00</span>
                         <!-- Time left row: label + value + extend popup on far right -->
@@ -106,10 +111,10 @@
                             <span class="time-left-val flex-1 text-xs font-medium text-gray-800 tabular-nums"
                                   data-sessid="@x.sess.Id"
                                   data-allowed="@(totalAllowed * 60)"
-                                  data-start="@x.sess.StartTime.ToString("o")">—</span>
+                                  data-start="@x.sess.StartTime.ToUniversalTime().ToString("o")">—</span>
                             <div class="relative">
                                 <button onclick="toggleExtendPopup('@x.sess.Id', event)"
-                                        class="w-5 h-5 rounded-full border border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 flex items-center justify-center text-sm font-bold leading-none">+</button>
+                                        class="w-5 h-5 rounded-full border border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 flex items-center justify-center text-sm font-bold">+</button>
                                 <div id="extpop-@x.sess.Id"
                                      class="hidden absolute right-0 bottom-full mb-2 bg-white border border-gray-200 rounded-xl shadow-lg p-3 z-50 whitespace-nowrap">
                                     <p class="text-xs text-gray-400 mb-2 font-medium">Extend time by</p>
@@ -129,7 +134,7 @@
                         <div class="w-full bg-gray-100 rounded-full h-1.5">
                             <div class="progress-bar h-1.5 rounded-full transition-all"
                                  style="width:0%; background:#000147;"
-                                 data-start="@x.sess.StartTime.ToString("o")"
+                                 data-start="@x.sess.StartTime.ToUniversalTime().ToString("o")"
                                  data-allowed="@(totalAllowed * 60)"></div>
                         </div>
                     </div>
@@ -149,22 +154,22 @@
                 </div>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-xs">
-                    <thead style="background:#23354D;">
+                <table class="bh-table text-xs">
+                    <thead>
                         <tr>
-                            <th class="px-3 py-2.5 text-left text-white font-medium">PC</th>
-                            <th class="px-3 py-2.5 text-left text-white font-medium">Name</th>
-                            <th class="px-3 py-2.5 text-left text-white font-medium">Section</th>
+                            <th>PC</th>
+                            <th>Name</th>
+                            <th>Section</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100">
+                    <tbody>
                         @if (!activeSessions.Any())
                         {
                             <tr><td colspan="3" class="px-3 py-6 text-center text-gray-400">No active sessions</td></tr>
                         }
                         @foreach (var x in activeSessions)
                         {
-                            <tr class="hover:bg-gray-50">
+                            <tr>
                                 <td class="px-3 py-2.5 font-semibold text-gray-700">@x.pc.ComputerNumber</td>
                                 <td class="px-3 py-2.5 text-gray-700 max-w-[80px] truncate">@x.sess!.User?.LastName, @x.sess.User?.FirstName</td>
                                 <td class="px-3 py-2.5 text-gray-500">@(x.sess.User?.Section ?? "—")</td>
@@ -179,7 +184,7 @@
 
 <!-- ── Use Slip Modal ──────────────────────────────────────────────────── -->
 <div id="slipModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl shadow-xl w-[480px] overflow-hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
         <div class="px-6 py-4 flex items-center justify-between" style="background-color:#000147;">
             <div>
                 <h3 class="text-base font-semibold text-white">Computer Use Slip</h3>
@@ -203,7 +208,7 @@
             </div>
         </div>
         <div class="px-6 py-4 border-t border-gray-100 flex gap-3">
-            <button onclick="closeSlipModal()" class="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">Close</button>
+            <button onclick="closeSlipModal()" class="btn-secondary flex-1 justify-center">Close</button>
             <form method="post" action="@Url.Action("EndSession","Computer")" class="flex-1">
                 @Html.AntiForgeryToken()
                 <input type="hidden" id="slipSessionId" name="sessionId" />
@@ -213,90 +218,99 @@
     </div>
 </div>
 
-<!-- ── Assign Modal ───────────────────────────────────────────────────── -->
-<div id="assignModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl shadow-xl w-[480px] overflow-hidden">
+<!-- ── Assign Computer / Computer Use Slip Modal ──────────────────────── -->
+<div id="assignModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden px-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden">
+
+        <!-- Header -->
         <div class="px-6 py-4 flex items-center justify-between" style="background-color:#000147;">
             <div>
-                <h3 class="text-base font-semibold text-white">Assign Computer</h3>
+                <h3 class="text-base font-semibold text-white">Computer Use Slip</h3>
                 <p class="text-xs text-white/60 mt-0.5" id="assignPcLabel">—</p>
             </div>
-            <button onclick="closeAssignModal()" class="text-white/60 hover:text-white">
+            <button type="button" onclick="closeAssignModal()" class="text-white/60 hover:text-white">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
         </div>
+
         <form method="post" action="@Url.Action("StartSession","Computer")">
             @Html.AntiForgeryToken()
             <input type="hidden" name="computerId" id="assignComputerId" />
             <input type="hidden" name="userId"     id="assignUserId" />
+
             <div class="px-6 pt-5 pb-4">
-                <!-- RFID tap -->
-                <div class="mb-4">
-                    <p class="text-xs text-gray-400 mb-1">Tap RFID Card</p>
-                    <div class="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 focus-within:ring-2 focus-within:ring-blue-300 cursor-text"
+
+                <!-- RFID Tap -->
+                <div class="mb-5">
+                    <p class="text-xs text-gray-400 mb-1.5">RFID Card</p>
+                    <div class="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-2.5 bg-gray-50 focus-within:ring-2 focus-within:ring-blue-300 cursor-text"
                          onclick="document.getElementById('assignRfidInput').focus()">
                         <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
                         </svg>
-                        <input id="assignRfidInput" type="text" placeholder="Tap card to identify user..."
-                               class="text-sm w-full focus:outline-none bg-transparent text-gray-700" autocomplete="off" />
+                        <input id="assignRfidInput" type="text"
+                               placeholder="Tap RFID card at desk reader…"
+                               class="text-sm w-full focus:outline-none bg-transparent text-gray-700 placeholder-gray-400"
+                               autocomplete="off" />
                     </div>
-                    <p id="assignRfidError" class="text-xs text-red-500 mt-1 hidden"></p>
+                    <p id="assignRfidError" class="text-xs text-red-500 mt-1.5 hidden"></p>
                 </div>
 
-                <!-- Slip divider -->
-                <div class="border-t border-dashed border-gray-200 mb-4"></div>
+                <!-- Dashed divider -->
+                <div class="border-t border-dashed border-gray-200 mb-5"></div>
 
-                <!-- Name row -->
-                <div class="grid grid-cols-3 gap-x-4 gap-y-3 mb-3">
-                    <div class="col-span-1">
-                        <p class="text-xs text-gray-400 mb-0.5">Last Name</p>
-                        <p id="assignLastName" class="text-sm font-medium text-gray-800 border-b border-gray-200 pb-1 min-h-[1.4rem]">—</p>
+                <!-- Slip fields — 3-column grid -->
+                <div class="grid grid-cols-3 gap-x-6 gap-y-4 text-sm">
+                    <!-- Row 1: Student No. (full width) -->
+                    <div class="col-span-3">
+                        <p class="text-xs text-gray-400 mb-0.5">Student / Employee No.</p>
+                        <p id="assignStudentNo" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1">—</p>
                     </div>
-                    <div class="col-span-1">
+                    <!-- Row 2: Last Name | First Name | M.I. -->
+                    <div>
+                        <p class="text-xs text-gray-400 mb-0.5">Last Name</p>
+                        <p id="assignLastName" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1">—</p>
+                    </div>
+                    <div>
                         <p class="text-xs text-gray-400 mb-0.5">First Name</p>
-                        <p id="assignFirstName" class="text-sm font-medium text-gray-800 border-b border-gray-200 pb-1 min-h-[1.4rem]">—</p>
+                        <p id="assignFirstName" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1">—</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-400 mb-0.5">M.I.</p>
-                        <p id="assignMI" class="text-sm font-medium text-gray-800 border-b border-gray-200 pb-1 min-h-[1.4rem]">—</p>
+                        <p id="assignMI" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1">—</p>
                     </div>
-                </div>
-
-                <!-- Section + Adviser -->
-                <div class="grid grid-cols-2 gap-x-4 gap-y-3 mb-3">
+                    <!-- Row 3: Section | Adviser (spans 2) -->
                     <div>
                         <p class="text-xs text-gray-400 mb-0.5">Section</p>
-                        <p id="assignSection" class="text-sm font-medium text-gray-800 border-b border-gray-200 pb-1 min-h-[1.4rem]">—</p>
+                        <p id="assignSection" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1">—</p>
                     </div>
-                    <div>
+                    <div class="col-span-2">
                         <p class="text-xs text-gray-400 mb-0.5">Adviser</p>
-                        <p id="assignAdviser" class="text-sm font-medium text-gray-800 border-b border-gray-200 pb-1 min-h-[1.4rem]">—</p>
+                        <p id="assignAdviser" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1">—</p>
                     </div>
-                </div>
-
-                <!-- Date + Time + Time Limit -->
-                <div class="grid grid-cols-3 gap-x-4 gap-y-3">
+                    <!-- Row 4: Date | Time | Time Limit -->
                     <div>
                         <p class="text-xs text-gray-400 mb-0.5">Date</p>
-                        <p id="assignDate" class="text-sm font-medium text-gray-800 border-b border-gray-200 pb-1 min-h-[1.4rem]">—</p>
+                        <p id="assignDate" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1">—</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-400 mb-0.5">Time</p>
-                        <p id="assignTime" class="text-sm font-medium text-gray-800 border-b border-gray-200 pb-1 min-h-[1.4rem]">—</p>
+                        <p id="assignTime" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1">—</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-400 mb-0.5">Time Limit</p>
-                        <p class="text-sm font-medium border-b border-gray-200 pb-1 min-h-[1.4rem]" class="text-gray-900">1 hour</p>
+                        <p class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1">1 hour</p>
                     </div>
                 </div>
             </div>
+
+            <!-- Footer -->
             <div class="px-6 py-4 border-t border-gray-100 flex gap-3">
-                <button type="button" onclick="closeAssignModal()" class="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">Cancel</button>
+                <button type="button" onclick="closeAssignModal()" class="btn-secondary flex-1 justify-center">Cancel</button>
                 <button type="submit" id="assignSubmitBtn" disabled
-                        class="flex-1 py-2.5 text-white rounded-lg text-sm font-medium opacity-50 cursor-not-allowed" style="background-color:#000147;">
+                        class="btn-primary flex-1 justify-center opacity-50 cursor-not-allowed">
                     Start Session
                 </button>
             </div>
@@ -307,6 +321,9 @@
 
 @section Scripts {
 <script>
+// Declare before tickAll() so the let is not in temporal dead zone when tickAll() is called immediately
+let slipStartISO = null;
+
 function fmt(startISO) {
     const s = Math.floor((Date.now() - new Date(startISO)) / 1000);
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
@@ -388,7 +405,7 @@ async function autoEndSession(sessionId, rowEl) {
             // Reload page after short delay so PC card flips to Available
             setTimeout(() => location.reload(), 1200);
         }
-    } catch { /* silent */ }
+    } catch (e) { /* silent */ }
 }
 
 // Extend popup toggle
@@ -444,14 +461,13 @@ async function extendTime(sessionId, minutes, btn) {
                 btn.disabled = false;
             }, 2000);
         }
-    } catch {
+    } catch (e) {
         btn.textContent = '+' + minutes + ' min';
         btn.disabled = false;
     }
 }
 
 // ── Slip ──────────────────────────────────────────────────────────────────────
-let slipStartISO = null;
 function showSlip(pcId, pcNo, ln, fn, mn, sect, adviser, startISO, sessionId) {
     document.getElementById('slipPcLabel').textContent   = 'PC No. ' + pcNo;
     document.getElementById('slipLastName').textContent  = ln      || '—';
@@ -466,51 +482,149 @@ function showSlip(pcId, pcNo, ln, fn, mn, sect, adviser, startISO, sessionId) {
 }
 function closeSlipModal() { slipStartISO = null; document.getElementById('slipModal').classList.add('hidden'); }
 
-// ── Assign ────────────────────────────────────────────────────────────────────
-let rfidBuf = '', rfidTimer = null;
+// ── Assign Computer ───────────────────────────────────────────────────────────
+function _setAssignFields(val) {
+    ['assignStudentNo','assignLastName','assignFirstName','assignMI','assignSection','assignAdviser'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    });
+}
+
+function fillAssignInfo(data) {
+    document.getElementById('assignStudentNo').textContent = data.studentNumber || '—';
+    document.getElementById('assignLastName').textContent  = data.lastName      || '—';
+    document.getElementById('assignFirstName').textContent = data.firstName     || '—';
+    document.getElementById('assignMI').textContent        = data.middleName    ? data.middleName[0] + '.' : '—';
+    document.getElementById('assignSection').textContent   = data.section       || '—';
+    document.getElementById('assignAdviser').textContent   = data.adviserName   || '—';
+    document.getElementById('assignUserId').value          = data.userId;
+    // Show student number in RFID field as confirmation
+    const rfidEl = document.getElementById('assignRfidInput');
+    if (rfidEl) { rfidEl.value = data.studentNumber || ''; rfidEl.placeholder = 'Tap RFID card at desk reader…'; }
+    // Enable submit
+    const btn = document.getElementById('assignSubmitBtn');
+    btn.disabled = false;
+    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+}
+
 function openAssignModal(pcId, pcNo) {
     document.getElementById('assignComputerId').value = pcId;
     document.getElementById('assignPcLabel').textContent = 'PC No. ' + pcNo;
     document.getElementById('assignUserId').value = '';
-    document.getElementById('assignRfidInput').value = '';
+    // Reset RFID input
+    const rfidEl = document.getElementById('assignRfidInput');
+    if (rfidEl) { rfidEl.value = ''; rfidEl.placeholder = 'Tap RFID card at desk reader…'; }
     document.getElementById('assignRfidError').classList.add('hidden');
-    const btn = document.getElementById('assignSubmitBtn');
-    btn.disabled = true; btn.classList.add('opacity-50','cursor-not-allowed');
-    ['assignLastName','assignFirstName','assignMI','assignSection','assignAdviser'].forEach(id => document.getElementById(id).textContent = '—');
+    // Reset slip fields
+    _setAssignFields('—');
+    // Set date/time
     const now = new Date();
     document.getElementById('assignDate').textContent = now.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
     document.getElementById('assignTime').textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    // Disable submit until RFID tapped
+    const btn = document.getElementById('assignSubmitBtn');
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    // Show modal and focus RFID input
     document.getElementById('assignModal').classList.remove('hidden');
-    setTimeout(() => document.getElementById('assignRfidInput').focus(), 50);
+    setTimeout(() => document.getElementById('assignRfidInput')?.focus(), 80);
 }
-function closeAssignModal() { document.getElementById('assignModal').classList.add('hidden'); }
 
-const rfidEl = document.getElementById('assignRfidInput');
-rfidEl.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); const v = rfidBuf.trim(); rfidBuf = ''; if (v) lookup(v); }
-});
-rfidEl.addEventListener('input', function() {
-    rfidBuf = this.value; clearTimeout(rfidTimer);
-    rfidTimer = setTimeout(() => { const v = rfidBuf.trim(); rfidBuf = ''; rfidEl.value = ''; if (v.length >= 4) lookup(v); }, 200);
-});
-async function lookup(rfid) {
-    const errEl = document.getElementById('assignRfidError');
-    errEl.classList.add('hidden'); rfidEl.placeholder = 'Looking up...';
+function closeAssignModal() {
+    document.getElementById('assignModal').classList.add('hidden');
+    clearTimeout(_rfidTimer);
+    const rfidEl = document.getElementById('assignRfidInput');
+    if (rfidEl) rfidEl.value = '';
+}
+
+
+// ── RFID Lookup ───────────────────────────────────────────────────────────────
+async function lookupAssignRfid(rfid) {
+    const errEl  = document.getElementById('assignRfidError');
+    const rfidEl = document.getElementById('assignRfidInput');
+    errEl.classList.add('hidden');
+    if (rfidEl) rfidEl.placeholder = 'Looking up…';
     try {
-        const data = await fetch(`@Url.Action("FindUserByRfid","Computer")?rfid=${encodeURIComponent(rfid)}`).then(r => r.json());
-        if (!data.found) { errEl.textContent = data.message; errEl.classList.remove('hidden'); }
-        else {
-            document.getElementById('assignLastName').textContent  = data.lastName    || '—';
-            document.getElementById('assignFirstName').textContent = data.firstName   || '—';
-            document.getElementById('assignMI').textContent        = data.middleName  ? data.middleName[0] + '.' : '—';
-            document.getElementById('assignSection').textContent   = data.section     || '—';
-            document.getElementById('assignAdviser').textContent   = data.adviserName || '—';
-            document.getElementById('assignUserId').value          = data.userId;
-            const btn = document.getElementById('assignSubmitBtn');
-            btn.disabled = false; btn.classList.remove('opacity-50','cursor-not-allowed');
+        const res  = await fetch('@Url.Action("FindUserByRfid","Computer")?rfid=' + encodeURIComponent(rfid));
+        const data = await res.json();
+        if (!data.found) {
+            errEl.textContent = data.message || 'Card not found.';
+            errEl.classList.remove('hidden');
+            if (rfidEl) { rfidEl.value = ''; rfidEl.placeholder = 'Tap RFID card at desk reader…'; }
+        } else {
+            fillAssignInfo(data);
         }
-    } catch { errEl.textContent = 'Server error.'; errEl.classList.remove('hidden'); }
-    rfidEl.placeholder = 'Tap card to identify user...';
+    } catch (e) {
+        errEl.textContent = 'Server error. Please try again.';
+        errEl.classList.remove('hidden');
+        if (rfidEl) { rfidEl.value = ''; rfidEl.placeholder = 'Tap RFID card at desk reader…'; }
+    }
+}
+
+// ── RFID keyboard capture — same pattern as Borrow Slip ───────────────────────
+let _rfidBuf   = '';
+let _rfidTimer = null;
+
+const _assignRfidEl = document.getElementById('assignRfidInput');
+if (_assignRfidEl) {
+    // Enter key: flush buffer immediately
+    _assignRfidEl.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const v = _rfidBuf.trim();
+            _rfidBuf = '';
+            clearTimeout(_rfidTimer);
+            _assignRfidEl.value = '';
+            if (v.length >= 2) lookupAssignRfid(v);
+        }
+    });
+
+    // input event: accumulate + auto-submit 200 ms after last character
+    _assignRfidEl.addEventListener('input', function() {
+        _rfidBuf = this.value;
+        clearTimeout(_rfidTimer);
+        _rfidTimer = setTimeout(() => {
+            const v = _rfidBuf.trim();
+            _rfidBuf = '';
+            _assignRfidEl.value = '';
+            if (v.length >= 4) lookupAssignRfid(v);
+        }, 200);
+    });
+}
+
+// Keep RFID input focused whenever the modal is open and user clicks outside it
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('assignModal');
+    if (!modal || modal.classList.contains('hidden')) return;
+    if (!e.target.closest('#assignModal')) return; // only inside modal
+    if (_assignRfidEl && !e.target.closest('button') && !e.target.closest('input[type="hidden"]')) {
+        _assignRfidEl.focus();
+    }
+});
+
+// ── SignalR: desk RFID reader (primary path) ──────────────────────────────────
+function _joinTransaction() {
+    console.log('[SignalR] Joining transaction group...');
+    libraryConnection.invoke('JoinTransaction')
+        .then(() => console.log('[SignalR] Joined transaction group OK'))
+        .catch(err => console.error('JoinTransaction error:', err));
+}
+
+if (typeof libraryConnection !== 'undefined') {
+    // Join on initial connect
+    (window._libConnected || Promise.resolve()).then(_joinTransaction);
+
+    // Re-join after every reconnect — Azure SignalR drops group memberships on reconnect
+    libraryConnection.onreconnected(() => _joinTransaction());
+
+    libraryConnection.on('DeskRfidTap', function(data) {
+        console.log('[DeskRfidTap] received:', data);
+        const modal = document.getElementById('assignModal');
+        console.log('[DeskRfidTap] modal hidden?', modal ? modal.classList.contains('hidden') : 'modal not found');
+        if (!modal || modal.classList.contains('hidden')) return;
+        clearTimeout(_rfidTimer);
+        lookupAssignRfid(data.rfidNumber);
+    });
 }
 
 // ── Real-time: reload page on computer session changes ───────────────────
@@ -519,3 +633,4 @@ libraryConnection.on('ComputerSessionUpdated', function() {
 });
 </script>
 }
+

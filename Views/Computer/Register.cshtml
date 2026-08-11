@@ -1,4 +1,4 @@
-@using BookHiveLibrary.Models
+﻿@using BookHiveLibrary.Models
 @model ComputerUnit
 @{
     Layout = "~/Views/Shared/_LibrarianLayout.cshtml";
@@ -41,7 +41,7 @@
         </div>
     }
 
-    <form method="post" action="@Url.Action("Register","Computer")">
+    <form id="registerForm" method="post" action="@Url.Action("Register","Computer")">
         @Html.AntiForgeryToken()
 
         <div class="mb-4">
@@ -78,10 +78,11 @@ function syncPcNumber() {
     const n = document.getElementById('pcNumberInput').value.trim();
     document.getElementById('computerNumberHidden').value = n ? 'PC - ' + n : '';
 }
-document.querySelector('form').addEventListener('submit', function(e) {
+document.getElementById('registerForm').addEventListener('submit', function(e) {
     const n = document.getElementById('pcNumberInput').value.trim();
     if (!n) { e.preventDefault(); alert('Please enter a computer number.'); return; }
     document.getElementById('computerNumberHidden').value = 'PC - ' + n;
 });
 </script>
 }
+

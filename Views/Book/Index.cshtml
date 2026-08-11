@@ -6,7 +6,7 @@
 }
 
 <!-- Stats Row -->
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+<div class="grid grid-cols-3 gap-4 mb-6">
     <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
         <p class="text-xs text-blue-200 mb-1">Total Books</p>
         <p class="text-3xl font-bold">@Model.Sum(b => b.TotalQuantity)</p>
@@ -40,50 +40,49 @@
                         }
                     }
                 </select>
-                <button type="submit" class="px-4 py-2 text-sm text-white font-medium" style="background-color:#000147;">Search</button>
+                <button type="submit" class="btn-primary rounded-none">Search</button>
             </div>
             @if (!string.IsNullOrEmpty(ViewBag.Search as string) || !string.IsNullOrEmpty(ViewBag.Category as string))
             {
-                <a href="@Url.Action("Index","Book")" class="ml-2 px-4 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 self-center">Clear</a>
+                <a href="@Url.Action("Index","Book")" class="btn-secondary ml-2 self-center">Clear</a>
             }
         </form>
-        <a href="@Url.Action("Register","Book")"
-           class="px-4 py-2 text-sm text-white rounded-lg flex-shrink-0 font-medium" style="background-color:#000147;">+ Add Book</a>
+        <a href="@Url.Action("Register","Book")" class="btn-primary flex-shrink-0">+ Add Book</a>
     </div>
 
     <!-- Bulk Print Toolbar (shows when books are selected) -->
     <div id="bulkToolbar" style="display:none;" class="px-5 py-3 bg-blue-50 border-b border-blue-100 flex items-center gap-3">
         <span id="selectedCount" class="text-sm font-semibold text-blue-800"></span>
-        <button onclick="printSelected()" class="px-4 py-1.5 text-sm text-white rounded-lg font-medium flex items-center gap-2" style="background-color:#000147;">
+        <button onclick="printSelected()" class="btn-primary">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
             Print Selected Labels
         </button>
-        <button onclick="clearSelection()" class="px-4 py-1.5 text-sm bg-white border border-gray-300 text-gray-600 rounded-lg">Clear Selection</button>
+        <button onclick="clearSelection()" class="btn-secondary">Clear Selection</button>
     </div>
 
     <!-- Table -->
     <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-            <thead class="text-white text-xs uppercase" style="background-color:#23354D;">
+        <table class="bh-table">
+            <thead>
                 <tr>
-                    <th class="px-3 py-3 text-left w-8">
+                    <th class="w-8">
                         <input type="checkbox" id="selectAll" class="w-4 h-4 cursor-pointer" onchange="toggleAll(this)" />
                     </th>
-                    <th class="px-4 py-3 text-left">Call No.</th>
-                    <th class="px-4 py-3 text-left">Book Title</th>
-                    <th class="px-4 py-3 text-left">Author</th>
-                    <th class="px-4 py-3 text-left">Published Year</th>
-                    <th class="px-4 py-3 text-left">Category</th>
-                    <th class="px-4 py-3 text-left">Quantity</th>
-                    <th class="px-4 py-3 text-left">Available</th>
-                    <th class="px-4 py-3 text-left">Status</th>
-                    <th class="px-4 py-3 text-left">Action</th>
+                    <th>Call No.</th>
+                    <th>Book Title</th>
+                    <th>Author</th>
+                    <th>Published Year</th>
+                    <th>Category</th>
+                    <th>Quantity</th>
+                    <th>Available</th>
+                    <th>Status</th>
+                    <th>Action</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody>
                 @foreach (var book in Model)
                 {
-                    <tr class="hover:bg-gray-50">
+                    <tr>
                         <td class="px-3 py-3">
                             <input type="checkbox" class="book-check w-4 h-4 cursor-pointer" value="@book.Id" onchange="updateToolbar()" />
                         </td>
@@ -109,10 +108,6 @@
                                 <a href="@Url.Action("Edit","Book", new { id = book.Id })"
                                    class="text-blue-600 hover:text-blue-800">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                </a>
-                                <a href="@Url.Action("QRCode","Book", new { id = book.Id })" target="_blank"
-                                   class="text-gray-400 hover:text-gray-700" title="QR Code">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 3.5a.5.5 0 11-1 0 .5.5 0 011 0zM6 3h4v4H6V3zm0 14h4v4H6v-4zM14 3h4v4h-4V3z"/></svg>
                                 </a>
                                 <button onclick="showArchiveModal(@book.Id)"
                                         class="text-red-400 hover:text-red-600" title="Archive">
@@ -150,8 +145,8 @@
                 </select>
             </div>
             <div class="flex gap-3">
-                <button type="submit" class="flex-1 py-2 text-white rounded-lg text-sm" style="background-color:#000147;">Archive</button>
-                <button type="button" onclick="closeArchiveModal()" class="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">Cancel</button>
+                <button type="submit" class="btn-primary flex-1 justify-center">Archive</button>
+                <button type="button" onclick="closeArchiveModal()" class="btn-secondary flex-1 justify-center">Cancel</button>
             </div>
         </form>
     </div>
@@ -201,7 +196,7 @@ function clearSelection() {
 function printSelected() {
     const ids = getChecked();
     if (ids.length === 0) return;
-    window.open('/Book/PrintLabels?ids=' + ids.join(','), '_blank');
+    window.location.href = '/Book/PrintLabels?ids=' + ids.join(',');
 }
 </script>
 }

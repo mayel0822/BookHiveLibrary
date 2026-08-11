@@ -79,6 +79,15 @@
                     <button onclick="toggleDropdown('notification-dropdown')" class="relative text-gray-500 hover:text-gray-700">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                         <span id="notification-badge" class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center @(!myReservations.Any() ? "hidden" : "")">@myReservations.Count</span>
+                        <script>
+                        (function(){
+                            var ids = [@string.Join(",", myReservations.Select(r => r.Id))];
+                            var readKey = 'notif_read_ids';
+                            var readIds = JSON.parse(localStorage.getItem(readKey) || '[]');
+                            var allRead = ids.length === 0 || ids.every(function(id){ return readIds.indexOf(id) >= 0; });
+                            if (allRead) document.currentScript.previousElementSibling.classList.add('hidden');
+                        })();
+                        </script>
                     </button>
                     <div id="notification-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
                         <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -96,7 +105,7 @@
                                     <div class="flex-1 min-w-0">
                                         <p class="text-sm font-semibold text-gray-900">Book reservation @res.Status.ToLower()</p>
                                         <p class="text-xs text-gray-500 truncate">@res.Book?.Title</p>
-                                        <p class="text-xs text-gray-400 mt-1">Pickup by @res.PickupDeadline.ToString("MM/dd/yy")</p>
+                                        <p class="text-xs text-gray-400 mt-1">Pickup by @res.PickupDeadline.ToString("MMM dd, yyyy h:mm tt")</p>
                                     </div>
                                 </li>
                             }
@@ -368,6 +377,12 @@
     function markAllRead() {
         const badge = document.getElementById('notification-badge');
         if (badge) badge.classList.add('hidden');
+        // Persist read state so it survives page navigation
+        var ids = [@string.Join(",", myReservations.Select(r => r.Id))];
+        var readKey = 'notif_read_ids';
+        var readIds = JSON.parse(localStorage.getItem(readKey) || '[]');
+        ids.forEach(function(id){ if (readIds.indexOf(id) < 0) readIds.push(id); });
+        localStorage.setItem(readKey, JSON.stringify(readIds));
     }
     function toggleProfileDrop() { document.getElementById('profile-drop').classList.toggle('hidden'); }
 

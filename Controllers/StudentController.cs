@@ -17,14 +17,26 @@ namespace BookHiveLibrary.Controllers
         private readonly IHubContext<LibraryHub> _hub;
 
         private static readonly TimeSpan LibraryOpenTime  = new TimeSpan(8, 0, 0);
+        private static readonly TimeSpan LibraryCloseTime = new TimeSpan(17, 0, 0); // 5:00 PM
         private const int ReservationWindowHours = 3;
 
         private static DateTime CalculatePickupDeadline()
         {
-            var now = DateTime.Now;
-            var openToday = DateTime.Today + LibraryOpenTime;
-            var start = now < openToday ? openToday : now;
-            return start.AddHours(ReservationWindowHours);
+            var now      = DateTime.Now;
+            var openToday  = DateTime.Today + LibraryOpenTime;
+            var closeToday = DateTime.Today + LibraryCloseTime;
+            var start    = now < openToday ? openToday : now;
+            var deadline = start.AddHours(ReservationWindowHours);
+
+            // Cap deadline at 5:00 PM of the same day
+            if (deadline > closeToday)
+                deadline = closeToday;
+
+            // If reserving after 5 PM, deadline is 5 PM the next day
+            if (now >= closeToday)
+                deadline = DateTime.Today.AddDays(1) + LibraryCloseTime;
+
+            return deadline;
         }
 
         public StudentController(UserManager<ApplicationUser> userManager, ApplicationDbContext context, IHubContext<LibraryHub> hub)
@@ -100,41 +112,53 @@ namespace BookHiveLibrary.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Reserve(int bookId)
+        public async Task<IActionResult> Reserve(int bookId, bool returnToDetail = false)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return RedirectToAction("Login", "Account");
 
+            IActionResult RedirectBack(bool toDetail) =>
+                toDetail ? RedirectToAction("BookDetail", new { id = bookId })
+                         : RedirectToAction("BookViewing");
+
             if (string.IsNullOrEmpty(user.Section))
             {
                 TempData["Error"] = "You must be assigned to a section before making a reservation. Please contact the librarian.";
-                return RedirectToAction("BookViewing");
+                return RedirectBack(returnToDetail);
             }
 
             if (string.IsNullOrEmpty(user.PhoneNumber))
             {
                 TempData["Error"] = "You must have a phone number on your profile before making a reservation. Please update your profile.";
-                return RedirectToAction("BookViewing");
+                return RedirectBack(returnToDetail);
+            }
+
+            // Block reservations 2 hours before closing (after 3:00 PM)
+            var cutoff = DateTime.Today + LibraryCloseTime - TimeSpan.FromHours(2);
+            if (DateTime.Now >= cutoff)
+            {
+                TempData["Error"] = "Reservations are closed after 3:00 PM. Please come back the next library day.";
+                return RedirectBack(returnToDetail);
             }
 
             var book = await _context.Books.FindAsync(bookId);
             if (book == null || book.AvailableQuantity <= 0)
             {
                 TempData["Error"] = "Book is not available for reservation.";
-                return RedirectToAction("BookViewing");
+                return RedirectBack(returnToDetail);
             }
 
             if (book.IsRoomUseOnly)
             {
                 TempData["Error"] = "This book is for room use only and cannot be borrowed outside the library.";
-                return RedirectToAction("BookViewing");
+                return RedirectBack(returnToDetail);
             }
 
             var roles = await _userManager.GetRolesAsync(user);
             if (book.BookFor == "Professor" && !roles.Contains("Professor"))
             {
                 TempData["Error"] = "This book is for professors only and cannot be reserved by students.";
-                return RedirectToAction("BookViewing");
+                return RedirectBack(returnToDetail);
             }
 
             var existing = await _context.BookReservations
@@ -146,9 +170,9 @@ namespace BookHiveLibrary.Controllers
             {
                 var msg = existing.Status == "PickedUp"
                     ? "You already have a borrowed copy of this book. Please return it before reserving again."
-                    : "You already have an active reservation for this book.";
+                    : "You already have a pending reservation for this book. Please visit the library to pick it up.";
                 TempData["Error"] = msg;
-                return RedirectToAction("BookViewing");
+                return RedirectBack(returnToDetail);
             }
 
             _context.BookReservations.Add(new BookReservation
@@ -173,8 +197,8 @@ namespace BookHiveLibrary.Controllers
             foreach (var librarian in librarians)
                 await _hub.Clients.Group($"user-{librarian.Id}").SendAsync("NewReservation", notifPayload);
 
-            TempData["Success"] = "Reservation submitted! Wait for librarian approval.";
-            return RedirectToAction("BookViewing");
+            TempData["Success"] = "Reservation submitted! Please visit the library to pick up your book.";
+            return RedirectBack(returnToDetail);
         }
 
         public async Task<IActionResult> Profile()
