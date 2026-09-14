@@ -36,3 +36,4 @@ publish/
 
 # User uploads
 wwwroot/uploads/
+arduino/**/secrets.h
