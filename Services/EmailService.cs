@@ -1,9 +1,16 @@
-using MailKit.Net.Smtp;
-using Microsoft.Extensions.Configuration;
-using MimeKit;
+using System.Net;
+using System.Net.Mail;
 
 namespace BookHiveLibrary.Services
 {
+    // This service sends all outgoing emails from BookHive using the school's Office 365 email.
+    //
+    // It sends:
+    //   - A reminder email to the student when a borrowed book is almost due
+    //   - An overdue notification to the class adviser when a book is not returned on time
+    //   - An OTP (one-time password) code for account verification
+    //
+    // Email settings (sender address, password) are stored in appsettings.json under "EmailSettings".
     public class EmailService
     {
         private readonly IConfiguration _configuration;
@@ -13,75 +20,99 @@ namespace BookHiveLibrary.Services
             _configuration = configuration;
         }
 
-        public async Task SendReturnReminderAsync(string email, string firstName, string bookTitle, DateTime dueDate)
+        // Sends a return reminder to the student before their book's due date.
+        // Called by the background service when a book is due within 12 hours.
+        public async Task SendReturnReminderAsync(
+            string recipientEmail,
+            string studentName,
+            string bookTitle,
+            DateTime dueDate)
         {
-            var message = new MimeMessage();
-            message.From.Add(new MailboxAddress(
-                _configuration["EmailSettings:SenderName"],
-                _configuration["EmailSettings:SenderEmail"]));
-            message.To.Add(MailboxAddress.Parse(email));
-            message.Subject = "BookHive – Book Return Reminder";
-            message.Body = new TextPart("plain")
-            {
-                Text = $"Hi {firstName},\n\nThis is a reminder that your borrowed book \"{bookTitle}\" is due on {dueDate:MMMM dd, yyyy hh:mm tt}.\n\nPlease return it on time to avoid penalties.\n\nBookHive Library"
-            };
+            string subject = "BookHive – Book Return Reminder";
 
-            using var client = new SmtpClient();
-            await client.ConnectAsync("smtp.office365.com", 587, MailKit.Security.SecureSocketOptions.StartTls);
-            await client.AuthenticateAsync(
-                _configuration["EmailSettings:SenderEmail"],
-                _configuration["EmailSettings:AppPassword"]);
-            await client.SendAsync(message);
-            await client.DisconnectAsync(true);
+            string body = $@"
+                <p>Hi <strong>{studentName}</strong>,</p>
+                <p>This is a reminder that your borrowed book is due soon:</p>
+                <ul>
+                    <li><strong>Book:</strong> {bookTitle}</li>
+                    <li><strong>Due Date:</strong> {dueDate:MMMM d, yyyy h:mm tt}</li>
+                </ul>
+                <p>Please return it to the library on time to avoid penalties.</p>
+                <br/>
+                <p>– BookHive Library System</p>";
+
+            await SendAsync(recipientEmail, subject, body);
         }
 
-        public async Task SendOverdueAdviserNotificationAsync(string adviserEmail, string studentName, string bookTitle, DateTime dueDate)
+        // Sends an overdue notification to the student's class adviser.
+        // Called when a book is past its due date and still not returned.
+        public async Task SendOverdueAdviserNotificationAsync(
+            string adviserEmail,
+            string studentName,
+            string bookTitle,
+            DateTime dueDate)
         {
-            var message = new MimeMessage();
-            message.From.Add(new MailboxAddress(
-                _configuration["EmailSettings:SenderName"],
-                _configuration["EmailSettings:SenderEmail"]));
-            message.To.Add(MailboxAddress.Parse(adviserEmail));
-            message.Subject = "BookHive – Student Overdue Book Notice";
-            message.Body = new TextPart("plain")
-            {
-                Text = $"Dear Adviser,\n\nThis is to inform you that your student {studentName} has not returned the book \"{bookTitle}\" which was due on {dueDate:MMMM dd, yyyy}.\n\nPlease remind your student to return the book to the library as soon as possible.\n\nBookHive Library"
-            };
+            string subject = "BookHive – Overdue Book Notification";
 
-            using var client = new SmtpClient();
-            await client.ConnectAsync("smtp.office365.com", 587, MailKit.Security.SecureSocketOptions.StartTls);
-            await client.AuthenticateAsync(
-                _configuration["EmailSettings:SenderEmail"],
-                _configuration["EmailSettings:AppPassword"]);
-            await client.SendAsync(message);
-            await client.DisconnectAsync(true);
+            string body = $@"
+                <p>Dear Adviser,</p>
+                <p>One of your students has an overdue library book:</p>
+                <ul>
+                    <li><strong>Student:</strong> {studentName}</li>
+                    <li><strong>Book:</strong> {bookTitle}</li>
+                    <li><strong>Due Date:</strong> {dueDate:MMMM d, yyyy h:mm tt}</li>
+                </ul>
+                <p>Please remind the student to return the book as soon as possible.</p>
+                <br/>
+                <p>– BookHive Library System</p>";
+
+            await SendAsync(adviserEmail, subject, body);
         }
 
-        public async Task SendOtpAsync(string email, string otp)
+        // Sends a one-time password (OTP) code to the user's email.
+        // Used during the email verification step of the login flow.
+        public async Task SendOtpAsync(string recipientEmail, string otpCode)
         {
-            var message = new MimeMessage();
+            string subject = "BookHive – Your Verification Code";
 
-            message.From.Add(new MailboxAddress(
-                _configuration["EmailSettings:SenderName"],
-                _configuration["EmailSettings:SenderEmail"]));
+            string body = $@"
+                <p>Your BookHive verification code is:</p>
+                <h2 style='letter-spacing: 6px;'>{otpCode}</h2>
+                <p>This code expires in 5 minutes.</p>
+                <p>If you did not request this, please ignore this email.</p>
+                <br/>
+                <p>– BookHive Library System</p>";
 
-            message.To.Add(MailboxAddress.Parse(email));
+            await SendAsync(recipientEmail, subject, body);
+        }
 
-            message.Subject = "BookHive Authentication Code";
+        // Internal helper that actually sends the email using the Office 365 SMTP server.
+        // All public methods above call this to do the actual sending.
+        private async Task SendAsync(string recipientEmail, string subject, string body)
+        {
+            // Read email settings from appsettings.json
+            string senderName  = _configuration["EmailSettings:SenderName"]  ?? "BookHive";
+            string senderEmail = _configuration["EmailSettings:SenderEmail"]  ?? "";
+            string appPassword = _configuration["EmailSettings:AppPassword"]  ?? "";
 
-            message.Body = new TextPart("plain")
+            var mailMessage = new MailMessage
             {
-                Text = $"Hello,\n\nYour One-Time Password (OTP) is:\n\n{otp}\n\nThis code will expire in 5 minutes.\n\nIf you didn't request this code, please ignore this email.\n\nBookHive Library"
+                From       = new MailAddress(senderEmail, senderName),
+                Subject    = subject,
+                Body       = body,
+                IsBodyHtml = true  // The body above uses HTML tags
+            };
+            mailMessage.To.Add(recipientEmail);
+
+            // Office 365 requires SMTP with StartTLS on port 587
+            using var smtpClient = new SmtpClient("smtp.office365.com", 587)
+            {
+                Credentials  = new NetworkCredential(senderEmail, appPassword),
+                EnableSsl    = true,
+                DeliveryMethod = SmtpDeliveryMethod.Network
             };
 
-            using var client = new SmtpClient();
-            await client.ConnectAsync("smtp.office365.com", 587, MailKit.Security.SecureSocketOptions.StartTls);
-            await client.AuthenticateAsync(
-                _configuration["EmailSettings:SenderEmail"],
-                _configuration["EmailSettings:AppPassword"]
-            );
-            await client.SendAsync(message);
-            await client.DisconnectAsync(true);
+            await smtpClient.SendMailAsync(mailMessage);
         }
     }
 }

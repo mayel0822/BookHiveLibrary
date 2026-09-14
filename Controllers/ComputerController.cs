@@ -9,108 +9,137 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BookHiveLibrary.Controllers
 {
+    // This controller handles everything related to the computer lab.
+    // Only librarians can access it (except the kiosk pages which any computer can load).
+    //
+    // What it handles:
+    //   - Seeing which computers are available or in use
+    //   - Starting and ending student sessions
+    //   - Extending time for a session
+    //   - Adding and removing computers from the system
+    //   - The kiosk page that runs on each student PC showing how much time is left
     [Authorize(Roles = "LIBRARIAN")]
     public class ComputerController : Controller
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IHubContext<LibraryHub> _hub;
+        private readonly IHubContext<LibraryHub> _hub; // For sending live updates to librarian screens
 
         public ComputerController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IHubContext<LibraryHub> hub)
         {
-            _context = context;
+            _context     = context;
             _userManager = userManager;
-            _hub = hub;
+            _hub         = hub;
         }
 
+        // Sends a live update about a session change to all librarian screens.
+        // This way the librarian's transaction page updates automatically without refreshing.
         private async Task PushComputerEvent(string eventName, object payload)
         {
-            var librarians = await _userManager.GetUsersInRoleAsync("Librarian");
-            foreach (var lib in librarians)
-                await _hub.Clients.Group($"user-{lib.Id}").SendAsync(eventName, payload);
+            var allLibrarians = await _userManager.GetUsersInRoleAsync("Librarian");
+            foreach (var librarian in allLibrarians)
+                await _hub.Clients.Group($"user-{librarian.Id}").SendAsync(eventName, payload);
         }
 
+        // Loads the computer count numbers (total, available, in use, archived) into ViewBag
+        // so the summary cards at the top of the page always have up-to-date numbers.
         private async Task LoadComputerStats()
         {
-            ViewBag.TotalComputers = await _context.ComputerUnits.CountAsync();
-            ViewBag.AvailableComputers = await _context.ComputerUnits.CountAsync(c => !c.IsArchived && c.IsAvailable);
-            ViewBag.InUseComputers = await _context.ComputerUnits.CountAsync(c => !c.IsArchived && !c.IsAvailable);
-            ViewBag.ArchivedComputers = await _context.ComputerUnits.CountAsync(c => c.IsArchived);
+            ViewBag.TotalComputers     = await _context.ComputerUnits.CountAsync(c => !c.IsArchived);
+            ViewBag.InUseComputers     = await _context.ComputerSessions.CountAsync(s => s.IsActive);
+            ViewBag.UnavailableComputers = await _context.ComputerUnits.CountAsync(c => !c.IsArchived && !c.IsAvailable
+                                             && !_context.ComputerSessions.Any(s => s.ComputerUnitId == c.Id && s.IsActive));
+            ViewBag.AvailableComputers = await _context.ComputerUnits.CountAsync(c => !c.IsArchived && c.IsAvailable
+                                             && !_context.ComputerSessions.Any(s => s.ComputerUnitId == c.Id && s.IsActive));
+            ViewBag.ArchivedComputers  = await _context.ComputerUnits.CountAsync(c => c.IsArchived);
         }
 
-        // Computer List
+        // Shows the full list of active computers with their current session (if occupied).
+        // Also loads all students/professors for the manual assignment dropdown
+        // in case the librarian wants to assign someone without using the RFID card.
         public async Task<IActionResult> Index()
         {
             await LoadComputerStats();
 
             var computers = await _context.ComputerUnits
-                .Where(c => !c.IsArchived)
-                .Include(c => c.Sessions.Where(s => s.IsActive))
-                    .ThenInclude(s => s.User)
-                .OrderBy(c => c.ComputerNumber)
+                .Where(computer => !computer.IsArchived)
+                .Include(computer => computer.Sessions.Where(session => session.IsActive)) // Only load the currently running session
+                    .ThenInclude(session => session.User)
+                .OrderBy(computer => computer.ComputerNumber)
                 .ToListAsync();
 
             ViewBag.SectionAdvisers = await _context.Sections
-                .ToDictionaryAsync(s => s.SectionName, s => s.AdviserName);
+                .ToDictionaryAsync(section => section.SectionName, section => section.AdviserName);
 
             ViewBag.AllUsers = await _userManager.Users
-                .Where(u => (u.UserType == "Student" || u.UserType == "Professor") && u.IsActive)
-                .OrderBy(u => u.LastName)
+                .Where(user => (user.UserType == "Student" || user.UserType == "Professor") && user.IsActive)
+                .OrderBy(user => user.LastName)
                 .ToListAsync();
 
             return View(computers);
         }
 
-        // Transaction Management - Computer
+        // The real-time transaction page where the librarian manages computer sessions.
+        // Updates automatically via SignalR when sessions start or end.
         public async Task<IActionResult> Transaction()
         {
+            await LoadComputerStats();
+
             var computers = await _context.ComputerUnits
-                .Where(c => !c.IsArchived)
-                .Include(c => c.Sessions.Where(s => s.IsActive))
-                    .ThenInclude(s => s.User)
-                .OrderBy(c => c.ComputerNumber)
+                .Where(computer => !computer.IsArchived)
+                .Include(computer => computer.Sessions.Where(session => session.IsActive))
+                    .ThenInclude(session => session.User)
+                .OrderBy(computer => computer.ComputerNumber)
                 .ToListAsync();
 
             ViewBag.SectionAdvisers = await _context.Sections
-                .ToDictionaryAsync(s => s.SectionName, s => s.AdviserName);
+                .ToDictionaryAsync(section => section.SectionName, section => section.AdviserName);
 
             return View(computers);
         }
 
-        // RFID lookup for computer assignment
+        // Looks up a student by their RFID card number.
+        // When the student taps their card on the desk reader, the librarian's screen
+        // automatically fills in the student's name, section, and ID number.
+        // Returns an error message if the card is not recognized or the account isn't activated.
         [HttpGet]
         public async Task<IActionResult> FindUserByRfid(string rfid)
         {
             var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RFIDNumber == rfid);
+
             if (user == null)
                 return Json(new { found = false, message = "RFID card not registered." });
-            if (!user.IsActive || string.IsNullOrEmpty(user.Section))
+
+            bool accountNotReady = !user.IsActive || string.IsNullOrEmpty(user.Section);
+            if (accountNotReady)
                 return Json(new { found = false, message = "Your account is still not activated. Please activate it with the librarian." });
 
             var sectionRecord = await _context.Sections
-                .FirstOrDefaultAsync(s => s.SectionName == user.Section);
+                .FirstOrDefaultAsync(section => section.SectionName == user.Section);
 
             return Json(new
             {
-                found = true,
-                userId = user.Id,
+                found         = true,
+                userId        = user.Id,
                 studentNumber = user.UserType == "Student" ? user.StudentNumber : user.EmployeeNumber,
-                firstName = user.FirstName,
-                lastName = user.LastName,
-                middleName = user.MiddleName ?? "",
-                section = user.Section ?? "",
-                adviserName = sectionRecord?.AdviserName ?? "",
-                userType = user.UserType
+                firstName     = user.FirstName,
+                lastName      = user.LastName,
+                middleName    = user.MiddleName ?? "",
+                section       = user.Section ?? "",
+                adviserName   = sectionRecord?.AdviserName ?? "",
+                userType      = user.UserType
             });
         }
 
-        // Register / Add Computer
+        // Shows the form for adding a new computer to the system.
         public async Task<IActionResult> Register()
         {
             await LoadComputerStats();
             return View(new ComputerUnit());
         }
 
+        // Adds a new computer to the system.
+        // Makes sure the computer number doesn't already exist (among active computers).
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(string computerNumber, bool isAvailable = true)
@@ -122,60 +151,77 @@ namespace BookHiveLibrary.Controllers
                 return View(new ComputerUnit());
             }
 
-            bool exists = await _context.ComputerUnits.AnyAsync(c => c.ComputerNumber == computerNumber && !c.IsArchived);
-            if (exists)
+            bool computerAlreadyExists = await _context.ComputerUnits
+                .AnyAsync(computer => computer.ComputerNumber == computerNumber && !computer.IsArchived);
+
+            if (computerAlreadyExists)
             {
                 await LoadComputerStats();
                 ModelState.AddModelError("", "A computer with that number already exists.");
                 return View(new ComputerUnit());
             }
 
-            _context.ComputerUnits.Add(new ComputerUnit { ComputerNumber = computerNumber, IsAvailable = isAvailable });
+            var newComputer = new ComputerUnit { ComputerNumber = computerNumber, IsAvailable = isAvailable };
+            _context.ComputerUnits.Add(newComputer);
             await _context.SaveChangesAsync();
+
             TempData["Success"] = $"{computerNumber} registered.";
             return RedirectToAction("Index");
         }
 
-        // Start a session (librarian assigns student to a computer)
+        // Starts a computer session — assigns a student to a specific computer.
+        // The librarian clicks "Start Session" after the student taps their RFID card.
+        // Checks that:
+        //   - A student was actually selected (RFID was tapped)
+        //   - The computer exists and is currently free
+        //   - The student account exists
+        // After starting: marks the computer as "not available" and notifies all librarian screens.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> StartSession(int computerId, string userId)
         {
-            if (string.IsNullOrWhiteSpace(userId))
+            bool noStudentSelected = string.IsNullOrWhiteSpace(userId);
+            if (noStudentSelected)
             {
                 TempData["Error"] = "No student selected. Please tap the RFID card first.";
                 return RedirectToAction("Transaction");
             }
 
             var computer = await _context.ComputerUnits.FindAsync(computerId);
-            if (computer == null || !computer.IsAvailable)
+            bool computerNotAvailable = computer == null || !computer.IsAvailable;
+            if (computerNotAvailable)
             {
                 TempData["Error"] = "Computer is not available.";
                 return RedirectToAction("Transaction");
             }
 
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
+            var student = await _userManager.FindByIdAsync(userId);
+            if (student == null)
             {
                 TempData["Error"] = "Student not found.";
                 return RedirectToAction("Transaction");
             }
 
-            _context.ComputerSessions.Add(new ComputerSession
+            var newSession = new ComputerSession
             {
                 ComputerUnitId = computerId,
-                UserId = userId,
-                StartTime = DateTime.Now
-            });
+                UserId         = userId,
+                StartTime      = DateTime.Now
+                // The default session time (60 minutes) comes from the ComputerSession model
+            };
+            _context.ComputerSessions.Add(newSession);
 
-            computer.IsAvailable = false;
+            computer!.IsAvailable = false; // Mark the computer as occupied
             await _context.SaveChangesAsync();
+
             await PushComputerEvent("ComputerSessionUpdated", new { action = "Started", computerId });
-            TempData["Success"] = $"Session started for {user.FirstName} {user.LastName}.";
+            TempData["Success"] = $"Session started for {student.FirstName} {student.LastName}.";
             return RedirectToAction("Transaction");
         }
 
-        // Auto-end session via AJAX (called by librarian UI when timer expires)
+        // Ends a session via the page (called by JavaScript when the timer runs out or
+        // when the librarian clicks "End Session" on the transaction card).
+        // Returns a JSON result so the page can update without a full reload.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> EndSessionAjax(int sessionId)
@@ -183,19 +229,26 @@ namespace BookHiveLibrary.Controllers
             var session = await _context.ComputerSessions
                 .Include(s => s.ComputerUnit)
                 .FirstOrDefaultAsync(s => s.Id == sessionId);
+
             if (session == null) return Json(new { success = false });
 
-            session.EndTime = DateTime.Now;
+            session.EndTime  = DateTime.Now;
             session.IsActive = false;
-            if (session.ComputerUnit != null)
-                session.ComputerUnit.IsAvailable = true;
+
+            // Make the computer available again for the next student
+            bool computerExists = session.ComputerUnit != null;
+            if (computerExists)
+                session.ComputerUnit!.IsAvailable = true;
 
             await _context.SaveChangesAsync();
             await PushComputerEvent("ComputerSessionUpdated", new { action = "Ended", computerId = session.ComputerUnitId });
+
             return Json(new { success = true, computerId = session.ComputerUnitId });
         }
 
-        // Kiosk page — fullscreen LAN page on student computer (no login needed)
+        // The kiosk page that runs fullscreen on each student computer in the lab.
+        // No login needed — this page just displays the session timer and student info.
+        // The `pc` parameter is the computer number (e.g. "PC-01") so the page knows which computer it is.
         [AllowAnonymous]
         [HttpGet]
         public IActionResult Kiosk(string pc)
@@ -204,51 +257,63 @@ namespace BookHiveLibrary.Controllers
             return View();
         }
 
-        // Kiosk status poll endpoint (no login needed — called from student kiosk PC)
+        // Called by the kiosk page every few seconds to get the latest session info.
+        // No login needed — runs on the student-facing computer.
+        //
+        // How remaining time is calculated:
+        //   Total seconds = (base minutes + extra minutes added by librarian) × 60
+        //   Remaining = total seconds − seconds already used
         [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> KioskStatus(string pc)
         {
             var computer = await _context.ComputerUnits
-                .Include(c => c.Sessions.Where(s => s.IsActive))
-                    .ThenInclude(s => s.User)
+                .Include(c => c.Sessions.Where(session => session.IsActive))
+                    .ThenInclude(session => session.User)
                 .FirstOrDefaultAsync(c => c.ComputerNumber == pc);
 
             if (computer == null) return Json(new { found = false });
 
-            var sess = computer.Sessions.FirstOrDefault(s => s.IsActive);
-            if (sess == null) return Json(new { isActive = false });
+            var activeSession = computer.Sessions.FirstOrDefault(session => session.IsActive);
+            if (activeSession == null) return Json(new { isActive = false }); // No session running
 
-            var totalSecs = (sess.AllowedMinutes + sess.ExtendedMinutes) * 60;
-            var elapsed   = (int)(DateTime.Now - sess.StartTime).TotalSeconds;
-            var remaining = totalSecs - elapsed;
+            int totalSeconds   = (activeSession.AllowedMinutes + activeSession.ExtendedMinutes) * 60;
+            int secondsElapsed = (int)(DateTime.Now - activeSession.StartTime).TotalSeconds;
+            int secondsLeft    = totalSeconds - secondsElapsed;
+
+            string studentName = activeSession.User != null
+                ? activeSession.User.LastName + ", " + activeSession.User.FirstName
+                : "";
 
             return Json(new
             {
                 isActive  = true,
-                remaining,
-                totalSecs,
-                name      = sess.User != null ? sess.User.LastName + ", " + sess.User.FirstName : "",
-                section   = sess.User?.Section ?? ""
+                remaining = secondsLeft,
+                totalSecs = totalSeconds,
+                name      = studentName,
+                section   = activeSession.User?.Section ?? ""
             });
         }
 
-        // Extend session time
+        // Adds extra time to an active session.
+        // The librarian can extend a session multiple times — the extra minutes stack.
+        // The kiosk timer on the student's computer picks up the new total automatically.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ExtendTime(int sessionId, int minutes)
         {
             var session = await _context.ComputerSessions.FindAsync(sessionId);
             if (session == null) return NotFound();
-            session.ExtendedMinutes += minutes;
+
+            session.ExtendedMinutes += minutes; // Stacks on top of any previous extensions
             await _context.SaveChangesAsync();
-            return Json(new {
-                success = true,
-                totalMinutes = session.AllowedMinutes + session.ExtendedMinutes
-            });
+
+            int totalMinutes = session.AllowedMinutes + session.ExtendedMinutes;
+            return Json(new { success = true, totalMinutes });
         }
 
-        // End session
+        // Ends a session the traditional way (full form POST, not AJAX).
+        // Used as a fallback if the AJAX version doesn't work.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> EndSession(int sessionId)
@@ -259,7 +324,7 @@ namespace BookHiveLibrary.Controllers
 
             if (session == null) return NotFound();
 
-            session.EndTime = DateTime.Now;
+            session.EndTime  = DateTime.Now;
             session.IsActive = false;
 
             if (session.ComputerUnit != null)
@@ -271,7 +336,30 @@ namespace BookHiveLibrary.Controllers
             return RedirectToAction("Transaction");
         }
 
-        // Archive Computer
+        // Hides a computer from the active list (marks it as archived with a reason).
+        // Archived computers won't appear in the transaction page or be assignable to students.
+        // Toggles a computer between Available and Unavailable (e.g., for maintenance).
+        // Only works when the computer has no active session — can't mark a busy PC as unavailable.
+        [HttpPost]
+        public async Task<IActionResult> ToggleAvailability(int id)
+        {
+            var computer = await _context.ComputerUnits
+                .Include(c => c.Sessions.Where(s => s.IsActive))
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (computer == null)
+                return Json(new { success = false, message = "Computer not found." });
+
+            bool hasActiveSession = computer.Sessions.Any(s => s.IsActive);
+            if (hasActiveSession)
+                return Json(new { success = false, message = "Cannot change availability while the computer has an active session." });
+
+            computer.IsAvailable = !computer.IsAvailable;
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, isAvailable = computer.IsAvailable });
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Archive(int id, string reason)
@@ -279,8 +367,8 @@ namespace BookHiveLibrary.Controllers
             var computer = await _context.ComputerUnits.FindAsync(id);
             if (computer == null) return NotFound();
 
-            computer.IsArchived = true;
-            computer.IsAvailable = false;
+            computer.IsArchived    = true;
+            computer.IsAvailable   = false;
             computer.ArchiveReason = reason;
 
             await _context.SaveChangesAsync();
@@ -288,18 +376,21 @@ namespace BookHiveLibrary.Controllers
             return RedirectToAction("Index");
         }
 
-        // Archived computers list
+        // Shows the list of archived computers.
         public async Task<IActionResult> ArchiveList()
         {
             await LoadComputerStats();
-            var archived = await _context.ComputerUnits
-                .Where(c => c.IsArchived)
-                .OrderByDescending(c => c.CreatedAt)
+
+            var archivedComputers = await _context.ComputerUnits
+                .Where(computer => computer.IsArchived)
+                .OrderByDescending(computer => computer.CreatedAt)
                 .ToListAsync();
-            return View(archived);
+
+            return View(archivedComputers);
         }
 
-        // Permanently delete archived computer
+        // Permanently removes an archived computer from the database.
+        // Only available for computers that are already archived, not active ones.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
@@ -314,7 +405,8 @@ namespace BookHiveLibrary.Controllers
             return RedirectToAction("ArchiveList");
         }
 
-        // Restore from archive
+        // Brings an archived computer back to active status.
+        // Sets it as available again and clears the archive reason.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Restore(int id)
@@ -322,8 +414,8 @@ namespace BookHiveLibrary.Controllers
             var computer = await _context.ComputerUnits.FindAsync(id);
             if (computer == null) return NotFound();
 
-            computer.IsArchived = false;
-            computer.IsAvailable = true;
+            computer.IsArchived    = false;
+            computer.IsAvailable   = true;
             computer.ArchiveReason = "";
 
             await _context.SaveChangesAsync();

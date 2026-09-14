@@ -10,6 +10,13 @@ using System.Security.Cryptography;
 
 namespace BookHiveLibrary.Controllers
 {
+    // This controller handles all login and logout flows in BookHive:
+    //   - Microsoft account login (for Students and Professors)
+    //   - Password login (for Librarians and MIS)
+    //   - Phone OTP verification (text message code sent after Microsoft login)
+    //   - Email OTP verification (for admin/returning users)
+    //   - First-time profile setup (collecting the student's phone number)
+    //   - Logout
     public class AccountController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -25,23 +32,26 @@ namespace BookHiveLibrary.Controllers
             EmailService emailService,
             SmsService smsService)
         {
-            _userManager = userManager;
+            _userManager   = userManager;
             _signInManager = signInManager;
-            _context = context;
-            _emailService = emailService;
-            _smsService = smsService;
+            _context       = context;
+            _emailService  = emailService;
+            _smsService    = smsService;
         }
 
+        // Redirect /Account/Login to the home page (the login buttons are on the homepage)
         public IActionResult Login()
         {
             return RedirectToAction("Index", "Home");
         }
 
+        // Shows the Librarian password login form
         public IActionResult AdminLogin()
         {
             return View();
         }
 
+        // Shows the email OTP verification form (used after Librarian login)
         public IActionResult VerifyOtp()
         {
             var model = new VerifyOtpViewModel
@@ -49,6 +59,7 @@ namespace BookHiveLibrary.Controllers
                 Email = TempData["Email"]?.ToString() ?? ""
             };
 
+            // Keep TempData alive so the next POST can still read these values
             TempData.Keep("Email");
             TempData.Keep("AccountEmail");
             TempData.Keep("PendingOutlookEmail");
@@ -56,12 +67,14 @@ namespace BookHiveLibrary.Controllers
             return View(model);
         }
 
+        // Shows the phone number collection form (only shown on first login)
         public IActionResult CompleteProfile()
         {
             TempData.Keep("Email");
             return View();
         }
 
+        // Shows the SMS OTP verification form (shown after the student enters their phone number)
         public IActionResult VerifyPhoneOtp()
         {
             var model = new VerifyPhoneOtpViewModel
@@ -74,28 +87,41 @@ namespace BookHiveLibrary.Controllers
             return View(model);
         }
 
-        // ── Microsoft OAuth ──────────────────────────────────────────────────
+        // ── Microsoft Login (for Students and Professors) ─────────────────────
 
-        public IActionResult MicrosoftLogin()
+        // Starts the Microsoft account login flow.
+        // "loginType" tells us which button the user clicked (student, librarian, or mis)
+        // so we can check they're logging in with the right type of account.
+        // "prompt=login" forces Microsoft to always show the account picker.
+        public IActionResult MicrosoftLogin(string loginType = "student")
         {
-            var redirectUrl = Url.Action("MicrosoftLoginCallback", "Account");
-            var properties = _signInManager.ConfigureExternalAuthenticationProperties(
-                "Microsoft", redirectUrl);
-            properties.Parameters["prompt"] = "login";
-            return Challenge(properties, "Microsoft");
+            TempData["LoginType"] = loginType;
+
+            string redirectUrl   = Url.Action("MicrosoftLoginCallback", "Account")!;
+            var authProperties   = _signInManager.ConfigureExternalAuthenticationProperties("Microsoft", redirectUrl);
+            authProperties.Parameters["prompt"] = "login"; // Always show Microsoft account picker
+
+            return Challenge(authProperties, "Microsoft");
         }
 
+        // Microsoft redirects the user here after they authenticate.
+        // This checks:
+        //   - The user's account exists in BookHive (only MIS-registered accounts can log in)
+        //   - The account is still active (not deactivated)
+        //   - The role matches the login button they clicked (e.g. a student can't log in as a librarian)
+        // Then sends a phone OTP for verification (or logs in directly if MIS).
         public async Task<IActionResult> MicrosoftLoginCallback()
         {
-            var info = await _signInManager.GetExternalLoginInfoAsync();
-            if (info == null)
+            var loginInfo = await _signInManager.GetExternalLoginInfoAsync();
+            if (loginInfo == null)
             {
                 TempData["Error"] = "Microsoft login failed. Please try again.";
                 return RedirectToAction("Login");
             }
 
-            var email = info.Principal.FindFirstValue(ClaimTypes.Email)
-                     ?? info.Principal.FindFirstValue("preferred_username");
+            // Get the email from Microsoft's response
+            string? email = loginInfo.Principal.FindFirstValue(ClaimTypes.Email)
+                         ?? loginInfo.Principal.FindFirstValue("preferred_username");
 
             if (string.IsNullOrEmpty(email))
             {
@@ -103,36 +129,59 @@ namespace BookHiveLibrary.Controllers
                 return RedirectToAction("Login");
             }
 
+            // Only users registered by MIS can log in
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
             {
                 TempData["Error"] = "Your Microsoft account is not registered in the system. Please contact MIS to register your account first.";
+                TempData["Unauthorized"] = "true";
                 return RedirectToAction("Index", "Home");
             }
 
+            // Deactivated users cannot log in
             if (!user.IsActive)
             {
                 TempData["Error"] = "Your account has been deactivated. Please contact MIS.";
+                TempData["Unauthorized"] = "true";
                 return RedirectToAction("Index", "Home");
             }
 
-            // MIS users: sign in directly and go to MIS Dashboard
-            if (user.UserType == "MIS")
+            // Check the login type matches the user's actual role
+            string loginType   = TempData["LoginType"]?.ToString() ?? "student";
+            bool wrongRole     = loginType switch
+            {
+                "student"   => user.UserType != "Student" && user.UserType != "Professor",
+                "librarian" => user.UserType != "Librarian",
+                "mis"       => user.UserType != "MIS",
+                _           => false
+            };
+
+            if (wrongRole)
+            {
+                TempData["Unauthorized"]    = "true";
+                TempData["UnauthorizedMsg"] = "Unauthorized to log in here. Please use the correct login button for your account.";
+                return RedirectToAction("Index", "Home");
+            }
+
+            // MIS users log in directly — no phone verification step
+            bool isMisUser = user.UserType == "MIS";
+            if (isMisUser)
             {
                 await _signInManager.SignInAsync(user, isPersistent: false);
                 return RedirectToAction("Dashboard", "MIS");
             }
 
-            // All users: check if phone number is set up (first time login)
-            if (string.IsNullOrEmpty(user.PhoneNumber))
+            // First-time login: ask the student to enter their phone number first
+            bool phoneNotSetUp = string.IsNullOrEmpty(user.PhoneNumber);
+            if (phoneNotSetUp)
             {
                 TempData["Email"] = user.Email;
                 return RedirectToAction("CompleteProfile");
             }
 
-            // Send SMS OTP via Semaphore
+            // Generate a 6-digit OTP and send it via SMS for phone verification
             string otpCode = GenerateOtp();
-            user.PhoneOTPCode = otpCode;
+            user.PhoneOTPCode       = otpCode;
             user.PhoneOTPExpiration = DateTime.Now.AddMinutes(5);
             await _userManager.UpdateAsync(user);
 
@@ -142,6 +191,7 @@ namespace BookHiveLibrary.Controllers
             }
             catch (Exception ex)
             {
+                // If SMS fails, log to console (OTP is printed for dev/testing purposes)
                 Console.WriteLine($"[SMS ERROR] {ex.Message}");
                 Console.WriteLine($"[DEV OTP] {user.Email} → {otpCode}");
             }
@@ -150,8 +200,11 @@ namespace BookHiveLibrary.Controllers
             return RedirectToAction("VerifyPhoneOtp");
         }
 
-        // ── Student/Professor Test Login ─────────────────────────────────────
+        // ── Student/Professor Password Login (fallback / testing) ─────────────
 
+        // Password login for Students and Professors.
+        // Used as a fallback when Microsoft SSO is not available (e.g. local testing).
+        // Locks the account after 5 wrong attempts (for 1 hour).
         [HttpPost]
         public async Task<IActionResult> StudentLogin(LoginViewModel model)
         {
@@ -159,9 +212,10 @@ namespace BookHiveLibrary.Controllers
             if (!ModelState.IsValid)
                 return View("Login", model);
 
+            // Support both email and username
             ApplicationUser? user;
-
-            if (model.EmailOrUsername.Contains("@"))
+            bool usedEmail = model.EmailOrUsername.Contains("@");
+            if (usedEmail)
                 user = await _userManager.FindByEmailAsync(model.EmailOrUsername);
             else
                 user = await _userManager.FindByNameAsync(model.EmailOrUsername);
@@ -172,7 +226,8 @@ namespace BookHiveLibrary.Controllers
                 return View("Login", model);
             }
 
-            if (user.UserType != "Student" && user.UserType != "Professor")
+            bool wrongUserType = user.UserType != "Student" && user.UserType != "Professor";
+            if (wrongUserType)
             {
                 ModelState.AddModelError("", "This login is for Student and Professor accounts only.");
                 return View("Login", model);
@@ -184,32 +239,39 @@ namespace BookHiveLibrary.Controllers
                 return View("Login", model);
             }
 
-            // Lockout-aware password check (counts toward 5-attempt lockout)
-            if (await _userManager.IsLockedOutAsync(user))
+            bool accountIsLocked = await _userManager.IsLockedOutAsync(user);
+            if (accountIsLocked)
             {
                 ModelState.AddModelError("", "Account locked due to too many failed attempts. Try again in 1 hour.");
                 return View("Login", model);
             }
 
-            var passwordCheck = await _userManager.CheckPasswordAsync(user, model.Password);
-            if (!passwordCheck)
+            bool passwordCorrect = await _userManager.CheckPasswordAsync(user, model.Password);
+            if (!passwordCorrect)
             {
+                // Record the failed attempt; lock if they've reached the limit
                 await _userManager.AccessFailedAsync(user);
-                var attemptsLeft = _userManager.Options.Lockout.MaxFailedAccessAttempts
-                                   - await _userManager.GetAccessFailedCountAsync(user);
-                if (await _userManager.IsLockedOutAsync(user))
+
+                int maxAttempts   = _userManager.Options.Lockout.MaxFailedAccessAttempts;
+                int failedSoFar   = await _userManager.GetAccessFailedCountAsync(user);
+                int attemptsLeft  = maxAttempts - failedSoFar;
+
+                bool nowLocked = await _userManager.IsLockedOutAsync(user);
+                if (nowLocked)
                     ModelState.AddModelError("", "Account locked due to too many failed attempts. Try again in 1 hour.");
                 else
                     ModelState.AddModelError("", $"Password incorrect. {attemptsLeft} attempt(s) remaining.");
+
                 return View("Login", model);
             }
 
+            // Login successful — reset the failed attempt counter and sign in
             await _userManager.ResetAccessFailedCountAsync(user);
             await _signInManager.SignInAsync(user, isPersistent: false);
             return RedirectToDashboard(user.UserType);
         }
 
-        // ── Admin (password) Login ───────────────────────────────────────────
+        // ── Librarian Password Login ──────────────────────────────────────────
 
         [HttpPost]
         public async Task<IActionResult> AdminLogin(LoginViewModel model)
@@ -218,9 +280,10 @@ namespace BookHiveLibrary.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
+            // Support both email and username
             ApplicationUser? user;
-
-            if (model.EmailOrUsername.Contains("@"))
+            bool usedEmail = model.EmailOrUsername.Contains("@");
+            if (usedEmail)
                 user = await _userManager.FindByEmailAsync(model.EmailOrUsername);
             else
                 user = await _userManager.FindByNameAsync(model.EmailOrUsername);
@@ -231,6 +294,7 @@ namespace BookHiveLibrary.Controllers
                 return View(model);
             }
 
+            // Only Librarian accounts can use this form
             if (user.UserType != "Librarian")
             {
                 ModelState.AddModelError("", "This login is for Librarian accounts only.");
@@ -243,33 +307,37 @@ namespace BookHiveLibrary.Controllers
                 return View(model);
             }
 
-            // Lockout-aware password check
-            if (await _userManager.IsLockedOutAsync(user))
+            bool accountIsLocked = await _userManager.IsLockedOutAsync(user);
+            if (accountIsLocked)
             {
                 ModelState.AddModelError("", "Account locked due to too many failed attempts. Try again in 1 hour.");
                 return View(model);
             }
 
-            var passwordCheck = await _userManager.CheckPasswordAsync(user, model.Password);
-            if (!passwordCheck)
+            bool passwordCorrect = await _userManager.CheckPasswordAsync(user, model.Password);
+            if (!passwordCorrect)
             {
                 await _userManager.AccessFailedAsync(user);
-                var attemptsLeft = _userManager.Options.Lockout.MaxFailedAccessAttempts
-                                   - await _userManager.GetAccessFailedCountAsync(user);
-                if (await _userManager.IsLockedOutAsync(user))
+
+                int maxAttempts  = _userManager.Options.Lockout.MaxFailedAccessAttempts;
+                int failedSoFar  = await _userManager.GetAccessFailedCountAsync(user);
+                int attemptsLeft = maxAttempts - failedSoFar;
+
+                bool nowLocked = await _userManager.IsLockedOutAsync(user);
+                if (nowLocked)
                     ModelState.AddModelError("", "Account locked due to too many failed attempts. Try again in 1 hour.");
                 else
                     ModelState.AddModelError("", $"Password incorrect. {attemptsLeft} attempt(s) remaining.");
+
                 return View(model);
             }
 
             await _userManager.ResetAccessFailedCountAsync(user);
-            // Sign in directly — Microsoft Authenticator handles MFA for real accounts via OAuth
             await _signInManager.SignInAsync(user, isPersistent: false);
             return RedirectToDashboard(user.UserType);
         }
 
-        // ── MIS Login ────────────────────────────────────────────────────────
+        // ── MIS Password Login ────────────────────────────────────────────────
 
         public IActionResult MISLogin()
         {
@@ -283,8 +351,10 @@ namespace BookHiveLibrary.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
+            // Support both email and username
             ApplicationUser? user;
-            if (model.EmailOrUsername.Contains("@"))
+            bool usedEmail = model.EmailOrUsername.Contains("@");
+            if (usedEmail)
                 user = await _userManager.FindByEmailAsync(model.EmailOrUsername);
             else
                 user = await _userManager.FindByNameAsync(model.EmailOrUsername);
@@ -295,6 +365,7 @@ namespace BookHiveLibrary.Controllers
                 return View(model);
             }
 
+            // Only MIS accounts can use this form
             if (user.UserType != "MIS")
             {
                 TempData["Error"] = "This login is for MIS accounts only.";
@@ -307,23 +378,28 @@ namespace BookHiveLibrary.Controllers
                 return View(model);
             }
 
-            // Lockout-aware password check
-            if (await _userManager.IsLockedOutAsync(user))
+            bool accountIsLocked = await _userManager.IsLockedOutAsync(user);
+            if (accountIsLocked)
             {
                 TempData["Error"] = "Account locked due to too many failed attempts. Try again in 1 hour.";
                 return View(model);
             }
 
-            var passwordCheck = await _userManager.CheckPasswordAsync(user, model.Password);
-            if (!passwordCheck)
+            bool passwordCorrect = await _userManager.CheckPasswordAsync(user, model.Password);
+            if (!passwordCorrect)
             {
                 await _userManager.AccessFailedAsync(user);
-                var attemptsLeft = _userManager.Options.Lockout.MaxFailedAccessAttempts
-                                   - await _userManager.GetAccessFailedCountAsync(user);
-                if (await _userManager.IsLockedOutAsync(user))
+
+                int maxAttempts  = _userManager.Options.Lockout.MaxFailedAccessAttempts;
+                int failedSoFar  = await _userManager.GetAccessFailedCountAsync(user);
+                int attemptsLeft = maxAttempts - failedSoFar;
+
+                bool nowLocked = await _userManager.IsLockedOutAsync(user);
+                if (nowLocked)
                     TempData["Error"] = "Account locked due to too many failed attempts. Try again in 1 hour.";
                 else
                     TempData["Error"] = $"Incorrect password. {attemptsLeft} attempt(s) remaining.";
+
                 return View(model);
             }
 
@@ -332,47 +408,55 @@ namespace BookHiveLibrary.Controllers
             return RedirectToAction("Dashboard", "MIS");
         }
 
-        // ── Verify Email OTP (returning admin users) ─────────────────────────
+        // ── Verify Email OTP ──────────────────────────────────────────────────
 
+        // Validates the OTP the user received via email.
+        // Marks it as used so it can't be used again.
+        // If it's the user's first login, sends them to the profile setup page.
         [HttpPost]
         public async Task<IActionResult> VerifyOtp(VerifyOtpViewModel model)
         {
             if (!ModelState.IsValid)
                 return View(model);
 
-            var otp = _context.OtpVerifications
-                .Where(x => x.Email == model.Email && x.Code == model.Code && !x.IsUsed)
-                .OrderByDescending(x => x.Id)
+            // Find the most recent unused OTP for this email + code combination
+            var matchingOtp = _context.OtpVerifications
+                .Where(otp => otp.Email == model.Email && otp.Code == model.Code && !otp.IsUsed)
+                .OrderByDescending(otp => otp.Id)
                 .FirstOrDefault();
 
-            if (otp == null)
+            if (matchingOtp == null)
             {
                 ModelState.AddModelError("", "Invalid OTP.");
                 return View(model);
             }
 
-            if (otp.ExpirationTime < DateTime.Now)
+            bool otpExpired = matchingOtp.ExpirationTime < DateTime.Now;
+            if (otpExpired)
             {
                 ModelState.AddModelError("", "OTP has expired.");
                 return View(model);
             }
 
-            otp.IsUsed = true;
+            // Mark as used so it cannot be reused
+            matchingOtp.IsUsed = true;
             await _context.SaveChangesAsync();
 
-            // Find user by the account email stored at login time, then fallback lookups
-            var accountEmail = TempData["AccountEmail"]?.ToString();
+            // Find the user — try account email, then OutlookEmail lookup, then direct match
+            string? accountEmail = TempData["AccountEmail"]?.ToString();
             var user = (!string.IsNullOrEmpty(accountEmail) ? await _userManager.FindByEmailAsync(accountEmail) : null)
                     ?? _userManager.Users.FirstOrDefault(u => u.OutlookEmail == model.Email)
                     ?? await _userManager.FindByEmailAsync(model.Email);
+
             if (user == null)
                 return RedirectToAction("Login");
 
-            // Save OutlookEmail to DB now that OTP is verified successfully
-            var pendingOutlook = TempData["PendingOutlookEmail"]?.ToString();
-            if (!string.IsNullOrEmpty(pendingOutlook) && string.IsNullOrEmpty(user.OutlookEmail))
+            // If first time logging in with this Microsoft email, save it to the user's record
+            string? pendingOutlookEmail = TempData["PendingOutlookEmail"]?.ToString();
+            bool firstTimeOutlookLink   = !string.IsNullOrEmpty(pendingOutlookEmail) && string.IsNullOrEmpty(user.OutlookEmail);
+            if (firstTimeOutlookLink)
             {
-                user.OutlookEmail = pendingOutlook;
+                user.OutlookEmail = pendingOutlookEmail!;
                 await _userManager.UpdateAsync(user);
             }
 
@@ -384,8 +468,9 @@ namespace BookHiveLibrary.Controllers
 
             await _signInManager.SignInAsync(user, isPersistent: false);
 
-            // First-time login: collect phone number before going to dashboard
-            if (user.IsFirstLogin)
+            // First-time login: ask for phone number before going to dashboard
+            bool needsPhoneSetup = user.IsFirstLogin;
+            if (needsPhoneSetup)
             {
                 TempData["Email"] = user.Email;
                 return RedirectToAction("CompleteProfile");
@@ -394,13 +479,15 @@ namespace BookHiveLibrary.Controllers
             return RedirectToDashboard(user.UserType);
         }
 
-        // ── Complete Profile (first-time login) ──────────────────────────────
+        // ── First-Time Profile Setup ──────────────────────────────────────────
 
+        // Saves the phone number the user entered on their first login,
+        // then sends an SMS OTP so they can prove they own the number.
         [HttpPost]
         [HttpPost]
         public async Task<IActionResult> CompleteProfile(string phoneNumber)
         {
-            var email = TempData["Email"]?.ToString();
+            string? email = TempData["Email"]?.ToString();
             if (string.IsNullOrEmpty(email))
                 return RedirectToAction("Login");
 
@@ -408,13 +495,13 @@ namespace BookHiveLibrary.Controllers
             if (user == null)
                 return RedirectToAction("Login");
 
-            // Save phone number first
+            // Save the phone number to the user's profile
             user.PhoneNumber = phoneNumber;
             await _userManager.UpdateAsync(user);
 
-            // Generate OTP and send via SMS to verify ownership before saving for reminders
+            // Generate a 6-digit code and send it to their phone
             string otpCode = GenerateOtp();
-            user.PhoneOTPCode = otpCode;
+            user.PhoneOTPCode       = otpCode;
             user.PhoneOTPExpiration = DateTime.Now.AddMinutes(5);
             await _userManager.UpdateAsync(user);
 
@@ -424,6 +511,7 @@ namespace BookHiveLibrary.Controllers
             }
             catch (Exception ex)
             {
+                // If SMS fails, show the code in the console for developers
                 Console.WriteLine("==========================================");
                 Console.WriteLine($"  SMS FAILED: {ex.Message}");
                 Console.WriteLine($"  DEV OTP CODE: {otpCode}");
@@ -435,8 +523,11 @@ namespace BookHiveLibrary.Controllers
             return RedirectToAction("VerifyPhoneOtp");
         }
 
-        // ── Verify Phone OTP (first-time login) ──────────────────────────────
+        // ── Verify Phone OTP ──────────────────────────────────────────────────
 
+        // Validates the SMS code the user received on their phone.
+        // On success: marks their phone as verified, clears the first-login flag,
+        // signs them in, and sends them to their dashboard.
         [HttpPost]
         public async Task<IActionResult> VerifyPhoneOtp(VerifyPhoneOtpViewModel model)
         {
@@ -450,28 +541,36 @@ namespace BookHiveLibrary.Controllers
                 return View(model);
             }
 
-            // Lockout check (shared counter with password attempts)
-            if (await _userManager.IsLockedOutAsync(user))
+            bool accountIsLocked = await _userManager.IsLockedOutAsync(user);
+            if (accountIsLocked)
             {
                 ModelState.AddModelError("", "Account locked due to too many failed attempts. Try again in 1 hour.");
                 return View(model);
             }
 
-            if (user.PhoneOTPExpiration < DateTime.Now)
+            bool codeExpired = user.PhoneOTPExpiration < DateTime.Now;
+            if (codeExpired)
             {
                 ModelState.AddModelError("", "Verification code has expired. Please go back and re-enter your number.");
                 return View(model);
             }
 
-            if (user.PhoneOTPCode != model.Code)
+            bool codeIsWrong = user.PhoneOTPCode != model.Code;
+            if (codeIsWrong)
             {
+                // Wrong code — increment the failed attempt counter
                 await _userManager.AccessFailedAsync(user);
-                var attemptsLeft = _userManager.Options.Lockout.MaxFailedAccessAttempts
-                                   - await _userManager.GetAccessFailedCountAsync(user);
-                if (await _userManager.IsLockedOutAsync(user))
+
+                int maxAttempts  = _userManager.Options.Lockout.MaxFailedAccessAttempts;
+                int failedSoFar  = await _userManager.GetAccessFailedCountAsync(user);
+                int attemptsLeft = maxAttempts - failedSoFar;
+
+                bool nowLocked = await _userManager.IsLockedOutAsync(user);
+                if (nowLocked)
                     ModelState.AddModelError("", "Account locked due to too many failed attempts. Try again in 1 hour.");
                 else
                     ModelState.AddModelError("", $"Invalid verification code. {attemptsLeft} attempt(s) remaining.");
+
                 return View(model);
             }
 
@@ -481,21 +580,23 @@ namespace BookHiveLibrary.Controllers
                 return View(model);
             }
 
+            // Code is correct — reset the lockout counter
             await _userManager.ResetAccessFailedCountAsync(user);
 
-            // Phone is confirmed — mark it verified and complete first-login setup
-            user.PhoneVerified = true;
-            user.IsFirstLogin = false;
-            user.PhoneOTPCode = "";
+            // Mark their phone as verified and clear the first-login flag
+            user.PhoneVerified  = true;
+            user.IsFirstLogin   = false;
+            user.PhoneOTPCode   = ""; // Clear the used code
             await _userManager.UpdateAsync(user);
 
             await _signInManager.SignInAsync(user, isPersistent: false);
-
             return RedirectToDashboard(user.UserType);
         }
 
-        // ── Resend Phone OTP ─────────────────────────────────────────────────
+        // ── Resend Phone OTP ──────────────────────────────────────────────────
 
+        // Generates a new OTP and resends it via SMS.
+        // Called when the user clicks "Resend Code" on the verification page.
         [HttpPost]
         public async Task<IActionResult> ResendPhoneOtp(string email)
         {
@@ -504,7 +605,7 @@ namespace BookHiveLibrary.Controllers
                 return RedirectToAction("Login");
 
             string otpCode = GenerateOtp();
-            user.PhoneOTPCode = otpCode;
+            user.PhoneOTPCode       = otpCode;
             user.PhoneOTPExpiration = DateTime.Now.AddMinutes(5);
             await _userManager.UpdateAsync(user);
 
@@ -518,33 +619,42 @@ namespace BookHiveLibrary.Controllers
                 TempData["SmsError"] = $"SMS could not be delivered. DEV CODE: {otpCode}";
             }
 
-            TempData["Email"] = email;
+            TempData["Email"]   = email;
             TempData["Success"] = "A new code has been sent to your phone.";
             return RedirectToAction("VerifyPhoneOtp");
         }
 
-        // ── Logout ───────────────────────────────────────────────────────────
+        // ── Logout ────────────────────────────────────────────────────────────
 
+        [HttpPost]
         public async Task<IActionResult> Logout()
         {
             await _signInManager.SignOutAsync();
             return RedirectToAction("Index", "Home");
         }
 
-        // ── Helpers ──────────────────────────────────────────────────────────
+        // ── Private helpers ───────────────────────────────────────────────────
 
+        // Generates a random 6-digit code for OTP verification.
+        // Uses a secure random number generator (not the regular Random class).
         private static string GenerateOtp()
         {
-            return RandomNumberGenerator.GetInt32(100000, 999999).ToString();
+            int sixDigitCode = RandomNumberGenerator.GetInt32(100000, 999999);
+            return sixDigitCode.ToString();
         }
 
-        private IActionResult RedirectToDashboard(string userType) => userType switch
+        // Sends the user to the correct dashboard page based on their role.
+        // Professors share the Student dashboard.
+        private IActionResult RedirectToDashboard(string userType)
         {
-            "MIS" => RedirectToAction("Dashboard", "MIS"),
-            "Librarian" => RedirectToAction("Dashboard", "Librarian"),
-            "Student" => RedirectToAction("Dashboard", "Student"),
-            "Professor" => RedirectToAction("Dashboard", "Student"),
-            _ => RedirectToAction("Index", "Home")
-        };
+            return userType switch
+            {
+                "MIS"       => RedirectToAction("Dashboard", "MIS"),
+                "Librarian" => RedirectToAction("Dashboard", "Librarian"),
+                "Student"   => RedirectToAction("Dashboard", "Student"),
+                "Professor" => RedirectToAction("Dashboard", "Student"), // Professors use the Student module
+                _           => RedirectToAction("Index", "Home")
+            };
+        }
     }
 }

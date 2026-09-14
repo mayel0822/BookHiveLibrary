@@ -9,41 +9,70 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BookHiveLibrary.Controllers
 {
+    // This controller handles the internal messaging system inside BookHive.
+    // Any logged-in user can send messages to other users (except MIS — they are excluded for privacy).
+    //
+    // Key features:
+    //   - Inbox page showing all conversations
+    //   - Real-time delivery using SignalR (messages appear instantly without page refresh)
+    //   - Unsend: removes the message content for BOTH users
+    //   - Delete for me: hides a message on your side only (the other person still sees it)
+    //   - Delete conversation: hides all messages in a thread on your side only
+    //   - Unread count badge shown in the navigation header
     [Authorize]
     public class MessageController : Controller
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IHubContext<LibraryHub> _hub;
+        private readonly IHubContext<LibraryHub> _hub; // Used to deliver messages in real time
+
+        // PHT = UTC+8 (Philippine Time) — all DateTime values in the DB are UTC
+        private static readonly TimeZoneInfo _pht =
+            TimeZoneInfo.GetSystemTimeZones().FirstOrDefault(z =>
+                z.Id == "Asia/Manila" || z.Id == "Singapore Standard Time")
+            ?? TimeZoneInfo.Utc;
+
+        // Converts a UTC DateTime to PHT, then formats it as "Sep 5, 2:34 AM"
+        private string ToPhtString(DateTime utc) =>
+            TimeZoneInfo.ConvertTimeFromUtc(
+                DateTime.SpecifyKind(utc, DateTimeKind.Utc), _pht)
+            .ToString("MMM d, h:mm tt");
 
         public MessageController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IHubContext<LibraryHub> hub)
         {
-            _context = context;
+            _context     = context;
             _userManager = userManager;
-            _hub = hub;
+            _hub         = hub;
         }
 
-        // Inbox page
+        // Shows the inbox page.
+        // Loads:
+        //   - contacts: everyone the current user has chatted with before
+        //   - allUsers: everyone available to start a new conversation with (excluding MIS and yourself)
+        //   - withUserId: if set, that conversation opens automatically (passed as a URL parameter)
+        //
+        // Also sets up the name, email, and profile picture for the page header (used by the layout).
         public async Task<IActionResult> Index(string? withUserId)
         {
             var me = await _userManager.GetUserAsync(User);
             if (me == null) return Challenge();
 
-            // All users the current user has had a conversation with
+            // Find all the users this person has had a conversation with
             var contactIds = await _context.Messages
-                .Where(m => m.SenderId == me.Id || m.ReceiverId == me.Id)
-                .Select(m => m.SenderId == me.Id ? m.ReceiverId : m.SenderId)
+                .Where(message => message.SenderId == me.Id || message.ReceiverId == me.Id)
+                .Select(message => message.SenderId == me.Id ? message.ReceiverId : message.SenderId)
                 .Distinct()
                 .ToListAsync();
 
             var contacts = await _userManager.Users
-                .Where(u => contactIds.Contains(u.Id))
+                .Where(user => contactIds.Contains(user.Id))
                 .ToListAsync();
 
-            // All users available to message (everyone except self)
+            // All active users (except self and MIS) that can receive messages
             var allUsers = await _userManager.Users
-                .Where(u => u.Id != me.Id && u.IsActive && u.UserType != "MIS")
-                .OrderBy(u => u.UserType).ThenBy(u => u.LastName)
+                .Where(user => user.Id != me.Id && user.IsActive && user.UserType != "MIS")
+                .OrderBy(user => user.UserType)
+                .ThenBy(user => user.LastName)
                 .ToListAsync();
 
             ViewBag.Me         = me;
@@ -52,88 +81,118 @@ namespace BookHiveLibrary.Controllers
             ViewBag.WithUserId = withUserId;
             ViewBag.UserType   = me.UserType;
 
-            // Provide layout ViewBag values needed by role-specific layouts
-            ViewBag.CurrentUserFullName = !string.IsNullOrWhiteSpace(me.FirstName)
+            // These are needed by the role-specific layout files for the header bar
+            string fullName = !string.IsNullOrWhiteSpace(me.FirstName)
                 ? $"{me.FirstName} {me.LastName}".Trim()
-                : me.Email;
-            ViewBag.CurrentUserEmail = me.Email;
-            ViewBag.CurrentUserPic   = me.ProfilePicture;
+                : me.Email ?? "";
+            ViewBag.CurrentUserFullName = fullName;
+            ViewBag.CurrentUserEmail    = me.Email;
+            ViewBag.CurrentUserPic      = me.ProfilePicture;
 
             return View();
         }
 
-        // AJAX: get conversation messages between me and another user
+        // Gets all the messages between the current user and one other user.
+        // Called by JavaScript when the user clicks on a conversation in the sidebar.
+        // Only returns messages the current user hasn't deleted on their side.
+        // Also marks all unread received messages as "read" (clears the badge count).
         [HttpGet]
         public async Task<IActionResult> GetConversation(string otherUserId)
         {
             var me = await _userManager.GetUserAsync(User);
             if (me == null) return Unauthorized();
 
-            var messages = await _context.Messages
-                .Where(m => ((m.SenderId == me.Id && m.ReceiverId == otherUserId && !m.IsDeletedBySender) ||
-                             (m.SenderId == otherUserId && m.ReceiverId == me.Id && !m.IsDeletedByReceiver)))
-                .OrderBy(m => m.SentAt)
-                .Select(m => new {
-                    m.Id,
-                    m.Content,
-                    m.SenderId,
-                    m.IsRead,
-                    m.IsUnsent,
-                    sentAt = m.SentAt.ToString("MMM d, h:mm tt")
+            var rawMessages = await _context.Messages
+                .Where(message =>
+                    // Messages I sent that I haven't deleted
+                    (message.SenderId == me.Id && message.ReceiverId == otherUserId && !message.IsDeletedBySender) ||
+                    // Messages I received that I haven't deleted
+                    (message.SenderId == otherUserId && message.ReceiverId == me.Id && !message.IsDeletedByReceiver))
+                .OrderBy(message => message.SentAt)
+                .Select(message => new {
+                    message.Id,
+                    message.Content,
+                    message.SenderId,
+                    message.IsRead,
+                    message.IsUnsent,
+                    message.SentAt
                 })
                 .ToListAsync();
 
-            // Mark received messages as read
-            var unread = await _context.Messages
-                .Where(m => m.SenderId == otherUserId && m.ReceiverId == me.Id && !m.IsRead)
-                .ToListAsync();
-            unread.ForEach(m => m.IsRead = true);
-            if (unread.Any()) await _context.SaveChangesAsync();
+            // Convert UTC → PHT in memory (cannot be done inside EF Core SQL translation)
+            var messages = rawMessages.Select(message => new {
+                message.Id,
+                message.Content,
+                message.SenderId,
+                message.IsRead,
+                message.IsUnsent,
+                sentAt = ToPhtString(message.SentAt)
+            }).ToList();
 
-            var other = await _userManager.FindByIdAsync(otherUserId);
+            // Mark all messages received in this conversation as read
+            var unreadMessages = await _context.Messages
+                .Where(message => message.SenderId == otherUserId && message.ReceiverId == me.Id && !message.IsRead)
+                .ToListAsync();
+
+            foreach (var message in unreadMessages)
+                message.IsRead = true;
+
+            bool anyMarked = unreadMessages.Any();
+            if (anyMarked) await _context.SaveChangesAsync();
+
+            var otherUser = await _userManager.FindByIdAsync(otherUserId);
+            string otherUserName = otherUser != null ? otherUser.FirstName + " " + otherUser.LastName : "Unknown";
+            string otherUserType = otherUser?.UserType ?? "";
+
             return Json(new {
                 messages,
-                myId = me.Id,
-                otherName = other != null ? other.FirstName + " " + other.LastName : "Unknown",
-                otherType = other?.UserType ?? ""
+                myId      = me.Id,
+                otherName = otherUserName,
+                otherType = otherUserType
             });
         }
 
-        // AJAX: send a message
+        // Sends a message to another user.
+        // Saves the message to the database, then immediately delivers it to the receiver's
+        // screen in real time (they don't need to refresh — it just appears).
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Send(string receiverId, string content)
         {
             var me = await _userManager.GetUserAsync(User);
             if (me == null) return Unauthorized();
-            if (string.IsNullOrWhiteSpace(content)) return BadRequest();
 
-            var msg = new Message
+            bool messageIsEmpty = string.IsNullOrWhiteSpace(content);
+            if (messageIsEmpty) return BadRequest();
+
+            var newMessage = new Message
             {
                 SenderId   = me.Id,
                 ReceiverId = receiverId,
                 Content    = content.Trim(),
-                SentAt     = DateTime.Now
+                SentAt     = DateTime.UtcNow
             };
-            _context.Messages.Add(msg);
+            _context.Messages.Add(newMessage);
             await _context.SaveChangesAsync();
 
-            var senderName = $"{me.FirstName} {me.LastName}".Trim();
+            string senderName = $"{me.FirstName} {me.LastName}".Trim();
             var payload = new {
-                msg.Id,
-                msg.Content,
-                msg.SenderId,
+                newMessage.Id,
+                newMessage.Content,
+                newMessage.SenderId,
                 senderName,
-                sentAt = msg.SentAt.ToString("MMM d, h:mm tt")
+                sentAt = ToPhtString(newMessage.SentAt)
             };
 
-            // Push to receiver in real time
+            // Push the message to the receiver's screen immediately via SignalR
             await _hub.Clients.Group($"user-{receiverId}").SendAsync("ReceiveMessage", payload);
 
             return Json(payload);
         }
 
-        // AJAX: unsend a message (removes for both sides)
+        // Unsends a message. Only the person who sent it can unsend it.
+        // Clears the message text for BOTH the sender and receiver.
+        // The receiver's screen is also updated in real time — the message bubble changes to "unsent".
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Unsend(int id)
@@ -141,19 +200,25 @@ namespace BookHiveLibrary.Controllers
             var me = await _userManager.GetUserAsync(User);
             if (me == null) return Unauthorized();
 
-            var msg = await _context.Messages.FindAsync(id);
-            if (msg == null || msg.SenderId != me.Id) return Forbid();
+            var message = await _context.Messages.FindAsync(id);
 
-            var receiverId = msg.ReceiverId;
-            msg.IsUnsent = true;
-            msg.Content  = "";
+            bool messageNotFound    = message == null;
+            bool senderIsNotMe      = message?.SenderId != me.Id;
+            if (messageNotFound || senderIsNotMe) return Forbid(); // Only the sender can unsend
+
+            string receiverId  = message!.ReceiverId;
+            message.IsUnsent   = true;
+            message.Content    = ""; // Clear the text for both sides
             await _context.SaveChangesAsync();
 
-            await _hub.Clients.Group($"user-{receiverId}").SendAsync("MessageUnsent", new { msg.Id });
+            // Tell the receiver's screen to update the message bubble right away
+            await _hub.Clients.Group($"user-{receiverId}").SendAsync("MessageUnsent", new { message.Id });
             return Json(new { success = true });
         }
 
-        // AJAX: delete a message only for the current user
+        // Hides a message on the current user's side only.
+        // The other person still sees the message — it's only removed from your view.
+        // Works whether you sent it or received it.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteForMe(int id)
@@ -161,20 +226,25 @@ namespace BookHiveLibrary.Controllers
             var me = await _userManager.GetUserAsync(User);
             if (me == null) return Unauthorized();
 
-            var msg = await _context.Messages.FindAsync(id);
-            if (msg == null) return NotFound();
-            if (msg.SenderId != me.Id && msg.ReceiverId != me.Id) return Forbid();
+            var message = await _context.Messages.FindAsync(id);
+            if (message == null) return NotFound();
 
-            if (msg.SenderId == me.Id)
-                msg.IsDeletedBySender = true;
+            bool iAmNotPartOfThisConversation = message.SenderId != me.Id && message.ReceiverId != me.Id;
+            if (iAmNotPartOfThisConversation) return Forbid();
+
+            // Mark the message as deleted only for the person requesting it
+            bool iSentThis = message.SenderId == me.Id;
+            if (iSentThis)
+                message.IsDeletedBySender = true;   // You sent it
             else
-                msg.IsDeletedByReceiver = true;
+                message.IsDeletedByReceiver = true; // You received it
 
             await _context.SaveChangesAsync();
             return Json(new { success = true });
         }
 
-        // AJAX: delete entire conversation for current user
+        // Hides an entire conversation on the current user's side.
+        // All messages in the thread are hidden from your view — but the other person still sees them.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConversation(string otherUserId)
@@ -182,62 +252,93 @@ namespace BookHiveLibrary.Controllers
             var me = await _userManager.GetUserAsync(User);
             if (me == null) return Unauthorized();
 
-            var sent     = await _context.Messages.Where(m => m.SenderId == me.Id && m.ReceiverId == otherUserId).ToListAsync();
-            var received = await _context.Messages.Where(m => m.SenderId == otherUserId && m.ReceiverId == me.Id).ToListAsync();
+            // Mark all messages I sent in this conversation as deleted by me
+            var sentMessages = await _context.Messages
+                .Where(message => message.SenderId == me.Id && message.ReceiverId == otherUserId)
+                .ToListAsync();
 
-            sent.ForEach(m => m.IsDeletedBySender = true);
-            received.ForEach(m => m.IsDeletedByReceiver = true);
+            // Mark all messages I received in this conversation as deleted by me
+            var receivedMessages = await _context.Messages
+                .Where(message => message.SenderId == otherUserId && message.ReceiverId == me.Id)
+                .ToListAsync();
+
+            foreach (var message in sentMessages)
+                message.IsDeletedBySender = true;
+
+            foreach (var message in receivedMessages)
+                message.IsDeletedByReceiver = true;
+
             await _context.SaveChangesAsync();
             return Json(new { success = true });
         }
 
-        // AJAX: unread count for badge
+        // Returns how many unread messages the current user has.
+        // This is called regularly by the layout header to keep the notification badge up to date.
         [HttpGet]
         public async Task<IActionResult> UnreadCount()
         {
             var me = await _userManager.GetUserAsync(User);
             if (me == null) return Json(new { count = 0 });
 
-            var count = await _context.Messages
-                .CountAsync(m => m.ReceiverId == me.Id && !m.IsRead);
-            return Json(new { count });
+            int unreadCount = await _context.Messages
+                .CountAsync(message => message.ReceiverId == me.Id && !message.IsRead);
+
+            return Json(new { count = unreadCount });
         }
 
-        // AJAX: conversation list for the sidebar
+        // Returns the list of conversations shown in the sidebar.
+        // For each conversation it shows:
+        //   - The other person's name and role (Student, Librarian, etc.)
+        //   - A preview of the last message (cut off at 40 characters)
+        //   - The time the last message was sent
+        //   - How many unread messages are in that conversation
+        //
+        // Conversations where you've deleted all messages won't appear here.
         [HttpGet]
         public async Task<IActionResult> GetConversationList()
         {
             var me = await _userManager.GetUserAsync(User);
             if (me == null) return Unauthorized();
 
-            var allMsgs = await _context.Messages
-                .Include(m => m.Sender)
-                .Include(m => m.Receiver)
-                .Where(m => (m.SenderId == me.Id && !m.IsDeletedBySender) ||
-                            (m.ReceiverId == me.Id && !m.IsDeletedByReceiver))
-                .OrderByDescending(m => m.SentAt)
+            // Load all messages the user hasn't deleted on their side
+            var allMessages = await _context.Messages
+                .Include(message => message.Sender)
+                .Include(message => message.Receiver)
+                .Where(message =>
+                    (message.SenderId == me.Id   && !message.IsDeletedBySender) ||
+                    (message.ReceiverId == me.Id && !message.IsDeletedByReceiver))
+                .OrderByDescending(message => message.SentAt)
                 .ToListAsync();
 
-            var convos = allMsgs
-                .GroupBy(m => m.SenderId == me.Id ? m.ReceiverId : m.SenderId)
-                .Select(g =>
+            // Group by the other person in the conversation and build a summary for each
+            var conversations = allMessages
+                .GroupBy(message => message.SenderId == me.Id ? message.ReceiverId : message.SenderId)
+                .Select(group =>
                 {
-                    var last   = g.First();
-                    var other  = last.SenderId == me.Id ? last.Receiver : last.Sender;
-                    var unread = g.Count(m => m.ReceiverId == me.Id && !m.IsRead);
+                    var lastMessage  = group.First(); // The most recent message in this conversation
+                    var otherPerson  = lastMessage.SenderId == me.Id ? lastMessage.Receiver : lastMessage.Sender;
+                    int unreadCount  = group.Count(message => message.ReceiverId == me.Id && !message.IsRead);
+
+                    // Truncate the message preview to 40 characters
+                    string preview = lastMessage.IsUnsent
+                        ? ""
+                        : lastMessage.Content.Length > 40
+                            ? lastMessage.Content[..40] + "…"
+                            : lastMessage.Content;
+
                     return new {
-                        userId    = other?.Id ?? "",
-                        name      = other != null ? other.FirstName + " " + other.LastName : "Unknown",
-                        userType  = other?.UserType ?? "",
-                        lastMsg       = last.IsUnsent ? "" : (last.Content.Length > 40 ? last.Content[..40] + "…" : last.Content),
-                        lastMsgUnsent = last.IsUnsent,
-                        sentAt        = last.SentAt.ToString("MMM d, h:mm tt"),
-                        unread
+                        userId        = otherPerson?.Id ?? "",
+                        name          = otherPerson != null ? otherPerson.FirstName + " " + otherPerson.LastName : "Unknown",
+                        userType      = otherPerson?.UserType ?? "",
+                        lastMsg       = preview,
+                        lastMsgUnsent = lastMessage.IsUnsent,
+                        sentAt        = ToPhtString(lastMessage.SentAt),
+                        unread        = unreadCount
                     };
                 })
                 .ToList();
 
-            return Json(convos);
+            return Json(conversations);
         }
     }
 }

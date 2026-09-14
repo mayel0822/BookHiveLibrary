@@ -1,93 +1,168 @@
 using BookHiveLibrary.Data;
-using BookHiveLibrary.Models;
+using BookHiveLibrary.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookHiveLibrary.Services
 {
+    // This background service runs automatically while the app is running.
+    // It wakes up every hour and checks two things:
+    //
+    //   1. Books due in less than 12 hours → send a reminder to the student
+    //   2. Books that are now past their due date → mark as Overdue and notify the adviser
+    //
+    // Because it runs in the background, it uses a fresh database scope each time
+    // (background services don't share the normal HTTP request scope).
     public class ReminderBackgroundService : BackgroundService
     {
-        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly IServiceProvider _services;
         private readonly ILogger<ReminderBackgroundService> _logger;
 
-        public ReminderBackgroundService(IServiceScopeFactory scopeFactory, ILogger<ReminderBackgroundService> logger)
+        // How often the reminder check should run
+        private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(1);
+
+        // How many hours before the due date we send the "almost due" reminder
+        private const int ReminderHoursAhead = 12;
+
+        public ReminderBackgroundService(IServiceProvider services, ILogger<ReminderBackgroundService> logger)
         {
-            _scopeFactory = scopeFactory;
-            _logger = logger;
+            _services = services;
+            _logger   = logger;
         }
 
+        // This method runs in a loop until the app shuts down.
+        // It waits for the check interval, then processes reminders.
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            _logger.LogInformation("Reminder background service started.");
+
             while (!stoppingToken.IsCancellationRequested)
             {
-                try { await ProcessRemindersAsync(); }
-                catch (Exception ex) { _logger.LogError(ex, "Reminder service error"); }
+                try
+                {
+                    await ProcessRemindersAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "An error occurred while processing reminders.");
+                }
 
-                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                // Wait one hour before checking again
+                await Task.Delay(CheckInterval, stoppingToken);
             }
         }
 
+        // The main reminder logic.
+        // Creates a fresh database scope (so we get a fresh DbContext) and:
+        //   Step 1 — find PickedUp books due within the next 12 hours → send reminder
+        //   Step 2 — find PickedUp books already past their due date → mark Overdue and notify adviser
         private async Task ProcessRemindersAsync()
         {
-            using var scope = _scopeFactory.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var email = scope.ServiceProvider.GetRequiredService<EmailService>();
-            var sms = scope.ServiceProvider.GetRequiredService<SmsService>();
+            // Create a fresh scope so we get a fresh ApplicationDbContext
+            using var scope   = _services.CreateScope();
+            var context       = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var emailService  = scope.ServiceProvider.GetRequiredService<EmailService>();
+            var smsService    = scope.ServiceProvider.GetRequiredService<SmsService>();
 
-            var cutoff = DateTime.Now.AddHours(12);
+            DateTime now                  = DateTime.Now;
+            DateTime reminderCutoff       = now.AddHours(ReminderHoursAhead); // 12 hours from now
 
-            // Send 12-hour reminders for books due soon
-            var dueSoon = await context.BookReservations
-                .Include(r => r.User)
-                .Include(r => r.Book)
-                .Where(r => r.Status == "PickedUp"
-                            && !r.ReminderSent
-                            && r.DueDate != null
-                            && r.DueDate <= cutoff
-                            && r.DueDate > DateTime.Now)
+            // ── Step 1: Send "almost due" reminders ───────────────────────────
+            //
+            // Find books that:
+            //   - Are currently borrowed (status = PickedUp)
+            //   - Are due within the next 12 hours (but not yet past due)
+            //   - Haven't been sent a reminder yet (ReminderSent = false)
+
+            var dueSoonReservations = await context.BookReservations
+                .Include(reservation => reservation.User)
+                .Include(reservation => reservation.Book)
+                .Where(reservation =>
+                    reservation.Status == "PickedUp"    &&
+                    reservation.DueDate <= reminderCutoff &&
+                    reservation.DueDate > now            &&
+                    !reservation.ReminderSent)
                 .ToListAsync();
 
-            foreach (var r in dueSoon)
+            foreach (var reservation in dueSoonReservations)
             {
-                if (r.User == null || r.Book == null) continue;
-
-                if (!string.IsNullOrEmpty(r.User.Email))
-                    await email.SendReturnReminderAsync(r.User.Email, r.User.FirstName, r.Book.Title, r.DueDate!.Value);
-
-                if (r.User.PhoneVerified && !string.IsNullOrEmpty(r.User.PhoneNumber))
-                    await sms.SendReturnReminderAsync(r.User.PhoneNumber, r.Book.Title, r.DueDate!.Value);
-
-                r.ReminderSent = true;
-            }
-
-            // Mark past-due borrows as Overdue and notify adviser
-            var overdue = await context.BookReservations
-                .Include(r => r.User)
-                .Include(r => r.Book)
-                .Where(r => r.Status == "PickedUp" && r.DueDate < DateTime.Now)
-                .ToListAsync();
-
-            foreach (var r in overdue)
-            {
-                r.Status = "Overdue";
-
-                // Notify adviser if student has one configured
-                if (r.User != null && r.Book != null && !string.IsNullOrEmpty(r.User.AdviserEmail))
+                try
                 {
-                    try
+                    // Send an email reminder to the student
+                    await emailService.SendReturnReminderAsync(
+                        reservation.User!.Email!,
+                        reservation.User.FirstName + " " + reservation.User.LastName,
+                        reservation.Book!.Title,
+                        reservation.DueDate!.Value); // DueDate is DateTime? — .Value is safe here because we filtered for non-null due dates
+
+                    // Also send an SMS if the student has a phone number
+                    bool studentHasPhone = !string.IsNullOrEmpty(reservation.User.PhoneNumber);
+                    if (studentHasPhone)
                     {
-                        string studentName = $"{r.User.FirstName} {r.User.LastName}";
-                        await email.SendOverdueAdviserNotificationAsync(
-                            r.User.AdviserEmail, studentName, r.Book.Title, r.DueDate!.Value);
+                        await smsService.SendReturnReminderAsync(
+                            reservation.User.PhoneNumber!,
+                            reservation.User.FirstName + " " + reservation.User.LastName,
+                            reservation.Book.Title,
+                            reservation.DueDate!.Value);
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to send adviser overdue notification for reservation {Id}", r.Id);
-                    }
+
+                    // Mark the reminder as sent so we don't send it again
+                    reservation.ReminderSent = true;
+                    _logger.LogInformation(
+                        "Sent reminder to {Email} for book '{Title}' due on {DueDate}.",
+                        reservation.User.Email, reservation.Book.Title, reservation.DueDate);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send reminder for reservation {ReservationId}.", reservation.Id);
                 }
             }
 
-            if (dueSoon.Any() || overdue.Any())
-                await context.SaveChangesAsync();
+            await context.SaveChangesAsync();
+
+            // ── Step 2: Mark overdue books and notify the adviser ─────────────
+            //
+            // Find books that:
+            //   - Are currently borrowed (status = PickedUp)
+            //   - Are past their due date (due date is in the past)
+            // These haven't been marked overdue yet (still showing as PickedUp).
+
+            var overdueReservations = await context.BookReservations
+                .Include(reservation => reservation.User)
+                .Include(reservation => reservation.Book)
+                .Where(reservation =>
+                    reservation.Status == "PickedUp" &&
+                    reservation.DueDate < now)
+                .ToListAsync();
+
+            foreach (var reservation in overdueReservations)
+            {
+                // Update the status so the librarian's dashboard shows it as overdue
+                reservation.Status = "Overdue";
+
+                try
+                {
+                    // Notify the class adviser about the overdue book
+                    bool adviserEmailAvailable = !string.IsNullOrEmpty(reservation.User?.AdviserEmail);
+                    if (adviserEmailAvailable)
+                    {
+                        await emailService.SendOverdueAdviserNotificationAsync(
+                            reservation.User!.AdviserEmail!,
+                            reservation.User.FirstName + " " + reservation.User.LastName,
+                            reservation.Book!.Title,
+                            reservation.DueDate!.Value);
+                    }
+
+                    _logger.LogInformation(
+                        "Marked overdue and notified adviser for reservation {ReservationId}.",
+                        reservation.Id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to notify adviser for reservation {ReservationId}.", reservation.Id);
+                }
+            }
+
+            await context.SaveChangesAsync();
         }
     }
 }
