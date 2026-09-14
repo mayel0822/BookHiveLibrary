@@ -1,431 +1,244 @@
-@model BookHiveLibrary.Models.ApplicationUser
+﻿@model BookHiveLibrary.Models.ApplicationUser
 @{
     ViewData["Title"] = "Dashboard";
-    var userName = (!string.IsNullOrWhiteSpace(Model?.FirstName) || !string.IsNullOrWhiteSpace(Model?.LastName))
-        ? $"{Model.FirstName} {Model.LastName}".Trim()
-        : Model?.UserName ?? "User";
+    Layout = "~/Views/Shared/_UserHeaderLayout.cshtml";
     var availableComputers = (int)(ViewBag.AvailableComputers ?? 0);
-    var borrowedBooks = (int)(ViewBag.BorrowedBooks ?? 0);
-    var recentBooks = (List<BookHiveLibrary.Models.Book>)(ViewBag.RecentBooks ?? new List<BookHiveLibrary.Models.Book>());
-    var myReservations = (List<BookHiveLibrary.Models.BookReservation>)(ViewBag.MyReservations ?? new List<BookHiveLibrary.Models.BookReservation>());
-    var booksToReturn = (List<BookHiveLibrary.Models.BookReservation>)(ViewBag.BooksToReturn ?? new List<BookHiveLibrary.Models.BookReservation>());
-    var borrowedBooksList = (List<BookHiveLibrary.Models.BookReservation>)(ViewBag.BorrowedBooksList ?? new List<BookHiveLibrary.Models.BookReservation>());
+    var borrowedBooks      = (int)(ViewBag.BorrowedBooks ?? 0);
+    var recentBooks        = (List<BookHiveLibrary.Models.Book>)(ViewBag.RecentBooks ?? new List<BookHiveLibrary.Models.Book>());
+    var myReservations     = (List<BookHiveLibrary.Models.BookReservation>)(ViewBag.MyReservations ?? new List<BookHiveLibrary.Models.BookReservation>());
+    var booksToReturn      = (List<BookHiveLibrary.Models.BookReservation>)(ViewBag.BooksToReturn ?? new List<BookHiveLibrary.Models.BookReservation>());
+    var borrowedBooksList  = (List<BookHiveLibrary.Models.BookReservation>)(ViewBag.BorrowedBooksList ?? new List<BookHiveLibrary.Models.BookReservation>());
 }
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Dashboard – BookHive</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
-</head>
-<body class="bg-[#dce6f5]">
+@if (TempData["Success"] != null)
+{
+    <div class="mb-4 bg-green-100 border border-green-300 text-green-700 px-4 py-2 rounded-xl text-sm">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="mb-4 bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded-xl text-sm">@TempData["Error"]</div>
+}
+@if (string.IsNullOrEmpty(Model?.PhoneNumber))
+{
+    <div class="mb-4 bg-yellow-50 border border-yellow-300 text-yellow-800 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        <span>You need to add a phone number to your profile before you can reserve books.
+            <a href="@Url.Action("Profile","Student")" class="font-semibold underline ml-1">Update Profile â†’</a>
+        </span>
+    </div>
+}
 
-<div id="sidebar-backdrop" class="fixed inset-0 bg-black/40 z-40 hidden" onclick="toggleSidebar()"></div>
+<div class="space-y-6">
 
-<div class="flex h-screen bg-[#dce6f5]">
-
-    <!-- Sidebar -->
-    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-56 bg-[#000147] text-white flex flex-col py-8 px-5 flex-shrink-0 shadow-xl -translate-x-full lg:translate-x-0 lg:relative transition-transform duration-300">
-        <div class="mb-10 flex items-center justify-between">
-            <a href="@Url.Action("Dashboard","Student")" class="flex items-center justify-center w-full">
-                <span style="font-family:'Dancing Script',cursive;font-size:2rem;font-weight:800;color:white;line-height:1;display:block;text-align:center;">BookHive</span>
-            </a>
-            <button onclick="toggleSidebar()" class="lg:hidden text-white/60 hover:text-white transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
+    <!-- Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <a href="@Url.Action("ComputerVacancy","Student")"
+           class="bg-[#000147] rounded-2xl p-8 text-center shadow-sm hover:shadow-lg hover:opacity-90 transition cursor-pointer block">
+            <div class="text-sm font-semibold uppercase tracking-wide text-blue-200 mb-3">Computer Available</div>
+            <div class="text-6xl font-bold text-white">@availableComputers</div>
+        </a>
+        <div onclick="openBorrowedPanel()"
+             class="bg-[#000147] rounded-2xl p-8 text-center shadow-sm hover:shadow-lg hover:opacity-90 transition cursor-pointer">
+            <div class="text-sm font-semibold uppercase tracking-wide text-blue-200 mb-3">Total Book Borrowed</div>
+            <div class="text-6xl font-bold text-white">@borrowedBooks <span class="text-2xl font-medium text-blue-300">/ 3</span></div>
         </div>
-        <nav class="space-y-1 flex-1">
-            <a href="@Url.Action("Dashboard","Student")" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold bg-white/20 text-white ring-1 ring-white/10">
-                <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
-                Home
-            </a>
-            <a href="@Url.Action("BookViewing","Student")" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-blue-200 hover:bg-white/10 hover:text-white transition-all duration-200">
-                <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg>
-                Book Viewing
-            </a>
-            <a href="@Url.Action("ComputerVacancy","Student")" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-blue-200 hover:bg-white/10 hover:text-white transition-all duration-200">
-                <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd"/></svg>
-                Computer Vacancy
-            </a>
-        </nav>
-    </aside>
+    </div>
 
-    <!-- Main -->
-    <main class="flex-1 overflow-y-auto bg-[#dce6f5]">
-
-        <!-- Header -->
-        <header class="bg-white border-b border-gray-200 flex items-center justify-between px-6 py-3 shadow-sm flex-shrink-0">
-            <div class="flex items-center gap-3">
-                <button onclick="toggleSidebar()" class="lg:hidden text-gray-500 hover:text-gray-700 transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    <!-- Borrowed Books Slide Panel -->
+    <div id="borrowedPanel" class="fixed inset-0 z-50 hidden" onclick="closeBorrowedPanel(event)">
+        <div class="absolute inset-0 bg-black/40"></div>
+        <div id="borrowedPanelInner" class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col translate-x-full transition-transform duration-300">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100" style="background:#000147;">
+                <h2 class="text-base font-semibold text-white">Borrowed Books</h2>
+                <button onclick="closeBorrowedPanel(null)" class="text-white/70 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
-                <div class="mt-1">
-                    <h2 class="text-base font-semibold text-gray-800">Dashboard</h2>
-                    <p class="text-xs text-gray-400 hidden sm:block">Student Portal — STI San Jose Del Monte</p>
-                </div>
             </div>
-            <div class="flex items-center gap-4">
-                <!-- Messages -->
-                <a href="/Message/Index" class="relative flex items-center text-gray-500 hover:text-gray-700">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                </a>
-                <!-- Notification Bell -->
-                <div id="notification-wrapper" class="relative flex items-center">
-                    <button onclick="toggleDropdown('notification-dropdown')" class="relative text-gray-500 hover:text-gray-700">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-                        <span id="notification-badge" class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center @(!myReservations.Any() ? "hidden" : "")">@myReservations.Count</span>
-                        <script>
-                        (function(){
-                            var ids = [@string.Join(",", myReservations.Select(r => r.Id))];
-                            var readKey = 'notif_read_ids';
-                            var readIds = JSON.parse(localStorage.getItem(readKey) || '[]');
-                            var allRead = ids.length === 0 || ids.every(function(id){ return readIds.indexOf(id) >= 0; });
-                            if (allRead) document.currentScript.previousElementSibling.classList.add('hidden');
-                        })();
-                        </script>
-                    </button>
-                    <div id="notification-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
-                        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                            <h3 class="text-sm font-bold text-gray-900">Notifications</h3>
-                            <button onclick="markAllRead()" class="text-xs text-gray-500 hover:text-gray-900 font-medium">Mark all as read</button>
-                        </div>
-                        <ul class="divide-y divide-gray-50 max-h-72 overflow-y-auto">
-                            @foreach (var res in myReservations)
-                            {
-                                var icon = res.Status == "Approved" ? "text-emerald-500 bg-emerald-100" : "text-blue-500 bg-blue-100";
-                                <li class="flex gap-3 px-4 py-3 hover:bg-gray-50 transition cursor-pointer notification-item">
-                                    <div class="w-8 h-8 rounded-full @icon flex items-center justify-center flex-shrink-0 mt-0.5">
-                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-semibold text-gray-900">Book reservation @res.Status.ToLower()</p>
-                                        <p class="text-xs text-gray-500 truncate">@res.Book?.Title</p>
-                                        <p class="text-xs text-gray-400 mt-1">Pickup by @res.PickupDeadline.ToString("MMM dd, yyyy h:mm tt")</p>
-                                    </div>
-                                </li>
-                            }
-                            @if (!myReservations.Any())
-                            {
-                                <li class="px-4 py-6 text-center text-xs text-gray-400">No new notifications</li>
-                            }
-                        </ul>
-                        <div class="px-4 py-2 border-t border-gray-100 text-center">
-                            <a href="@Url.Action("BookViewing","Student")" class="text-xs font-medium text-gray-500 hover:text-gray-900">View all</a>
-                        </div>
+            <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                @if (!borrowedBooksList.Any())
+                {
+                    <div class="flex items-center justify-center h-full">
+                        <p class="text-sm text-gray-400">No borrowed books at the moment.</p>
                     </div>
-                </div>
-                <!-- Profile -->
-                <div class="relative" id="profile-wrapper">
-                    <button onclick="toggleProfileDrop()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 focus:outline-none transition">
-                        <span class="text-sm font-medium text-gray-700 hidden sm:inline">@(!string.IsNullOrWhiteSpace(Model?.FirstName) ? Model.FirstName : Model?.UserName)</span>
-                        <div class="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background-color:#000147;">
-                            @if (!string.IsNullOrEmpty(Model?.ProfilePicture))
+                }
+                else
+                {
+                    @foreach (var b in borrowedBooksList)
+                    {
+                        <div class="bg-gray-50 rounded-xl p-4 flex gap-4 items-start border border-gray-100">
+                            @if (!string.IsNullOrEmpty(b.Book?.CoverImageUrl))
                             {
-                                <img src="@Model.ProfilePicture" class="w-full h-full object-cover" />
+                                <img src="@b.Book.CoverImageUrl" class="w-14 h-20 object-cover rounded-lg flex-shrink-0 shadow" />
                             }
                             else
                             {
-                                @(userName.Length > 0 ? userName[0].ToString().ToUpper() : "S")
+                                <div class="w-14 h-20 rounded-lg flex-shrink-0 flex items-center justify-center text-white text-xs font-bold" style="background:#000147;">N/A</div>
                             }
-                        </div>
-                    </button>
-                    <div id="profile-drop" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
-                        <div class="px-4 py-4 border-b border-gray-100 flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-white text-lg font-bold flex-shrink-0" style="background-color:#000147;">
-                                @if (!string.IsNullOrEmpty(Model?.ProfilePicture))
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-bold text-gray-800 truncate">@b.Book?.Title</p>
+                                <p class="text-xs text-gray-500 truncate">@b.Book?.Author</p>
+                                <p class="text-xs text-gray-400 mt-1">Picked up: @b.CreatedAt.ToString("MMM dd, yyyy")</p>
+                                @if (b.DueDate.HasValue)
                                 {
-                                    <img src="@Model.ProfilePicture" class="w-full h-full object-cover" />
+                                    var overdue = b.DueDate.Value < DateTime.Now;
+                                    <p class="text-xs mt-0.5 font-medium @(overdue ? "text-red-500" : "text-emerald-600")">
+                                        Due: @b.DueDate.Value.ToString("MMM dd, yyyy") @(overdue ? "âš  Overdue" : "")
+                                    </p>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Catalog + Right Panel -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Library Catalog -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-2xl p-6 shadow-sm">
+                <h2 class="text-lg font-bold text-gray-900 mb-6">Library Book Catalog</h2>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    @foreach (var book in recentBooks.Take(6))
+                    {
+                        var isAvail = book.AvailableQuantity > 0;
+                        <a href="@Url.Action("BookDetail","Student", new { id = book.Id })" class="bg-[#b0c4d8] rounded-2xl overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 block">
+                            <div class="w-full h-48 bg-[#000147]/10 flex items-center justify-center overflow-hidden">
+                                @if (!string.IsNullOrEmpty(book.CoverImageUrl))
+                                {
+                                    <img src="@book.CoverImageUrl" alt="cover" class="w-full h-full object-cover"/>
                                 }
                                 else
                                 {
-                                    @(userName.Length > 0 ? userName[0].ToString().ToUpper() : "S")
+                                    <svg class="w-10 h-10 text-gray-300" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg>
                                 }
                             </div>
-                            <div class="min-w-0">
-                                <a href="/Student/Profile" class="text-sm font-semibold text-gray-900 hover:underline truncate block">@userName</a>
-                                <p class="text-xs text-gray-400 truncate">@Model?.Email</p>
-                                <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold mt-1 inline-block">@(Model?.UserType ?? "Student")</span>
+                            <div class="p-4">
+                                <h3 class="font-semibold text-gray-900 mb-1 truncate">@book.Title</h3>
+                                <p class="text-sm text-gray-500 mb-2 truncate">@book.Author</p>
+                                <span class="inline-block @(isAvail ? "bg-emerald-500" : "bg-red-400") text-white text-xs px-3 py-1 rounded-full">@(isAvail ? "Available" : "Not Available")</span>
                             </div>
-                        </div>
-                        <form method="post" asp-controller="Account" asp-action="Logout" class="px-2 py-2">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                                Sign Out
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </header>
-
-        @if (TempData["Success"] != null)
-        {
-            <div class="mx-4 sm:mx-8 bg-green-100 border border-green-300 text-green-700 px-4 py-2 rounded-xl text-sm">@TempData["Success"]</div>
-        }
-        @if (TempData["Error"] != null)
-        {
-            <div class="mx-4 sm:mx-8 bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded-xl text-sm">@TempData["Error"]</div>
-        }
-        @if (string.IsNullOrEmpty(Model?.PhoneNumber))
-        {
-            <div class="mx-4 sm:mx-8 mt-3 bg-yellow-50 border border-yellow-300 text-yellow-800 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
-                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-                <span>You need to add a phone number to your profile before you can reserve books.
-                    <a href="@Url.Action("Profile","Student")" class="font-semibold underline ml-1">Update Profile →</a>
-                </span>
-            </div>
-        }
-
-        <!-- Content -->
-        <div class="p-4 sm:p-6 space-y-6">
-
-            <!-- Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <a href="@Url.Action("ComputerVacancy","Student")"
-                   class="bg-[#000147] rounded-2xl p-8 text-center shadow-sm hover:shadow-lg hover:opacity-90 transition cursor-pointer block">
-                    <div class="text-sm font-semibold uppercase tracking-wide text-blue-200 mb-3">Computer Available</div>
-                    <div class="text-6xl font-bold text-white">@availableComputers</div>
-                </a>
-                <div onclick="openBorrowedPanel()"
-                     class="bg-[#000147] rounded-2xl p-8 text-center shadow-sm hover:shadow-lg hover:opacity-90 transition cursor-pointer">
-                    <div class="text-sm font-semibold uppercase tracking-wide text-blue-200 mb-3">Total Book Borrowed</div>
-                    <div class="text-6xl font-bold text-white">@borrowedBooks <span class="text-2xl font-medium text-blue-300">/ 3</span></div>
-                </div>
-            </div>
-
-            <!-- Borrowed Books Slide Panel -->
-            <div id="borrowedPanel" class="fixed inset-0 z-50 hidden" onclick="closeBorrowedPanel(event)">
-                <div class="absolute inset-0 bg-black/40"></div>
-                <div id="borrowedPanelInner" class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col translate-x-full transition-transform duration-300">
-                    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100" style="background:#000147;">
-                        <h2 class="text-base font-semibold text-white">Borrowed Books</h2>
-                        <button onclick="closeBorrowedPanel(null)" class="text-white/70 hover:text-white">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
-                    </div>
-                    <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                        @if (!borrowedBooksList.Any())
-                        {
-                            <div class="flex items-center justify-center h-full">
-                                <p class="text-sm text-gray-400">No borrowed books at the moment.</p>
-                            </div>
-                        }
-                        else
-                        {
-                            @foreach (var b in borrowedBooksList)
-                            {
-                                <div class="bg-gray-50 rounded-xl p-4 flex gap-4 items-start border border-gray-100">
-                                    @if (!string.IsNullOrEmpty(b.Book?.CoverImageUrl))
-                                    {
-                                        <img src="@b.Book.CoverImageUrl" class="w-14 h-20 object-cover rounded-lg flex-shrink-0 shadow" />
-                                    }
-                                    else
-                                    {
-                                        <div class="w-14 h-20 rounded-lg flex-shrink-0 flex items-center justify-center text-white text-xs font-bold" style="background:#000147;">N/A</div>
-                                    }
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-bold text-gray-800 truncate">@b.Book?.Title</p>
-                                        <p class="text-xs text-gray-500 truncate">@b.Book?.Author</p>
-                                        <p class="text-xs text-gray-400 mt-1">Picked up: @b.CreatedAt.ToString("MMM dd, yyyy")</p>
-                                        @if (b.DueDate.HasValue)
-                                        {
-                                            var overdue = b.DueDate.Value < DateTime.Now;
-                                            <p class="text-xs mt-0.5 font-medium @(overdue ? "text-red-500" : "text-emerald-600")">
-                                                Due: @b.DueDate.Value.ToString("MMM dd, yyyy") @(overdue ? "Overdue" : "")
-                                            </p>
-                                        }
-                                    </div>
-                                </div>
-                            }
-                        }
-                    </div>
-                </div>
-            </div>
-
-            <!-- Catalog + Right Panel -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                <!-- Library Catalog -->
-                <div class="lg:col-span-2">
-                    <div class="bg-white rounded-2xl p-6 shadow-sm">
-                        <h2 class="text-lg font-bold text-gray-900 mb-6">Library Book Catalog</h2>
-                        <div class="grid grid-cols-2 gap-4 mb-4">
-                            @foreach (var book in recentBooks.Take(6))
-                            {
-                                var isAvail = book.AvailableQuantity > 0;
-                                <a href="@Url.Action("BookDetail","Student", new { id = book.Id })" class="bg-[#b0c4d8] rounded-2xl overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 block">
-                                    <div class="w-full h-48 bg-[#000147]/10 flex items-center justify-center overflow-hidden">
-                                        @if (!string.IsNullOrEmpty(book.CoverImageUrl))
-                                        {
-                                            <img src="@book.CoverImageUrl" alt="cover" class="w-full h-full object-cover"/>
-                                        }
-                                        else
-                                        {
-                                            <svg class="w-10 h-10 text-gray-300" fill="currentColor" viewBox="0 0 20 20"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg>
-                                        }
-                                    </div>
-                                    <div class="p-4">
-                                        <h3 class="font-semibold text-gray-900 mb-1 truncate">@book.Title</h3>
-                                        <p class="text-sm text-gray-500 mb-2 truncate">@book.Author</p>
-                                        <span class="inline-block @(isAvail ? "bg-emerald-500" : "bg-red-400") text-white text-xs px-3 py-1 rounded-full">@(isAvail ? "Available" : "Not Available")</span>
-                                    </div>
-                                </a>
-                            }
-                            @if (!recentBooks.Any())
-                            {
-                                <p class="col-span-2 text-sm text-gray-400 text-center py-8">No books registered yet.</p>
-                            }
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right panel -->
-                <div class="space-y-6">
-
-                    <!-- My Reservation -->
-                    <div class="bg-white rounded-2xl p-6 shadow-sm">
-                        <h2 class="text-lg font-bold text-gray-900 mb-4">My Reservation</h2>
-                        @if (myReservations.Any())
-                        {
-                            var first = myReservations.First();
-                            <div class="space-y-3">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <p class="text-gray-900 font-semibold">@first.Book?.Title</p>
-                                        <p class="text-sm text-gray-500">@first.Book?.Author</p>
-                                    </div>
-                                    <span class="@(first.Status == "Approved" ? "bg-green-500" : "bg-yellow-500") text-white text-xs px-3 py-1 rounded-full whitespace-nowrap">@first.Status</span>
-                                </div>
-                                <div class="border-t border-gray-100 pt-3">
-                                    <p class="text-sm text-gray-500 mb-1">Pickup before <span class="text-gray-700 font-medium">@first.PickupDeadline.ToString("MMM dd, yyyy h:mm tt")</span></p>
-                                    <div class="flex items-center gap-2">
-                                        <svg class="w-4 h-4 text-yellow-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        <p id="reservationCountdown" data-deadline="@first.PickupDeadline.ToString("o")" class="text-sm font-semibold text-yellow-600"></p>
-                                    </div>
-                                </div>
-                            </div>
-                            @if (myReservations.Count > 1)
-                            {
-                                <p class="text-xs text-gray-400 mt-2">+@(myReservations.Count - 1) more reservation(s)</p>
-                            }
-                        }
-                        else
-                        {
-                            <p class="text-sm text-gray-400 text-center py-4">No active reservations.</p>
-                        }
-                        <a href="@Url.Action("BookViewing","Student")" class="block w-full mt-4 bg-gray-100 hover:bg-gray-200 text-gray-900 py-2 rounded-xl transition font-medium text-sm text-center">
-                            Browse Books
                         </a>
-                    </div>
-
-                    <!-- Books To Return -->
-                    <div class="bg-white rounded-2xl p-6 shadow-sm">
-                        <h2 class="text-lg font-bold text-gray-900 mb-4">Books To Return</h2>
-                        <div class="space-y-4">
-                            @if (booksToReturn.Any())
-                            {
-                                @foreach (var item in booksToReturn)
-                                {
-                                    var overdue = item.DueDate.HasValue && item.DueDate.Value < DateTime.Now;
-                                    <div class="flex justify-between items-start pb-4 border-b border-gray-100 last:border-b-0">
-                                        <div>
-                                            <p class="text-gray-900 font-semibold">@item.Book?.Title</p>
-                                            <p class="text-sm text-gray-500">@item.Book?.Author</p>
-                                            @if (item.DueDate.HasValue)
-                                            {
-                                                <p class="text-xs text-gray-400 mt-1">Due Date: @item.DueDate.Value.ToString("MM/dd/yy")</p>
-                                            }
-                                        </div>
-                                        @if (overdue)
-                                        {
-                                            <span class="bg-red-500 text-white text-xs px-3 py-1 rounded-full whitespace-nowrap">Overdue</span>
-                                        }
-                                    </div>
-                                }
-                            }
-                            else
-                            {
-                                <p class="text-sm text-gray-400 text-center py-4">No books to return.</p>
-                            }
-                        </div>
-                    </div>
-
+                    }
+                    @if (!recentBooks.Any())
+                    {
+                        <p class="col-span-2 text-sm text-gray-400 text-center py-8">No books registered yet.</p>
+                    }
                 </div>
             </div>
         </div>
-    </main>
+
+        <!-- Right panel -->
+        <div class="space-y-6">
+
+            <!-- My Reservation -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">My Reservation</h2>
+                @if (myReservations.Any())
+                {
+                    var first = myReservations.First();
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-gray-900 font-semibold">@first.Book?.Title</p>
+                                <p class="text-sm text-gray-500">@first.Book?.Author</p>
+                            </div>
+                            <span class="@(first.Status == "Approved" ? "bg-green-500" : "bg-yellow-500") text-white text-xs px-3 py-1 rounded-full whitespace-nowrap">@first.Status</span>
+                        </div>
+                        <div class="border-t border-gray-100 pt-3">
+                            <p class="text-sm text-gray-500 mb-1">Pickup before <span class="text-gray-700 font-medium">@first.PickupDeadline.ToString("MMM dd, yyyy h:mm tt")</span></p>
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-yellow-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <p id="reservationCountdown" data-deadline="@first.PickupDeadline.ToString("o")" class="text-sm font-semibold text-yellow-600"></p>
+                            </div>
+                        </div>
+                    </div>
+                    @if (myReservations.Count > 1)
+                    {
+                        <p class="text-xs text-gray-400 mt-2">+@(myReservations.Count - 1) more reservation(s)</p>
+                    }
+                }
+                else
+                {
+                    <p class="text-sm text-gray-400 text-center py-4">No active reservations.</p>
+                }
+                <a href="@Url.Action("BookViewing","Student")" class="block w-full mt-4 bg-gray-100 hover:bg-gray-200 text-gray-900 py-2 rounded-xl transition font-medium text-sm text-center">
+                    Browse Books
+                </a>
+            </div>
+
+            <!-- Books To Return -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Books To Return</h2>
+                <div class="space-y-4">
+                    @if (booksToReturn.Any())
+                    {
+                        @foreach (var item in booksToReturn)
+                        {
+                            var overdue = item.DueDate.HasValue && item.DueDate.Value < DateTime.Now;
+                            <div class="flex justify-between items-start pb-4 border-b border-gray-100 last:border-b-0">
+                                <div>
+                                    <p class="text-gray-900 font-semibold">@item.Book?.Title</p>
+                                    <p class="text-sm text-gray-500">@item.Book?.Author</p>
+                                    @if (item.DueDate.HasValue)
+                                    {
+                                        <p class="text-xs text-gray-400 mt-1">Due Date: @item.DueDate.Value.ToString("MM/dd/yy")</p>
+                                    }
+                                </div>
+                                @if (overdue)
+                                {
+                                    <span class="bg-red-500 text-white text-xs px-3 py-1 rounded-full whitespace-nowrap">Overdue</span>
+                                }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-sm text-gray-400 text-center py-4">No books to return.</p>
+                    }
+                </div>
+            </div>
+
+        </div>
+    </div>
 </div>
 
+@section Scripts {
 <script>
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const backdrop = document.getElementById('sidebar-backdrop');
-        const isOpen = !sidebar.classList.contains('-translate-x-full');
-        if (isOpen) { sidebar.classList.add('-translate-x-full'); backdrop.classList.add('hidden'); }
-        else { sidebar.classList.remove('-translate-x-full'); backdrop.classList.remove('hidden'); }
-    }
-    function toggleDropdown(id) {
-        const el = document.getElementById(id);
-        if (el) el.classList.toggle('hidden');
-    }
-    function markAllRead() {
-        const badge = document.getElementById('notification-badge');
-        if (badge) badge.classList.add('hidden');
-        // Persist read state so it survives page navigation
-        var ids = [@string.Join(",", myReservations.Select(r => r.Id))];
-        var readKey = 'notif_read_ids';
-        var readIds = JSON.parse(localStorage.getItem(readKey) || '[]');
-        ids.forEach(function(id){ if (readIds.indexOf(id) < 0) readIds.push(id); });
-        localStorage.setItem(readKey, JSON.stringify(readIds));
-    }
-    function toggleProfileDrop() { document.getElementById('profile-drop').classList.toggle('hidden'); }
+function openBorrowedPanel() {
+    const panel = document.getElementById('borrowedPanel');
+    const inner = document.getElementById('borrowedPanelInner');
+    panel.classList.remove('hidden');
+    requestAnimationFrame(() => inner.classList.remove('translate-x-full'));
+}
+function closeBorrowedPanel(e) {
+    if (e && e.target !== document.getElementById('borrowedPanel') && !e.target.closest('#borrowedPanel > .absolute.inset-0')) return;
+    const inner = document.getElementById('borrowedPanelInner');
+    inner.classList.add('translate-x-full');
+    setTimeout(() => document.getElementById('borrowedPanel').classList.add('hidden'), 300);
+}
 
-    function openBorrowedPanel() {
-        const panel = document.getElementById('borrowedPanel');
-        const inner = document.getElementById('borrowedPanelInner');
-        panel.classList.remove('hidden');
-        requestAnimationFrame(() => inner.classList.remove('translate-x-full'));
+// Reservation countdown
+(function() {
+    const el = document.getElementById('reservationCountdown');
+    if (!el) return;
+    const deadline = new Date(el.dataset.deadline);
+    function tick() {
+        const diff = deadline - new Date();
+        if (diff <= 0) { el.textContent = 'Pickup window expired'; return; }
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        el.textContent = h > 0 ? `${h}h ${m}m ${s}s remaining` : `${m}m ${s}s remaining`;
     }
-    function closeBorrowedPanel(e) {
-        if (e && e.target !== document.getElementById('borrowedPanel') && !e.target.closest('#borrowedPanel > .absolute.inset-0')) return;
-        const inner = document.getElementById('borrowedPanelInner');
-        inner.classList.add('translate-x-full');
-        setTimeout(() => document.getElementById('borrowedPanel').classList.add('hidden'), 300);
-    }
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('#notification-wrapper')) document.getElementById('notification-dropdown')?.classList.add('hidden');
-        if (!e.target.closest('#profile-wrapper')) document.getElementById('profile-drop')?.classList.add('hidden');
-    });
+    tick(); setInterval(tick, 1000);
+})();
 
-    (function() {
-        const el = document.getElementById('reservationCountdown');
-        if (!el) return;
-        const deadline = new Date(el.dataset.deadline);
-        function tick() {
-            const diff = deadline - new Date();
-            if (diff <= 0) { el.textContent = 'Pickup window expired'; return; }
-            const h = Math.floor(diff / 3600000);
-            const m = Math.floor((diff % 3600000) / 60000);
-            const s = Math.floor((diff % 60000) / 1000);
-            el.textContent = h > 0 ? `${h}h ${m}m ${s}s remaining` : `${m}m ${s}s remaining`;
-        }
-        tick();
-        setInterval(tick, 1000);
-    })();
-
-// ── Real-time: reload dashboard when reservation status changes ──────────
-stuConnection.on('BookTransactionUpdated', function() {
-    location.reload();
-});
-stuConnection.on('NewReservation', function() {
-    // Student just reserved — no need to reload (they triggered it)
-});
+// Real-time reload when reservation status changes
+stuConnection.on('BookTransactionUpdated', function() { location.reload(); });
+stuConnection.on('NewReservation', function() {});
 </script>
-</body>
-</html>
+}
+

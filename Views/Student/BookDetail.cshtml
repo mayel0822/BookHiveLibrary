@@ -1,8 +1,9 @@
-@model BookHiveLibrary.Models.Book
+﻿@model BookHiveLibrary.Models.Book
 @{
     ViewData["Title"] = Model.Title;
-    Layout = "~/Views/Shared/_StudentLayout.cshtml";
-    var isAvail = Model.AvailableQuantity > 0;
+    Layout = "~/Views/Shared/_UserHeaderLayout.cshtml";
+    int realAvailable = ViewBag.RealAvailable ?? Model.AvailableQuantity;
+    var isAvail = realAvailable > 0;
 }
 
 <div class="h-full flex flex-col">
@@ -73,7 +74,7 @@
                 }
                 <div>
                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Copies Available</p>
-                    <p class="text-gray-800 font-medium">@Model.AvailableQuantity / @Model.TotalQuantity</p>
+                    <p class="text-gray-800 font-medium">@realAvailable / @Model.TotalQuantity</p>
                 </div>
                 @if (!string.IsNullOrEmpty(Model.ISBN))
                 {
@@ -134,3 +135,4 @@
         </div>
     </div>
 </div>
+

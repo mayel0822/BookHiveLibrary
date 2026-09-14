@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="~/css/output.css" asp-append-version="true" />
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <style>.mini-menu-btn{display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:8px 14px;font-size:12px;background:none;border:none;cursor:pointer;white-space:nowrap;}</style>
 </head>
 <body class="bg-[#dce6f5]">
 
@@ -25,16 +26,12 @@
 <div class="flex h-screen bg-[#dce6f5]">
 
     <!-- Sidebar -->
-    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-56 bg-[#000147] text-white flex flex-col py-8 px-5 flex-shrink-0 shadow-xl -translate-x-full lg:translate-x-0 lg:relative transition-transform duration-300">
-        <div class="mb-10 flex items-center justify-between">
-            <a href="/Student/Dashboard" class="flex items-center justify-center w-full">
-                <span style="font-family:'Dancing Script',cursive;font-size:2rem;font-weight:800;color:white;line-height:1;display:block;text-align:center;">BookHive</span>
-            </a>
-            <button onclick="toggleSidebar()" class="lg:hidden text-white/60 hover:text-white transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-56 bg-[#000147] text-white flex flex-col py-8 px-5 flex-shrink-0 shadow-xl -translate-x-full transition-transform duration-300">
+        <div class="mb-10 flex items-center gap-3">
+            <button onclick="toggleSidebar()" class="text-white/60 hover:text-white transition flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
+            <a href="/Student/Dashboard" style="font-family:'Dancing Script',cursive;font-size:2rem;font-weight:800;color:white;line-height:1;text-decoration:none;">BookHive</a>
         </div>
         <nav class="space-y-1 flex-1">
             <a href="/Student/Dashboard"
@@ -59,33 +56,43 @@
     <main class="flex-1 overflow-y-auto bg-[#dce6f5] flex flex-col">
 
         <!-- Header -->
-        <header class="bg-white border-b border-gray-200 flex items-center justify-between px-6 py-3 shadow-sm flex-shrink-0">
+        <header class="flex items-center justify-between px-6 py-3 shadow-sm flex-shrink-0 border-b border-white/10" style="background-color:#000147;">
             <div class="flex items-center gap-3">
-                <button onclick="toggleSidebar()" class="lg:hidden text-gray-500 hover:text-gray-700 transition">
+                <button onclick="toggleSidebar()" class="text-white/70 hover:text-white transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
-                <div class="mt-1">
-                    <h2 class="text-base font-semibold text-gray-800">@ViewData["Title"]</h2>
-                    <p class="text-xs text-gray-400 hidden sm:block">Student Portal — STI San Jose Del Monte</p>
-                </div>
+                <a href="/Student/Dashboard" style="font-family:'Dancing Script',cursive;font-size:1.6rem;font-weight:800;color:white;line-height:1;text-decoration:none;">BookHive</a>
             </div>
 
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 flex-shrink-0">
                 <!-- Messages -->
                 <div class="relative flex items-center" id="msgWrapper">
-                    <button id="msgBtn" onclick="toggleMsgPanel()" class="relative flex items-center text-gray-500 hover:text-gray-700 focus:outline-none">
+                    <button type="button" id="msgBtn" onclick="event.preventDefault();toggleMsgPanel()" class="relative flex items-center text-white/70 hover:text-white focus:outline-none">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                         <span id="msgBadge" class="hidden absolute -top-1 -right-1 w-4 h-4 text-white text-[10px] font-bold rounded-full flex items-center justify-center" style="background:#e53e3e;"></span>
                     </button>
                 </div>
-                <!-- Bell -->
-                <div class="relative flex items-center text-gray-500">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                <!-- Bell / Notifications -->
+                <div class="relative flex items-center" id="stuNotifWrapper">
+                    <button onclick="toggleStuNotifPanel()" class="relative flex items-center text-white/70 hover:text-white focus:outline-none">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                        <span id="stuNotifBadge" class="hidden absolute -top-1 -right-1 w-4 h-4 text-white text-[10px] font-bold rounded-full flex items-center justify-center" style="background:#e53e3e;"></span>
+                    </button>
+                    <!-- Notification dropdown -->
+                    <div id="stuNotifPanel" class="hidden fixed top-14 right-32 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-[999] overflow-hidden">
+                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                            <span class="text-sm font-semibold text-gray-800">Notifications</span>
+                            <span id="stuNotifCount" class="text-xs text-gray-400"></span>
+                        </div>
+                        <div id="stuNotifList" class="max-h-72 overflow-y-auto divide-y divide-gray-50">
+                            <p class="px-4 py-6 text-center text-sm text-gray-400">Loading…</p>
+                        </div>
+                    </div>
                 </div>
                 <!-- Profile Dropdown -->
                 <div class="relative" id="stu-profile-wrapper">
-                    <button onclick="toggleStuProfile()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 focus:outline-none transition">
-                        <span class="text-sm font-medium text-gray-700 hidden sm:inline">@(stuCurrentUser?.FirstName ?? User.Identity?.Name)</span>
+                    <button onclick="toggleStuProfile()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg focus:outline-none transition" style="border:1px solid rgba(255,255,255,0.6);background:rgba(255,255,255,0.1);">
+                        <span class="text-sm font-medium text-white hidden sm:inline">@(stuCurrentUser?.FirstName ?? User.Identity?.Name)</span>
                         <div class="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background-color:#000147;">
                             @if (!string.IsNullOrEmpty(stuCurrentUser?.ProfilePicture))
                             {
@@ -141,9 +148,19 @@
 function toggleSidebar() {
     const s = document.getElementById('sidebar');
     const b = document.getElementById('sidebar-backdrop');
-    s.classList.toggle('-translate-x-full');
-    b.classList.toggle('hidden');
+    const isHidden = s.classList.contains('-translate-x-full');
+    s.classList.toggle('-translate-x-full', !isHidden);
+    b.classList.toggle('hidden', !isHidden);
 }
+// Close sidebar when any nav link is clicked
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('#sidebar nav a').forEach(function(link) {
+        link.addEventListener('click', function() {
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+            document.getElementById('sidebar-backdrop').classList.add('hidden');
+        });
+    });
+});
 function toggleStuProfile() {
     document.getElementById('stu-profile-panel').classList.toggle('hidden');
 }
@@ -168,9 +185,85 @@ stuConnection.on('ReceiveMessage', function(msg) {
         badge.classList.remove('hidden');
     }
     if (_chatUserId && msg.senderId === _chatUserId) loadChatMessages();
+    if (_miniChatUserId && msg.senderId === _miniChatUserId) loadMiniChatMessages();
 });
 
-stuConnection.start().then(() => pollMsgBadge()).catch(err => console.error('SignalR error:', err));
+// When the other person unsends a message, replace its bubble instantly
+stuConnection.on('MessageUnsent', function(data) {
+    // Mini chat popup
+    const miniEl = document.getElementById('mini-msg-' + data.id);
+    if (miniEl) {
+        miniEl.innerHTML = '<span class="text-xs italic text-gray-400 px-3 py-1.5 border border-dashed border-gray-300 rounded-2xl">Message unsent</span>';
+    }
+    // Full chat modal (if open)
+    const chatEl = document.getElementById('chatmsg-' + data.id);
+    if (chatEl) {
+        chatEl.innerHTML = '<span class="text-xs italic text-gray-400 px-3 py-1 border border-gray-200 rounded-2xl">Message unsent</span>';
+    }
+});
+
+stuConnection.start().then(() => { pollMsgBadge(); pollStuNotifBadge(); }).catch(err => console.error('SignalR error:', err));
+
+// Keep the message badge in sync every 10 seconds (catches server-side read changes)
+setInterval(pollMsgBadge, 10000);
+
+// ── Student Notification Bell ────────────────────────────────────────────
+async function pollStuNotifBadge() {
+    try {
+        const data = await fetch('/Student/GetNotifications').then(r => r.json());
+        updateStuNotifBadge(data.count);
+    } catch {}
+}
+
+function updateStuNotifBadge(count) {
+    const badge = document.getElementById('stuNotifBadge');
+    if (!badge) return;
+    if (count > 0) { badge.textContent = count > 9 ? '9+' : count; badge.classList.remove('hidden'); }
+    else badge.classList.add('hidden');
+}
+
+function toggleStuNotifPanel() {
+    const panel = document.getElementById('stuNotifPanel');
+    panel.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden')) loadStuNotifications();
+}
+
+document.addEventListener('click', function(e) {
+    const wrapper = document.getElementById('stuNotifWrapper');
+    if (wrapper && !wrapper.contains(e.target))
+        document.getElementById('stuNotifPanel')?.classList.add('hidden');
+});
+
+async function loadStuNotifications() {
+    const list = document.getElementById('stuNotifList');
+    try {
+        const data = await fetch('/Student/GetNotifications').then(r => r.json());
+        updateStuNotifBadge(data.count);
+        document.getElementById('stuNotifCount').textContent = data.count > 0 ? data.count + ' alert' + (data.count > 1 ? 's' : '') : 'All clear';
+        if (!data.items.length) {
+            list.innerHTML = '<p class="px-4 py-6 text-center text-sm text-gray-400">No notifications</p>';
+            return;
+        }
+        const labelColors = {
+            'Pending':   'bg-yellow-100 text-yellow-700',
+            'Due Soon':  'bg-orange-100 text-orange-700',
+            'Overdue':   'bg-red-100 text-red-700',
+        };
+        list.innerHTML = data.items.map(n => `
+            <div class="px-4 py-3 hover:bg-gray-50 cursor-default">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-gray-800 truncate">${n.title}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">${n.message}</p>
+                        <p class="text-[10px] text-gray-400 mt-1">${n.time}</p>
+                    </div>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${labelColors[n.label] || 'bg-gray-100 text-gray-600'}">${n.label}</span>
+                </div>
+            </div>`).join('');
+    } catch {
+        list.innerHTML = '<p class="px-4 py-6 text-center text-sm text-gray-400">Could not load notifications</p>';
+    }
+}
 
 // ── Message Panel ──────────────────────────────────────────────────────
 let msgPanelOpen = false, _chatUserId = '', _chatMyId = '', _msgConvos = [];
@@ -211,12 +304,13 @@ function msgConvoRow(c, active) {
 async function toggleMsgPanel() {
     msgPanelOpen = !msgPanelOpen;
     const panel = document.getElementById('msgPanel');
-    if (!msgPanelOpen) { panel.classList.add('hidden'); return; }
+    if (!msgPanelOpen) { panel.style.display = 'none'; return; }
+    // Position directly under the envelope button
     const btn = document.getElementById('msgBtn'), rect = btn.getBoundingClientRect();
-    panel.style.top = (rect.bottom + 6) + 'px';
-    panel.style.right = (window.innerWidth - rect.right) + 'px';
-    panel.style.left = 'auto';
-    panel.classList.remove('hidden');
+    panel.style.top   = (rect.bottom + 8) + 'px';
+    panel.style.right = Math.max(8, window.innerWidth - rect.right) + 'px';
+    panel.style.left  = 'auto';
+    panel.style.display = 'block';
     const list = document.getElementById('msgPanelList');
     list.innerHTML = '<p class="px-4 py-6 text-center text-sm text-gray-400">Loading…</p>';
     try {
@@ -226,7 +320,9 @@ async function toggleMsgPanel() {
 }
 
 document.addEventListener('click', function(e) {
-    if (!e.target.closest('#msgWrapper') && !e.target.closest('#msgPanel')) { document.getElementById('msgPanel')?.classList.add('hidden'); msgPanelOpen = false; }
+    if (!e.target.closest('#msgWrapper') && !e.target.closest('#msgPanel') && !e.target.closest('#miniChatPopup')) { const _p=document.getElementById('msgPanel'); if(_p) _p.style.display='none'; msgPanelOpen = false; }
+    if (!e.target.closest('.mini-chat-bubble') && !e.target.closest('.mini-msg-menu') && !e.target.closest('.mini-dots-btn'))
+        document.querySelectorAll('.mini-msg-menu').forEach(m => m.style.display = 'none');
     if (!e.target.closest('.chat-msg-bubble') && !e.target.closest('.chat-msg-menu'))
         document.querySelectorAll('.chat-msg-menu').forEach(m => m.classList.add('hidden'));
     const gcm = document.getElementById('globalConvoMenuModal');
@@ -316,22 +412,145 @@ async function deleteForMeModal(id) {
     if (res.ok) document.getElementById('chatmsg-'+id)?.remove();
 }
 
+let _miniChatUserId = '';
+
 async function openMsgChat(userId, name, userType) {
-    document.getElementById('msgPanel').classList.add('hidden'); msgPanelOpen = false;
+    // Use style.display (not classList) so toggleMsgPanel can reopen it later
+    const panel = document.getElementById('msgPanel');
+    panel.style.display = 'none'; panel.classList.remove('hidden'); msgPanelOpen = false;
+    _miniChatUserId = userId;
     _chatUserId = userId;
-    document.getElementById('chat-avatar').textContent = name.charAt(0).toUpperCase();
-    document.getElementById('chat-name').textContent   = name;
-    document.getElementById('chat-type').textContent   = userType;
-    document.getElementById('chat-messages').innerHTML = '<p class="text-center text-sm text-gray-400 py-8">Loading…</p>';
-    if (!_msgConvos.length) { try { _msgConvos = await fetch('/Message/GetConversationList').then(r=>r.json()); } catch {} }
-    document.getElementById('chat-sidebar').innerHTML = _msgConvos.map(c=>msgConvoRow(c,c.userId===userId)).join('');
-    document.getElementById('msgChatModal').classList.remove('hidden');
-    await loadChatMessages();
-    document.getElementById('chat-input').focus();
+    // Immediately clear the unread dot on this convo row and decrement badge
+    const convoRow = document.getElementById('mconvo-' + userId);
+    if (convoRow) {
+        const dot = convoRow.querySelector('.w-5.h-5.rounded-full');
+        if (dot) { const n = parseInt(dot.textContent)||0; dot.remove(); const b=document.getElementById('msgBadge'); if(b){ const cur=parseInt(b.textContent)||0; updateMsgBadge(Math.max(0,cur-n)); } }
+    }
+    // Immediately hide badge if no more unread in other conversations
+    pollMsgBadge();
+    document.getElementById('miniChatAvatar').textContent = name.charAt(0).toUpperCase();
+    document.getElementById('miniChatName').textContent = name;
+    document.getElementById('miniChatType').textContent = userType || '';
+    document.getElementById('miniChatPopup').style.display = 'flex';
+    document.getElementById('miniChatBackdrop').style.display = 'block';
+    document.getElementById('miniChatInput').focus();
+    await loadMiniChatMessages();
+}
+
+let _miniChatMyId = '';
+const _miniIcoUnsend = `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>`;
+const _miniIcoTrash  = `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>`;
+
+async function loadMiniChatMessages() {
+    const box = document.getElementById('miniChatMessages');
+    box.innerHTML = '<p class="text-center text-xs text-gray-400 py-4">Loading…</p>';
+    if (!_miniChatUserId) return;
+    try {
+        const data = await fetch('/Message/GetConversation?otherUserId=' + encodeURIComponent(_miniChatUserId)).then(r => r.json());
+        const msgs = data.messages || [];
+        _miniChatMyId = data.myId;
+        if (!msgs.length) { box.innerHTML = '<p class="text-center text-xs text-gray-400 py-4">No messages yet</p>'; return; }
+        const escH = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        box.innerHTML = msgs.map(m => {
+            const isMe = m.senderId === _miniChatMyId;
+            if (m.isUnsent) return `<div class="flex ${isMe?'justify-end':'justify-start'}" id="mini-msg-${m.id}">
+                <span class="text-xs italic text-gray-400 px-3 py-1.5 border border-dashed border-gray-300 rounded-2xl">Message unsent</span>
+            </div>`;
+            const menuItems = isMe
+                ? `<button onclick="unsendMiniMsg(${m.id})" class="mini-menu-btn" style="color:#dc2626;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='none'">${_miniIcoUnsend} Unsend for everyone</button>
+                   <div style="height:1px;background:#f3f4f6;"></div>
+                   <button onclick="deleteForMeMini(${m.id})" class="mini-menu-btn" style="color:#6b7280;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='none'">${_miniIcoTrash} Delete for me</button>`
+                : `<button onclick="deleteForMeMini(${m.id})" class="mini-menu-btn" style="color:#6b7280;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='none'">${_miniIcoTrash} Delete for me</button>`;
+            const threeDotBtn = `
+                <button onclick="showMiniMsgMenu(event,'minimenu-${m.id}')"
+                        id="minidots-${m.id}"
+                        style="display:none;flex-shrink:0;width:22px;height:22px;align-items:center;justify-content:center;border-radius:50%;border:none;background:none;cursor:pointer;color:#9ca3af;"
+                        onmouseover="this.style.background='#f3f4f6';this.style.color='#6b7280'"
+                        onmouseout="this.style.background='none';this.style.color='#9ca3af'"
+                        title="Message options">
+                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="5"  r="1.5"/>
+                        <circle cx="12" cy="12" r="1.5"/>
+                        <circle cx="12" cy="19" r="1.5"/>
+                    </svg>
+                </button>`;
+            return `<div class="flex items-center gap-1 ${isMe?'justify-end':'justify-start'}" id="mini-msg-${m.id}"
+                onmouseenter="var b=document.getElementById('minidots-${m.id}');if(b){b.style.display='flex';}"
+                onmouseleave="var b=document.getElementById('minidots-${m.id}');if(b){b.style.display='none';}">
+                ${isMe ? threeDotBtn : ''}
+                <div class="relative max-w-[80%]">
+                    <div class="mini-chat-bubble px-3 py-1.5 rounded-xl text-xs select-none ${isMe?'text-white':'bg-white border border-gray-200 text-gray-800'}"
+                         style="${isMe?'background-color:#000147;':''}"
+                         oncontextmenu="showMiniMsgMenu(event,'minimenu-${m.id}')"
+                         ondblclick="showMiniMsgMenu(event,'minimenu-${m.id}')">
+                        ${escH(m.content)}
+                    </div>
+                    <div id="minimenu-${m.id}" class="mini-msg-menu" style="display:none;position:fixed;z-index:10002;background:white;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:175px;overflow:hidden;">
+                        ${menuItems}
+                    </div>
+                </div>
+                ${!isMe ? threeDotBtn : ''}
+            </div>`;
+        }).join('');
+        box.scrollTop = box.scrollHeight;
+        // Messages marked read by GetConversation — refresh badge to reflect the new count
+        pollMsgBadge();
+    } catch { box.innerHTML = '<p class="text-center text-xs text-gray-400 py-4">Failed to load</p>'; }
+}
+
+function showMiniMsgMenu(event, menuId) {
+    event.preventDefault();
+    document.querySelectorAll('.mini-msg-menu').forEach(m => m.style.display = 'none');
+    const menu = document.getElementById(menuId); if (!menu) return;
+    menu.style.display = 'block';
+    menu.style.left = Math.min(event.clientX, window.innerWidth - 185) + 'px';
+    menu.style.top  = Math.min(event.clientY + 4, window.innerHeight - 110) + 'px';
+}
+
+async function unsendMiniMsg(id) {
+    document.querySelectorAll('.mini-msg-menu').forEach(m => m.style.display = 'none');
+    if (!confirm('Unsend this message for everyone?')) return;
+    const fd = new FormData(); fd.append('id', id); fd.append('__RequestVerificationToken', _tok());
+    const res = await fetch('/Message/Unsend', { method: 'POST', body: fd });
+    if (res.ok) {
+        // Update the sender's bubble immediately without a full reload
+        const el = document.getElementById('mini-msg-' + id);
+        if (el) el.innerHTML = '<span class="text-xs italic text-gray-400 px-3 py-1.5 border border-dashed border-gray-300 rounded-2xl">Message unsent</span>';
+    }
+}
+
+async function deleteForMeMini(id) {
+    document.querySelectorAll('.mini-msg-menu').forEach(m => m.style.display = 'none');
+    const tok = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+    const fd = new FormData(); fd.append('id', id); if (tok) fd.append('__RequestVerificationToken', tok);
+    const res = await fetch('/Message/DeleteForMe', { method: 'POST', body: fd });
+    if (res.ok) document.getElementById('mini-msg-' + id)?.remove();
+}
+
+async function sendMiniChat() {
+    const input = document.getElementById('miniChatInput');
+    const text = input.value.trim();
+    if (!text || !_miniChatUserId) return;
+    input.value = '';
+    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+    try {
+        const fd = new FormData();
+        fd.append('receiverId', _miniChatUserId);
+        fd.append('content', text);
+        if (token) fd.append('__RequestVerificationToken', token);
+        const res = await fetch('/Message/Send', { method: 'POST', body: fd });
+        if (res.ok) await loadMiniChatMessages();
+    } catch {}
+}
+
+function closeMiniChat() {
+    document.getElementById('miniChatPopup').style.display = 'none';
+    document.getElementById('miniChatBackdrop').style.display = 'none';
+    _miniChatUserId = '';
 }
 
 function closeMsgChat() {
-    document.getElementById('msgChatModal').classList.add('hidden');
+    document.getElementById('msgChatModal').style.display = 'none';
     _chatUserId=''; _msgConvos=[];
     document.querySelectorAll('.chat-msg-menu').forEach(m => m.classList.add('hidden'));
     const gcm = document.getElementById('globalConvoMenuModal'); if (gcm) gcm.style.display='none';
@@ -386,7 +605,7 @@ async function sendChatMsg() {
 </script>
 
 <!-- Message Dropdown (fixed, overlays header) -->
-<div id="msgPanel" class="hidden fixed z-[9997] bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden" style="width:380px;">
+<div id="msgPanel" class="fixed z-[9997] bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden" style="display:none;width:380px;">
     <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between" style="background-color:#000147;">
         <span class="text-sm font-semibold text-white">Messages</span>
         <a href="/Message/Index" class="text-xs text-blue-200 hover:text-white transition">See all</a>
@@ -396,8 +615,39 @@ async function sendChatMsg() {
     </div>
 </div>
 
+<!-- Mini Chat Backdrop -->
+<div id="miniChatBackdrop" onclick="closeMiniChat()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9998;"></div>
+
+<!-- Mini Chat Popup (centered) -->
+<div id="miniChatPopup" class="fixed z-[9999] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden" style="display:none;width:480px;height:580px;top:50%;left:50%;transform:translate(-50%,-50%);">
+    <div class="px-4 py-3 flex items-center justify-between flex-shrink-0" style="background-color:#000147;">
+        <div class="flex items-center gap-2 min-w-0">
+            <div id="miniChatAvatar" class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 bg-white/20"></div>
+            <div class="min-w-0">
+                <p id="miniChatName" class="text-sm font-semibold text-white truncate"></p>
+                <p id="miniChatType" class="text-[10px] text-white/60"></p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+            <button onclick="closeMiniChat()" class="text-white/60 hover:text-white transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+    </div>
+    <div id="miniChatMessages" class="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-gray-50">
+        <p class="text-center text-xs text-gray-400 py-4">Loading…</p>
+    </div>
+    <div class="px-3 py-2 border-t border-gray-100 flex gap-2 flex-shrink-0 bg-white">
+        @Html.AntiForgeryToken()
+        <input id="miniChatInput" type="text" placeholder="Type a message…"
+               class="flex-1 border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();sendMiniChat();}" />
+        <button onclick="sendMiniChat()" class="px-3 py-1.5 text-xs text-white rounded-xl font-medium transition hover:opacity-90 flex-shrink-0" style="background-color:#000147;">Send</button>
+    </div>
+</div>
+
 <!-- Message Chat Modal (two-panel) -->
-<div id="msgChatModal" class="fixed inset-0 z-[9998] hidden flex items-center justify-center bg-black/40 px-4" onclick="if(event.target===this)closeMsgChat()">
+<div id="msgChatModal" class="fixed inset-0 z-[9998] items-center justify-center bg-black/40 px-4" style="display:none;" onclick="if(event.target===this)closeMsgChat()">
     <div class="bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden w-full" style="max-width:780px;height:580px;">
 
         <!-- Full-width header row -->
