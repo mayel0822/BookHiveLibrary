@@ -132,6 +132,10 @@
                      onclick="openSectionStudents('@s.SectionName', '@s.AdviserName')">
                     <div>
                         <p class="text-sm font-medium text-gray-800 group-hover:text-blue-700 transition">@s.SectionName</p>
+                        @if (!string.IsNullOrEmpty(s.Year))
+                        {
+                            <p class="text-xs text-gray-500 font-medium">@s.Year</p>
+                        }
                         @if (!string.IsNullOrEmpty(s.AdviserName))
                         {
                             <p class="text-xs text-gray-400">Adviser: @s.AdviserName</p>
@@ -259,15 +263,16 @@
                 <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">Unassigned Students</p>
                 <span id="sm-unassigned-count" class="text-xs text-gray-400"></span>
             </div>
-            <!-- Search bar -->
+            <!-- Search / RFID bar -->
             <div class="px-6 py-3 border-b border-gray-100 flex-shrink-0">
-                <div class="flex items-center gap-2 border border-gray-300 rounded-xl px-4 py-2.5 bg-white focus-within:ring-2 focus-within:ring-blue-300">
-                    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/></svg>
-                    <input type="text" id="sm-search" placeholder="Type name or Student ID, or tap RFID card at desk reader…"
+                <div id="smRfidWrap" class="flex rounded-xl overflow-hidden border border-gray-300 transition-all duration-200">
+                    <input type="text" id="sm-search" placeholder=""
                            oninput="filterUnassigned()"
-                           class="flex-1 text-sm outline-none bg-transparent text-gray-700 placeholder-gray-400" />
-                    <button onclick="document.getElementById('sm-search').value='';filterUnassigned();" class="text-gray-300 hover:text-gray-500 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                           class="flex-1 px-4 py-2.5 text-sm outline-none bg-white text-gray-700" readonly />
+                    <button id="smRfidBtn" type="button" onclick="activateSmRfid()"
+                            class="px-4 py-2.5 text-sm font-semibold text-white flex-shrink-0 transition-colors duration-200"
+                            style="background-color:#000147;">
+                        Tap RFID Card
                     </button>
                 </div>
             </div>
@@ -315,6 +320,7 @@
         </div>
     </div>
 </div>
+
 
 @section Scripts {
 <script>
@@ -441,7 +447,7 @@ async function showAddView() {
         const countEl = document.getElementById('sm-unassigned-count');
         if (countEl) countEl.textContent = allUnassigned.length + ' student' + (allUnassigned.length !== 1 ? 's' : '');
         renderUnassigned(allUnassigned);
-        setTimeout(() => document.getElementById('sm-search').focus(), 50);
+        deactivateSmRfid();
     } catch {
         document.getElementById('sm-unassigned-list').innerHTML = '<p class="px-6 py-10 text-center text-sm text-gray-400">Could not load students.</p>';
     }
@@ -465,12 +471,14 @@ function renderUnassigned(list) {
                 <p class="text-sm font-semibold text-gray-800">${s.name}</p>
                 <p class="text-xs text-gray-400 mt-0.5">${s.idNo || '—'}</p>
             </div>
-            <button onclick="openAssignPreview('${s.id}','${s.name.replace(/'/g,"\\'")}','${s.idNo||''}','${s.rfid||''}')"
-                    class="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white rounded-lg opacity-0 group-hover:opacity-100 transition"
-                    style="background-color:#000147;" title="Add to this section">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                Add
-            </button>
+            <div class="flex items-center gap-1 flex-shrink-0">
+                <!-- Add to section button -->
+                <button onclick="openAssignPreview('${s.id}','${s.name.replace(/'/g,"\\'")}','${s.idNo||''}','${s.rfid||''}')"
+                        class="w-9 h-9 flex items-center justify-center text-2xl font-bold flex-shrink-0 hover:opacity-60 transition"
+                        style="color:#000147;background:none;border:none;" title="Add to this section">
+                    +
+                </button>
+            </div>
         </div>`).join('');
 }
 
@@ -532,6 +540,53 @@ async function confirmAssignStudent() {
     saveBtn.textContent = 'Add to Section';
 }
 
+// ── Sectioning RFID tap button ───────────────────────────────────────────
+let smRfidListening = false;
+let smRfidBuffer = '';
+let smRfidTimer = null;
+
+function activateSmRfid() {
+    smRfidListening = true;
+    const inp = document.getElementById('sm-search');
+    const wrap = document.getElementById('smRfidWrap');
+    const btn  = document.getElementById('smRfidBtn');
+    inp.readOnly = false;
+    inp.value = '';
+    wrap.style.borderColor = '#3b82f6';
+    wrap.style.boxShadow = '0 0 0 2px rgba(59,130,246,.25)';
+    btn.style.backgroundColor = '#1d4ed8';
+    btn.textContent = 'Scanning...';
+    inp.focus();
+}
+
+function deactivateSmRfid() {
+    smRfidListening = false;
+    const inp = document.getElementById('sm-search');
+    const wrap = document.getElementById('smRfidWrap');
+    const btn  = document.getElementById('smRfidBtn');
+    inp.readOnly = true;
+    wrap.style.borderColor = '';
+    wrap.style.boxShadow = '';
+    btn.style.backgroundColor = '#000147';
+    btn.textContent = 'Tap RFID Card';
+}
+
+document.getElementById('sm-search').addEventListener('input', function() {
+    if (!smRfidListening) return;
+    smRfidBuffer = this.value;
+    clearTimeout(smRfidTimer);
+    smRfidTimer = setTimeout(() => {
+        const rfid = smRfidBuffer.trim();
+        smRfidBuffer = '';
+        if (rfid.length >= 4) {
+            const matched = allUnassigned.find(s => (s.rfid || '').toLowerCase() === rfid.toLowerCase());
+            this.value = matched ? (matched.idNo || rfid) : rfid;
+            filterUnassigned();
+            deactivateSmRfid();
+        }
+    }, 200);
+});
+
 // Join the transaction SignalR group so DeskRfidTap events are received here.
 // We wait for _libConnected (the layout's start() promise) so the connection
 // is fully open before invoking — otherwise invoke silently fails mid-connect.
@@ -541,18 +596,18 @@ if (typeof libraryConnection !== 'undefined') {
     });
 
     libraryConnection.on('DeskRfidTap', function(data) {
-        // Only act when the modal is open AND we are in the Add Student view
         const modal    = document.getElementById('sectionStudentsModal');
         const addPanel = document.getElementById('sm-add-panel');
         if (!modal    || modal.classList.contains('hidden')) return;
         if (!addPanel || addPanel.classList.contains('hidden')) return;
 
-        // Find the matching student by RFID and show their Student No. in the
-        // search box instead of the raw RFID number.
+        smRfidListening = true;
         const searchEl = document.getElementById('sm-search');
+        searchEl.readOnly = false;
         const matched  = allUnassigned.find(s => (s.rfid || '').toLowerCase() === data.rfidNumber.toLowerCase());
         searchEl.value = matched ? (matched.idNo || data.rfidNumber) : data.rfidNumber;
         filterUnassigned();
+        deactivateSmRfid();
     });
 }
 
@@ -656,6 +711,7 @@ document.getElementById('sectionForm').addEventListener('submit', function(e) {
         sectionInput.value = courseAbbr + ' - ' + typed; // use abbreviation for section name e.g. BSIT - 702
     }
 });
+
 
 // ── Level change ──────────────────────────────────────────────────────────
 function onLevelChange() {

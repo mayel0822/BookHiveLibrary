@@ -9,6 +9,22 @@
     var advisers     = ViewBag.SectionAdvisers     as Dictionary<string,string> ?? new Dictionary<string,string>();
 }
 
+<!-- Stats Row -->
+<div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
+        <p class="text-xs text-blue-200 mb-1">Total Books</p>
+        <p class="text-3xl font-bold">@ViewBag.TotalBooks</p>
+    </div>
+    <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
+        <p class="text-xs text-blue-200 mb-1">Available</p>
+        <p class="text-3xl font-bold">@ViewBag.AvailableCount</p>
+    </div>
+    <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
+        <p class="text-xs text-blue-200 mb-1">Borrowed</p>
+        <p class="text-3xl font-bold">@ViewBag.BorrowedCount</p>
+    </div>
+</div>
+
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
     <!-- Pending Reservations Panel -->
     <div class="col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="max-height:420px;">
@@ -19,13 +35,14 @@
 
         <!-- RFID Tap Area -->
         <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
-            <p class="text-xs text-gray-400 mb-1">Tap student RFID card to confirm pickup</p>
-            <div class="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-2 bg-white focus-within:ring-2 focus-within:ring-blue-300 cursor-text" onclick="document.getElementById('rfidInput').focus()">
-                <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-                </svg>
-                <input id="rfidInput" type="text" placeholder="Waiting for RFID tap..."
-                       class="text-xs w-full focus:outline-none bg-transparent text-gray-600" autocomplete="off" />
+            <div id="rfidFieldWrap" class="flex rounded-lg overflow-hidden border border-gray-300 transition-all duration-200">
+                <input id="rfidInput" type="text" placeholder=""
+                       class="flex-1 px-4 py-2.5 text-sm text-gray-600 bg-white focus:outline-none" autocomplete="off" readonly />
+                <button id="rfidTapBtn" type="button" onclick="activateRfidScan()"
+                        class="px-4 py-2.5 text-sm font-semibold text-white flex-shrink-0 transition-colors duration-200"
+                        style="background-color:#000147;">
+                    Tap RFID Card
+                </button>
             </div>
             <p id="rfidError" class="text-xs text-red-500 mt-1 hidden"></p>
         </div>
@@ -42,7 +59,8 @@
                     ? $"{(int)timeLeft.TotalHours}h {timeLeft.Minutes:D2}m left"
                     : "Expiring...";
 
-                <div class="px-4 py-3 border-b border-gray-50">
+                <div class="px-4 py-3 border-b border-gray-50 reservation-row transition-colors duration-300"
+                     data-student-no="@r.User?.StudentNumber">
                     <div class="flex items-start gap-3">
                         <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-sm font-bold flex-shrink-0">
                             @r.User?.LastName?.FirstOrDefault()
@@ -261,9 +279,9 @@
     </div>
 </div>
 
-<!-- Borrow Book Modal -->
-<div id="borrowModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-xl mx-4 overflow-hidden">
+<!-- Borrow Book Modal — Landscape layout -->
+<div id="borrowModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden px-4">
+    <div class="bg-white rounded-xl shadow-xl w-full overflow-hidden" style="max-width:900px;">
 
         <!-- Header -->
         <div class="px-6 py-4 flex items-center justify-between" style="background-color:#000147;">
@@ -281,107 +299,143 @@
         <form method="post" action="@Url.Action("CreateBorrow","Borrow")" id="borrowForm">
             @Html.AntiForgeryToken()
             <input type="hidden" name="userId" id="borrowUserId" />
+            <input type="hidden" name="bookId" id="borrowBookSelect" required />
 
-            <div class="px-6 pt-5 pb-4">
+            <!-- Landscape body: left = borrower info, right = book selection -->
+            <div class="flex divide-x divide-gray-100">
 
-                <!-- Step 1: User Type + Identifier -->
-                <div class="flex gap-3 mb-5">
-                    <div class="w-40 flex-shrink-0">
-                        <p class="text-xs text-gray-400 mb-1">User Type</p>
-                        <select id="borrowUserType" onchange="onBorrowTypeChange()"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-                            <option value="">Select...</option>
-                            <option value="Student">Student</option>
-                            <option value="Professor">Professor</option>
-                        </select>
-                    </div>
-                    <!-- Student: RFID -->
-                    <div id="rfidBorrowArea" class="hidden flex-1">
-                        <p class="text-xs text-gray-400 mb-1">RFID Card</p>
-                        <div class="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 focus-within:ring-2 focus-within:ring-blue-300 cursor-text"
-                             onclick="document.getElementById('borrowRfidInput').focus()">
-                            <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-                            </svg>
-                            <input id="borrowRfidInput" type="text" placeholder="Tap card..."
-                                   class="text-sm w-full focus:outline-none bg-transparent text-gray-700" autocomplete="off" />
+                <!-- ── LEFT: Borrower Info ─────────────────────────────── -->
+                <div class="flex-1 px-6 pt-5 pb-4 flex flex-col gap-4">
+
+                    <!-- User Type + RFID / Professor search -->
+                    <div class="flex gap-3">
+                        <div class="w-36 flex-shrink-0">
+                            <p class="text-xs text-gray-400 mb-1">User Type</p>
+                            <select id="borrowUserType" onchange="onBorrowTypeChange()"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+                                <option value="">Select...</option>
+                                <option value="Student">Student</option>
+                                <option value="Professor">Professor</option>
+                            </select>
                         </div>
-                        <p id="borrowRfidError" class="text-xs text-red-500 mt-1 hidden"></p>
+                        <!-- Student: RFID -->
+                        <div id="rfidBorrowArea" class="hidden flex-1">
+                            <p class="text-xs text-gray-400 mb-1">RFID Card</p>
+                            <div id="borrowRfidWrap" class="flex rounded-lg overflow-hidden border border-gray-300 transition-all duration-200">
+                                <input id="borrowRfidInput" type="text" placeholder=""
+                                       class="flex-1 px-4 py-2.5 text-sm text-gray-600 bg-white focus:outline-none" autocomplete="off" readonly />
+                                <button id="borrowRfidTapBtn" type="button" onclick="activateBorrowRfidScan()"
+                                        class="px-4 py-2.5 text-sm font-semibold text-white flex-shrink-0 transition-colors duration-200 whitespace-nowrap"
+                                        style="background-color:#000147;">
+                                    Tap RFID Card
+                                </button>
+                            </div>
+                            <p id="borrowRfidError" class="text-xs text-red-500 mt-1 hidden"></p>
+                        </div>
+                        <!-- Professor: search -->
+                        <div id="professorSelectArea" class="hidden flex-1 relative">
+                            <p class="text-xs text-gray-400 mb-1">Employee No. / Name</p>
+                            <input id="professorSearch" type="text" placeholder="Type to search..."
+                                   oninput="onProfessorSearch()" autocomplete="off"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                            <div id="professorDropdown" class="hidden absolute left-0 right-0 top-full z-50 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-44 overflow-y-auto"></div>
+                            <p id="professorError" class="text-xs text-red-500 mt-1 hidden"></p>
+                        </div>
                     </div>
-                    <!-- Professor: search -->
-                    <div id="professorSelectArea" class="hidden flex-1 relative">
-                        <p class="text-xs text-gray-400 mb-1">Employee No. / Name</p>
-                        <input id="professorSearch" type="text" placeholder="Type to search..."
-                               oninput="onProfessorSearch()" autocomplete="off"
-                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
-                        <div id="professorDropdown" class="hidden absolute left-0 right-0 top-full z-50 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-44 overflow-y-auto"></div>
-                        <p id="professorError" class="text-xs text-red-500 mt-1 hidden"></p>
+
+                    <div class="border-t border-dashed border-gray-200"></div>
+
+                    <!-- Borrower slip fields -->
+                    <div class="grid grid-cols-2 gap-x-5 gap-y-3 text-sm">
+                        <div class="col-span-2">
+                            <p class="text-xs text-gray-400 mb-0.5">Student / Employee No.</p>
+                            <p id="infoStudentNo" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 hidden">—</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 mb-0.5">Last Name</p>
+                            <p id="infoLastName" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 hidden">—</p>
+                            <input id="inputLastName" type="text" placeholder="Last name" class="w-full border-b border-gray-300 py-1 text-sm font-medium text-gray-800 focus:outline-none focus:border-blue-400 bg-transparent hidden" />
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 mb-0.5">First Name</p>
+                            <p id="infoFirstName" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 hidden">—</p>
+                            <input id="inputFirstName" type="text" placeholder="First name" class="w-full border-b border-gray-300 py-1 text-sm font-medium text-gray-800 focus:outline-none focus:border-blue-400 bg-transparent hidden" />
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 mb-0.5">M.I.</p>
+                            <p id="infoMI" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 hidden">—</p>
+                            <input id="inputMI" type="text" placeholder="M.I." maxlength="2" class="w-full border-b border-gray-300 py-1 text-sm font-medium text-gray-800 focus:outline-none focus:border-blue-400 bg-transparent hidden" />
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 mb-0.5">Section</p>
+                            <p id="infoSection" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 hidden">—</p>
+                            <input id="inputSection" type="text" placeholder="Section" class="w-full border-b border-gray-300 py-1 text-sm font-medium text-gray-800 focus:outline-none focus:border-blue-400 bg-transparent hidden" />
+                        </div>
+                        <div class="col-span-2">
+                            <p class="text-xs text-gray-400 mb-0.5">Adviser</p>
+                            <p id="infoAdviser" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 hidden">—</p>
+                            <input id="inputAdviser" type="text" placeholder="Adviser name" class="w-full border-b border-gray-300 py-1 text-sm font-medium text-gray-800 focus:outline-none focus:border-blue-400 bg-transparent hidden" />
+                        </div>
+                    </div>
+
+                    <!-- Due date -->
+                    <div class="flex items-center gap-2 text-xs text-gray-400 mt-auto">
+                        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        Due: <span id="dueDateDisplay" class="font-medium text-gray-600"></span>
                     </div>
                 </div>
 
-                <!-- Divider -->
-                <div class="border-t border-dashed border-gray-200 mb-4"></div>
+                <!-- ── RIGHT: Book Selection ───────────────────────────── -->
+                <div class="flex-1 px-6 pt-5 pb-4 flex flex-col gap-4">
 
-                <!-- Slip Fields -->
-                <div class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-                    <div class="col-span-2">
-                        <p class="text-xs text-gray-400 mb-0.5">Student / Employee No.</p>
-                        <p id="infoStudentNo" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 hidden">—</p>
+                    <!-- Selected book display fields -->
+                    <div>
+                        <p class="text-xs text-gray-400 mb-0.5">Book Title</p>
+                        <p id="selectedBookTitle" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 text-sm"></p>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-400 mb-0.5">Last Name</p>
-                        <p id="infoLastName" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 hidden">—</p>
-                        <input id="inputLastName" type="text" placeholder="Last name"
-                               class="w-full border-b border-gray-300 py-1 text-sm font-medium text-gray-800 focus:outline-none focus:border-blue-400 bg-transparent hidden" />
+                        <p class="text-xs text-gray-400 mb-0.5">Book Information</p>
+                        <p id="selectedBookAuthor" class="text-sm text-gray-500 min-h-[1.25rem] border-b border-gray-200 pb-1"></p>
                     </div>
-                    <div>
-                        <p class="text-xs text-gray-400 mb-0.5">First Name</p>
-                        <p id="infoFirstName" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 hidden">—</p>
-                        <input id="inputFirstName" type="text" placeholder="First name"
-                               class="w-full border-b border-gray-300 py-1 text-sm font-medium text-gray-800 focus:outline-none focus:border-blue-400 bg-transparent hidden" />
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-400 mb-0.5">M.I.</p>
-                        <p id="infoMI" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 hidden">—</p>
-                        <input id="inputMI" type="text" placeholder="M.I." maxlength="2"
-                               class="w-full border-b border-gray-300 py-1 text-sm font-medium text-gray-800 focus:outline-none focus:border-blue-400 bg-transparent hidden" />
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-400 mb-0.5">Section</p>
-                        <p id="infoSection" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 hidden">—</p>
-                        <input id="inputSection" type="text" placeholder="Section"
-                               class="w-full border-b border-gray-300 py-1 text-sm font-medium text-gray-800 focus:outline-none focus:border-blue-400 bg-transparent hidden" />
-                    </div>
-                    <div class="col-span-2">
-                        <p class="text-xs text-gray-400 mb-0.5">Adviser</p>
-                        <p id="infoAdviser" class="font-medium text-gray-800 min-h-[1.25rem] border-b border-gray-200 pb-1 hidden">—</p>
-                        <input id="inputAdviser" type="text" placeholder="Adviser name"
-                               class="w-full border-b border-gray-300 py-1 text-sm font-medium text-gray-800 focus:outline-none focus:border-blue-400 bg-transparent hidden" />
-                    </div>
-                </div>
 
-                <!-- Book selector -->
-                <div class="mt-4">
-                    <p class="text-xs text-gray-400 mb-1">Book Title</p>
-                    <select name="bookId" id="borrowBookSelect" required
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-                        <option value="">Select book to borrow...</option>
-                        @if (ViewBag.AvailableBooks != null)
-                        {
-                            foreach (var b in (List<BookHiveLibrary.Models.Book>)ViewBag.AvailableBooks)
-                            {
-                                <option value="@b.Id">@b.Title — @b.Author (@b.AvailableQuantity avail.)</option>
-                            }
-                        }
-                    </select>
-                </div>
+                    <div class="border-t border-dashed border-gray-200"></div>
 
-                <!-- Due date info -->
-                <div class="mt-3 flex items-center gap-2 text-xs text-gray-400">
-                    <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
-                    Due in 2 days at 4:30 PM
+                    <!-- Search box + category filter -->
+                    <div id="bookSearchArea" class="flex flex-col gap-2 flex-1">
+                        <div class="flex gap-2">
+                            <select id="bookCategoryFilter" onchange="filterBooks()"
+                                    class="border border-gray-300 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300 flex-shrink-0">
+                                <option value="">All Categories</option>
+                                @if (ViewBag.AvailableBooks != null)
+                                {
+                                    var cats = ((List<BookHiveLibrary.Models.Book>)ViewBag.AvailableBooks)
+                                        .Select(b => b.Category).Distinct().OrderBy(c => c);
+                                    foreach (var cat in cats)
+                                    {
+                                        <option value="@cat">@cat</option>
+                                    }
+                                }
+                            </select>
+                            <div class="flex-1 relative">
+                                <input id="bookSearchInput" type="text"
+                                       placeholder="Search by title, author, or ISBN..."
+                                       oninput="filterBooks()"
+                                       class="w-full border border-gray-300 rounded-lg pl-3 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                                <svg class="w-4 h-4 text-gray-400 absolute right-2.5 top-2.5 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Results list -->
+                        <div id="bookResultsList"
+                             class="border border-gray-200 rounded-lg overflow-y-auto bg-white flex-1"
+                             style="min-height:120px; max-height:220px;">
+                            <p class="text-xs text-gray-400 text-center py-6">Type to search for a book</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -399,10 +453,46 @@
 
 @section Scripts {
 <script>
-const rfidInput = document.getElementById('rfidInput');
-const rfidError = document.getElementById('rfidError');
-let rfidBuffer = '';
-let rfidTimer = null;
+const rfidInput   = document.getElementById('rfidInput');
+const rfidError   = document.getElementById('rfidError');
+const rfidTapBtn  = document.getElementById('rfidTapBtn');
+const rfidWrap    = document.getElementById('rfidFieldWrap');
+let rfidBuffer    = '';
+let rfidTimer     = null;
+let rfidListening = false;
+
+// ── Activate scan mode ───────────────────────────────────────────────────
+function activateRfidScan() {
+    rfidListening = true;
+    rfidInput.readOnly = false;
+    rfidInput.value = '';
+    rfidInput.placeholder = 'Waiting for RFID tap...';
+    rfidError.classList.add('hidden');
+    rfidWrap.style.borderColor = '#3b82f6';
+    rfidWrap.style.boxShadow = '0 0 0 2px rgba(59,130,246,.25)';
+    rfidTapBtn.style.backgroundColor = '#1d4ed8';
+    rfidTapBtn.textContent = 'Scanning...';
+    rfidInput.focus();
+}
+
+function deactivateRfidScan() {
+    rfidListening = false;
+    rfidInput.readOnly = true;
+    rfidWrap.style.borderColor = '';
+    rfidWrap.style.boxShadow = '';
+    rfidTapBtn.style.backgroundColor = '#000147';
+    rfidTapBtn.textContent = 'Tap RFID Card';
+}
+
+function clearRfidField() {
+    rfidBuffer = '';
+    clearTimeout(rfidTimer);
+    rfidInput.value = '';
+    rfidInput.placeholder = '';
+    rfidError.classList.add('hidden');
+    deactivateRfidScan();
+    clearHighlight();
+}
 
 // ── Desk ESP32 reader — SignalR bridge ───────────────────────────────────
 // When desk ESP32 scans a card, server pushes the RFID here and
@@ -418,19 +508,20 @@ if (typeof libraryConnection !== 'undefined') {
         const borrowModal  = document.getElementById('borrowModal');
         const isBorrowOpen = borrowModal && !borrowModal.classList.contains('hidden');
         if (isBorrowOpen && currentBorrowType === 'Student') {
-            // Borrow slip open + Student mode — fill student info via RFID
             lookupBorrowRfid(data.rfidNumber);
         } else if (!isBorrowOpen) {
-            // Borrow slip closed — confirm pending reservation pickup
+            // Auto-activate scan mode then process the tap
+            rfidListening = true;
+            rfidInput.readOnly = false;
             lookupRfid(data.rfidNumber);
         }
-        // If borrow slip open but Professor mode, ignore tap (professor uses name/empno search)
     });
 }
 // ─────────────────────────────────────────────────────────────────────────
 
 // RFID readers type characters rapidly then send Enter
 rfidInput.addEventListener('keydown', function(e) {
+    if (!rfidListening) return;
     if (e.key === 'Enter') {
         e.preventDefault();
         const rfid = rfidBuffer.trim();
@@ -440,19 +531,39 @@ rfidInput.addEventListener('keydown', function(e) {
 });
 
 rfidInput.addEventListener('input', function() {
+    if (!rfidListening) return;
     rfidBuffer = this.value;
     clearTimeout(rfidTimer);
-    // Auto-submit after 100ms of no input (fast reader)
     rfidTimer = setTimeout(() => {
         const rfid = rfidBuffer.trim();
         rfidBuffer = '';
-        rfidInput.value = '';
         if (rfid.length >= 4) lookupRfid(rfid);
     }, 200);
 });
 
+// ── Highlight matching reservation row ───────────────────────────────────
+function highlightReservationRow(studentNo) {
+    clearHighlight();
+    if (!studentNo) return;
+    const rows = document.querySelectorAll('.reservation-row');
+    for (const row of rows) {
+        if (row.dataset.studentNo === studentNo) {
+            row.style.backgroundColor = '#eff6ff';
+            row.style.borderLeft = '3px solid #3b82f6';
+            row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            break;
+        }
+    }
+}
+
+function clearHighlight() {
+    document.querySelectorAll('.reservation-row').forEach(r => {
+        r.style.backgroundColor = '';
+        r.style.borderLeft = '';
+    });
+}
+
 async function lookupRfid(rfid) {
-    rfidInput.value = '';
     rfidError.classList.add('hidden');
     rfidInput.placeholder = 'Looking up...';
 
@@ -463,11 +574,21 @@ async function lookupRfid(rfid) {
         if (!data.found) {
             rfidError.textContent = data.message;
             rfidError.classList.remove('hidden');
-            rfidInput.placeholder = 'Waiting for RFID tap...';
+            rfidInput.value = '';
+            rfidInput.placeholder = '';
+            deactivateRfidScan();
             return;
         }
 
-        // Fill borrow slip
+        // Show student number in field and deactivate scan mode
+        rfidInput.value = data.studentNumber || '';
+        rfidInput.placeholder = '';
+        deactivateRfidScan();
+
+        // Highlight the matching pending reservation row
+        highlightReservationRow(data.studentNumber);
+
+        // Fill and open borrow slip
         document.getElementById('slipStudentNo').textContent  = data.studentNumber  || '—';
         document.getElementById('slipName').textContent       = data.fullName        || '—';
         document.getElementById('slipSection').textContent    = data.section         || '—';
@@ -482,29 +603,33 @@ async function lookupRfid(rfid) {
     } catch {
         rfidError.textContent = 'Error communicating with server.';
         rfidError.classList.remove('hidden');
+        deactivateRfidScan();
     }
-
-    rfidInput.placeholder = 'Waiting for RFID tap...';
 }
 
 function closeSlip() {
     document.getElementById('borrowSlipModal').classList.add('hidden');
-    rfidInput.focus();
+    clearHighlight();
+    clearRfidField();
 }
 
-// Keep RFID input always ready
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('#borrowSlipModal') && !e.target.closest('#borrowModal')) {
-        rfidInput.focus();
-    }
-});
-rfidInput.focus();
-
 // ── Walk-in Borrow Modal ──────────────────────────────────────────────────────
+
+// Compute and display the actual due date (2 days from now at 4:30 PM PHT UTC+08:00)
+(function() {
+    const PHT = 'Asia/Kuala_Lumpur';
+    const dueDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+    const dateStr = new Intl.DateTimeFormat('en-US', {
+        timeZone: PHT, month: 'long', day: 'numeric', year: 'numeric'
+    }).format(dueDate);
+    const el = document.getElementById('dueDateDisplay');
+    if (el) el.textContent = dateStr + ' at 4:30 PM';
+})();
 
 let borrowRfidBuffer = '';
 let borrowRfidTimer  = null;
 let currentBorrowType = '';
+let borrowRfidListening = false;
 
 // Professor data for search
 const professorData = [
@@ -537,11 +662,17 @@ function resetBorrowModal() {
     document.getElementById('borrowUserId').value = '';
     document.getElementById('rfidBorrowArea').classList.add('hidden');
     document.getElementById('professorSelectArea').classList.add('hidden');
-    document.getElementById('borrowBookSelect').value = '';
+    clearBookSelection();
     document.getElementById('borrowSubmitBtn').disabled = true;
     document.getElementById('borrowSubmitBtn').classList.add('opacity-50', 'cursor-not-allowed');
     const errEl = document.getElementById('borrowRfidError');
     if (errEl) { errEl.textContent = ''; errEl.classList.add('hidden'); }
+    // Reset RFID tap-button state
+    borrowRfidListening = false;
+    borrowRfidBuffer = '';
+    if (borrowRfidInputEl) { borrowRfidInputEl.value = ''; borrowRfidInputEl.placeholder = ''; borrowRfidInputEl.readOnly = true; }
+    if (borrowRfidWrap)    { borrowRfidWrap.style.borderColor = ''; borrowRfidWrap.style.boxShadow = ''; }
+    if (borrowRfidTapBtn)  { borrowRfidTapBtn.style.backgroundColor = '#000147'; borrowRfidTapBtn.textContent = 'Tap RFID Card'; }
     showSlipFields(false);
     clearBorrowerInfo();
 }
@@ -604,10 +735,35 @@ function fillBorrowerInfo(data) {
     document.getElementById('borrowSubmitBtn').classList.remove('opacity-50', 'cursor-not-allowed');
 }
 
-// RFID for students
+// ── Borrow modal RFID — tap-button pattern (mirrors Pending Reservations) ───
 const borrowRfidInputEl = document.getElementById('borrowRfidInput');
+const borrowRfidWrap    = document.getElementById('borrowRfidWrap');
+const borrowRfidTapBtn  = document.getElementById('borrowRfidTapBtn');
+
+function activateBorrowRfidScan() {
+    borrowRfidListening = true;
+    borrowRfidInputEl.readOnly = false;
+    borrowRfidInputEl.value = '';
+    borrowRfidInputEl.placeholder = 'Waiting for RFID tap...';
+    borrowRfidWrap.style.borderColor = '#3b82f6';
+    borrowRfidWrap.style.boxShadow = '0 0 0 2px rgba(59,130,246,.25)';
+    borrowRfidTapBtn.style.backgroundColor = '#1d4ed8';
+    borrowRfidTapBtn.textContent = 'Scanning...';
+    borrowRfidInputEl.focus();
+}
+
+function deactivateBorrowRfidScan() {
+    borrowRfidListening = false;
+    borrowRfidInputEl.readOnly = true;
+    borrowRfidWrap.style.borderColor = '';
+    borrowRfidWrap.style.boxShadow = '';
+    borrowRfidTapBtn.style.backgroundColor = '#000147';
+    borrowRfidTapBtn.textContent = 'Tap RFID Card';
+}
+
 if (borrowRfidInputEl) {
     borrowRfidInputEl.addEventListener('keydown', function(e) {
+        if (!borrowRfidListening) return;
         if (e.key === 'Enter') {
             e.preventDefault();
             const rfid = borrowRfidBuffer.trim();
@@ -616,6 +772,7 @@ if (borrowRfidInputEl) {
         }
     });
     borrowRfidInputEl.addEventListener('input', function() {
+        if (!borrowRfidListening) return;
         borrowRfidBuffer = this.value;
         clearTimeout(borrowRfidTimer);
         borrowRfidTimer = setTimeout(() => {
@@ -637,13 +794,20 @@ async function lookupBorrowRfid(rfid) {
         const data = await res.json();
         if (!data.found) {
             if (errEl) { errEl.textContent = data.message; errEl.classList.remove('hidden'); }
+            deactivateBorrowRfidScan();
         } else {
+            // Show student number in field, then lock the input
+            if (borrowRfidInputEl) {
+                borrowRfidInputEl.value = data.studentNumber || '';
+                borrowRfidInputEl.placeholder = '';
+            }
+            deactivateBorrowRfidScan();
             fillBorrowerInfo(data);
         }
     } catch {
         if (errEl) { errEl.textContent = 'Error communicating with server.'; errEl.classList.remove('hidden'); }
+        deactivateBorrowRfidScan();
     }
-    if (borrowRfidInputEl) borrowRfidInputEl.placeholder = 'Tap card...';
 }
 
 // Professor search
@@ -708,6 +872,130 @@ libraryConnection.on('BookTransactionUpdated', function() {
 libraryConnection.on('NewReservation', function() {
     location.reload();
 });
+
+// ── Book live search ──────────────────────────────────────────────────────
+//
+// All available books are embedded here as a JSON array once when the page
+// loads. The librarian types in the search box and the list filters instantly
+// — no extra server call needed.
+
+// Embed the server's book list as a JS array (Razor runs this at page load)
+const allBooks = @Json.Serialize(
+    ViewBag.AvailableBooks != null
+        ? ((List<BookHiveLibrary.Models.Book>)ViewBag.AvailableBooks).Select(b => new {
+              id            = b.Id,
+              title         = b.Title,
+              author        = b.Author,
+              isbn          = b.ISBN,
+              category      = b.Category,
+              qty           = b.AvailableQuantity,
+              aisleLocation = b.AisleLocation,
+              callNumber    = b.CallNumber
+          })
+        : Enumerable.Empty<object>()
+);
+
+// filterBooks() — called whenever the search input or category changes
+function filterBooks() {
+    const query    = (document.getElementById('bookSearchInput').value || '').toLowerCase().trim();
+    const category = (document.getElementById('bookCategoryFilter').value || '').toLowerCase();
+    const listEl   = document.getElementById('bookResultsList');
+
+    // If nothing typed yet, show a prompt
+    if (!query && !category) {
+        listEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">Type to search for a book</p>';
+        return;
+    }
+
+    // Filter the embedded book list by query and/or category
+    const results = allBooks.filter(b => {
+        const matchesQuery = !query
+            || (b.title  || '').toLowerCase().includes(query)
+            || (b.author || '').toLowerCase().includes(query)
+            || (b.isbn   || '').toLowerCase().includes(query);
+
+        const matchesCategory = !category
+            || (b.category || '').toLowerCase() === category;
+
+        return matchesQuery && matchesCategory;
+    }).slice(0, 20); // Show at most 20 results at a time
+
+    if (results.length === 0) {
+        listEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-6">No matching books found</p>';
+        return;
+    }
+
+    // Build a clickable row for each matching book
+    // Note: JSON.stringify produces double-quoted strings; use &quot; so they
+    // don't break the onclick HTML attribute.
+    function _q(s) { return JSON.stringify(s).replace(/"/g, '&quot;'); }
+    listEl.innerHTML = results.map(b => `
+        <div class="flex items-center gap-3 px-3 py-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0 transition"
+             onclick="selectBook(${b.id}, ${_q(b.title)}, ${_q(b.author)}, ${b.qty}, ${_q(b.aisleLocation||'')}, ${_q(b.callNumber||'')})">
+            <div class="w-8 h-8 rounded-md flex-shrink-0 flex items-center justify-center text-white text-xs font-bold" style="background:#000147;">
+                ${(b.title || '?')[0].toUpperCase()}
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold text-gray-800 truncate">${b.title || '—'}</p>
+                <p class="text-xs text-gray-400 truncate">${b.author || '—'} • ${b.category || '—'}</p>
+            </div>
+            <span class="flex-shrink-0 text-xs ${b.qty > 0 ? 'text-green-600' : 'text-red-400'} font-medium">
+                ${b.qty > 0 ? b.qty + ' avail.' : 'none'}
+            </span>
+        </div>
+    `).join('');
+}
+
+// selectBook() — called when the librarian clicks a result row
+function selectBook(id, title, author, qty, aisleLocation, callNumber) {
+    // Store the selected book ID in the hidden input (this is what the form submits)
+    document.getElementById('borrowBookSelect').value = id;
+
+    // Fill Book Title field and highlight it to show selection
+    const titleEl = document.getElementById('selectedBookTitle');
+    titleEl.textContent = title || '';
+    titleEl.classList.add('text-gray-900');
+
+    // Build Book Information: Author then Location on separate lines
+    const lines = [];
+    if (author)       lines.push('Author: ' + author);
+    if (aisleLocation) lines.push('Location: ' + aisleLocation);
+    if (callNumber)    lines.push('Call No.: ' + callNumber);
+
+    const infoEl = document.getElementById('selectedBookAuthor');
+    infoEl.style.whiteSpace = 'pre-line';
+    infoEl.textContent = lines.join('\n');
+
+    // Show a check in the results list so the librarian knows it's locked in
+    document.getElementById('bookSearchInput').value    = '';
+    document.getElementById('bookCategoryFilter').value = '';
+    document.getElementById('bookResultsList').innerHTML =
+        '<div class="flex items-center justify-center gap-1.5 py-5 text-xs text-green-600 font-medium">' +
+        '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' +
+        'Book selected — search again to change</div>';
+
+    // Enable Confirm Borrow
+    const btn = document.getElementById('borrowSubmitBtn');
+    if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); }
+}
+
+// clearBookSelection() — resets book fields to empty (called on modal reset)
+function clearBookSelection() {
+    document.getElementById('borrowBookSelect').value = '';
+
+    const titleEl = document.getElementById('selectedBookTitle');
+    titleEl.textContent = '';
+    titleEl.classList.remove('text-gray-900');
+
+    const infoEl = document.getElementById('selectedBookAuthor');
+    infoEl.style.whiteSpace = '';
+    infoEl.textContent = '';
+
+    document.getElementById('bookSearchInput').value    = '';
+    document.getElementById('bookCategoryFilter').value = '';
+    document.getElementById('bookResultsList').innerHTML =
+        '<p class="text-xs text-gray-400 text-center py-6">Type to search for a book</p>';
+}
 </script>
 }
 

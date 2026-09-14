@@ -22,25 +22,25 @@
     </div>
 </div>
 
-<div class="max-w-2xl">
+<div class="w-full">
 
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-800">My Profile</h1>
-        <p class="text-sm text-gray-400 mt-1">View your account information</p>
     </div>
 
-    <div class="space-y-6">
+    <!-- Two-panel landscape layout -->
+    <div class="flex flex-col lg:flex-row gap-6">
 
-        <!-- Profile Picture card -->
+        <!-- LEFT PANEL — Avatar -->
         <form id="photoForm" method="post" asp-action="Profile" asp-controller="MIS" enctype="multipart/form-data">
             @Html.AntiForgeryToken()
             <input type="file" id="profilePicture" name="profilePicture" accept="image/*" class="hidden" onchange="onPhotoChosen(this)" />
         </form>
 
-        <div class="bg-white rounded-2xl shadow p-8 flex items-center gap-6">
-            <div class="relative flex-shrink-0 cursor-pointer" onclick="document.getElementById('profilePicture').click()">
+        <div class="bg-white rounded-2xl shadow p-8 flex flex-col items-center gap-4 lg:w-72 flex-shrink-0">
+            <div class="relative cursor-pointer" onclick="document.getElementById('profilePicture').click()">
                 <div id="avatarPreview"
-                     class="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center text-white text-3xl font-bold ring-2 ring-offset-2 ring-transparent hover:ring-blue-400 transition"
+                     class="w-28 h-28 rounded-full overflow-hidden flex items-center justify-center text-white text-4xl font-bold ring-2 ring-offset-2 ring-transparent hover:ring-blue-400 transition"
                      style="background-color:#000147;">
                     @if (!string.IsNullOrEmpty(Model.ProfilePicture))
                     {
@@ -57,48 +57,46 @@
                     </svg>
                 </div>
             </div>
-            <div class="flex-1">
+            <div class="text-center w-full px-2">
                 <p class="text-base font-bold text-gray-800">@displayName</p>
-                <p class="text-sm text-gray-400">@Model.Email</p>
-                <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold mt-1 inline-block">MIS Facilitator</span>
+                <p class="text-xs text-gray-400 mt-0.5 break-all">@Model.Email</p>
+                <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold mt-2 inline-block">MIS Facilitator</span>
             </div>
         </div>
 
-        <!-- Account Info — plain text -->
-        <div class="bg-white rounded-2xl shadow p-8 space-y-5">
-            <div class="flex items-center justify-between">
-                <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-widest">Account Information</h2>
-            </div>
+        <!-- RIGHT PANEL — Account details -->
+        <div class="bg-white rounded-2xl shadow p-8 flex-1 space-y-5">
+            <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-widest">Account Information</h2>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <div>
                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">First Name</p>
-                    <p class="text-sm font-medium text-gray-800">@(Model.FirstName ?? "—")</p>
+                    <p class="text-sm font-medium text-gray-800">@(Model.FirstName ?? "-")</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Middle Name</p>
-                    <p class="text-sm font-medium text-gray-800">@(Model.MiddleName ?? "—")</p>
+                    <p class="text-sm font-medium text-gray-800">@(Model.MiddleName ?? "-")</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Last Name</p>
-                    <p class="text-sm font-medium text-gray-800">@(Model.LastName ?? "—")</p>
+                    <p class="text-sm font-medium text-gray-800">@(Model.LastName ?? "-")</p>
                 </div>
             </div>
 
             <div class="border-t border-gray-100 pt-4">
                 <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Email</p>
-                <p class="text-sm font-medium text-gray-800">@(Model.Email ?? "—")</p>
+                <p class="text-sm font-medium text-gray-800 break-all">@(Model.Email ?? "-")</p>
             </div>
 
             <div class="border-t border-gray-100 pt-4">
                 <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Phone Number</p>
-                <p class="text-sm font-medium text-gray-800">@(Model.PhoneNumber ?? "—")</p>
+                <p class="text-sm font-medium text-gray-800">@(Model.PhoneNumber ?? "-")</p>
             </div>
 
             <div class="border-t border-gray-100 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Employee Number</p>
-                    <p class="text-sm font-medium text-gray-800">@(Model.EmployeeNumber ?? "—")</p>
+                    <p class="text-sm font-medium text-gray-800">@(Model.EmployeeNumber ?? "-")</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Role</p>

@@ -20,16 +20,14 @@
 <div class="flex min-h-screen">
 
     <!-- Sidebar -->
-    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-[#000147] text-white flex flex-col shadow-xl transition-transform duration-300 -translate-x-full lg:translate-x-0">
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-[#000147] text-white flex flex-col shadow-xl transition-transform duration-300 -translate-x-full">
 
         <!-- Logo -->
-        <div class="h-20 flex items-center px-6 border-b border-white/10 flex-shrink-0">
-            <a href="/MIS/Dashboard" class="flex items-center justify-center w-full">
-                <span class="block text-center text-white font-extrabold leading-none" style="font-family:'Dancing Script',cursive;font-size:2rem;">BookHive</span>
-            </a>
-            <button onclick="toggleSidebar()" class="ml-auto lg:hidden text-white/60 hover:text-white transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        <div class="h-20 flex items-center px-4 border-b border-white/10 flex-shrink-0 gap-3">
+            <button onclick="toggleSidebar()" class="text-white/60 hover:text-white transition flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
+            <a href="/MIS/Dashboard" style="font-family:'Dancing Script',cursive;font-size:2rem;font-weight:800;color:white;line-height:1;text-decoration:none;">BookHive</a>
         </div>
 
         <p class="px-6 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-blue-300/60">MIS Facilitator</p>
@@ -72,19 +70,15 @@
     </aside>
 
     <!-- Main Content -->
-    <div class="flex-1 flex flex-col min-h-screen overflow-hidden lg:ml-64">
+    <div class="flex-1 flex flex-col min-h-screen overflow-hidden">
 
         <!-- Top Header -->
-        <header class="bg-white border-b border-gray-200 flex items-center justify-between px-6 py-3 shadow-sm flex-shrink-0">
+        <header class="flex items-center justify-between px-6 py-3 shadow-sm flex-shrink-0 border-b border-white/10" style="background-color:#000147;">
             <div class="flex items-center gap-3">
-                <!-- Mobile hamburger -->
-                <button onclick="toggleSidebar()" class="lg:hidden text-gray-500 hover:text-gray-700 transition">
+                <button onclick="toggleSidebar()" class="text-white/70 hover:text-white transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
-                <div class="mt-1">
-                    <h2 class="text-base font-semibold text-gray-800">@ViewData["Title"]</h2>
-                    <p class="text-xs text-gray-400 hidden sm:block">MIS Facilitator Portal — STI San Jose Del Monte</p>
-                </div>
+                <a href="/MIS/Dashboard" style="font-family:'Dancing Script',cursive;font-size:1.6rem;font-weight:800;color:white;line-height:1;text-decoration:none;">BookHive</a>
             </div>
 
             <!-- Header right: icons + profile -->
@@ -93,8 +87,8 @@
 
             <!-- Profile -->
             <div class="relative" id="mis-profile-wrapper">
-                <button onclick="toggleMISProfile()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 focus:outline-none transition">
-                    <span class="text-sm font-medium text-gray-700 hidden sm:inline">@ViewBag.CurrentUserFullName</span>
+                <button onclick="toggleMISProfile()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg focus:outline-none transition" style="border:1px solid rgba(255,255,255,0.6);background:rgba(255,255,255,0.1);">
+                    <span class="text-sm font-medium text-white hidden sm:inline">@ViewBag.CurrentUserFullName</span>
                     <div class="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background-color:#000147;">
                         @if (!string.IsNullOrEmpty(ViewBag.CurrentUserPic as string))
                         {
@@ -173,11 +167,17 @@ function toggleSidebar() {
     const b = document.getElementById('sidebar-backdrop');
     const isHidden = s.classList.contains('-translate-x-full');
     s.classList.toggle('-translate-x-full', !isHidden);
-    // Only show backdrop on mobile
-    if (window.innerWidth < 1024) {
-        b.classList.toggle('hidden', !isHidden);
-    }
+    b.classList.toggle('hidden', !isHidden);
 }
+// Close sidebar when any nav link is clicked
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('#sidebar nav a').forEach(function(link) {
+        link.addEventListener('click', function() {
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+            document.getElementById('sidebar-backdrop').classList.add('hidden');
+        });
+    });
+});
 function toggleMISProfile() {
     document.getElementById('mis-profile-panel').classList.toggle('hidden');
 }

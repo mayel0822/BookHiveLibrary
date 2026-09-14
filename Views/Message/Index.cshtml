@@ -1,7 +1,7 @@
-@{
+﻿@{
     var userType = ViewBag.UserType as string ?? "";
     Layout = userType == "MIS"      ? "~/Views/Shared/_MISLayout.cshtml"
-           : userType == "Student" || userType == "Professor" ? "~/Views/Shared/_StudentLayout.cshtml"
+           : userType == "Student" || userType == "Professor" ? "~/Views/Shared/_UserHeaderLayout.cshtml"
            : "~/Views/Shared/_LibrarianLayout.cshtml";
     ViewData["Title"] = "Messages";
     var me = ViewBag.Me as BookHiveLibrary.Models.ApplicationUser;
@@ -11,7 +11,7 @@
 
 <div class="flex gap-4 h-[calc(100vh-112px)]">
 
-    <!-- ── Left sidebar ─────────────────────────────────────────── -->
+    <!-- â”€â”€ Left sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
     <div class="w-72 flex-shrink-0 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
 
         <!-- Header -->
@@ -27,7 +27,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
                     </svg>
                 </div>
-                <input type="text" id="userSearch" placeholder="Search or start new message…" autocomplete="off"
+                <input type="text" id="userSearch" placeholder="Search to start message..." autocomplete="off"
                        class="w-full border border-gray-200 rounded-lg pl-8 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50"
                        oninput="filterUsers(this.value)" onfocus="showDropdown()" />
                 <div id="userDropdown"
@@ -57,11 +57,11 @@
 
         <!-- Conversation list -->
         <div id="convoList" class="flex-1 overflow-y-auto divide-y divide-gray-100">
-            <p class="px-4 py-8 text-center text-xs text-gray-400">Loading…</p>
+            <p class="px-4 py-8 text-center text-xs text-gray-400">Loadingâ€¦</p>
         </div>
     </div>
 
-    <!-- ── Right: active conversation ───────────────────────────── -->
+    <!-- â”€â”€ Right: active conversation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
     <div class="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
 
         <!-- Chat header -->
@@ -83,9 +83,9 @@
         <!-- Input -->
         <div class="px-4 py-3 border-t border-gray-100 bg-white flex gap-2 flex-shrink-0">
             <form id="msgForm" class="flex gap-2 w-full" onsubmit="sendMessage(event)">
-                @Html.AntiForgeryToken()
+                <div class="hidden">@Html.AntiForgeryToken()</div>
                 <input type="hidden" id="currentReceiverId" />
-                <input type="text" id="msgInput" placeholder="Type a message…" autocomplete="off" disabled
+                <input type="text" id="msgInput" placeholder="Type a message" autocomplete="off" disabled
                        class="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50 disabled:opacity-60" />
                 <button type="submit" id="sendBtn" disabled
                         class="px-5 py-2 text-white rounded-xl text-sm font-medium disabled:opacity-40 transition hover:opacity-90 flex-shrink-0" style="background:#000147;">
@@ -102,11 +102,11 @@ const myId = '@me?.Id';
 let activeUserId = '@withUserId' || null;
 let pollTimer = null;
 
-// ── Helpers ───────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 const token = () => document.querySelector('input[name="__RequestVerificationToken"]').value;
 
-// ── Sidebar ───────────────────────────────────────────────────
+// â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function convoRow(c) {
     const isActive = activeUserId === c.userId;
     return `<div class="flex items-center gap-3 px-4 py-3 cursor-pointer transition ${isActive ? 'bg-blue-50' : 'hover:bg-gray-50'}"
@@ -120,7 +120,7 @@ function convoRow(c) {
                 <p class="text-sm font-semibold text-gray-800 truncate" id="convoname-${c.userId}">${c.name}</p>
                 <span class="text-[10px] text-gray-400 ml-2 flex-shrink-0">${c.sentAt}</span>
             </div>
-            <p class="text-xs text-gray-500 truncate">${c.lastMsgUnsent ? '<em class="not-italic text-gray-400">Message unsent</em>' : (c.lastMsg || '…')}</p>
+            <p class="text-xs text-gray-500 truncate">${c.lastMsgUnsent ? '<em class="not-italic text-gray-400">Message unsent</em>' : (c.lastMsg || 'â€¦')}</p>
         </div>
         <div class="flex items-center gap-1 flex-shrink-0">
             ${c.unread > 0 ? `<span class="w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0" style="background:#e53e3e;">${c.unread}</span>` : ''}
@@ -149,7 +149,7 @@ async function loadConvoList() {
     }
 }
 
-// ── Convo 3-dot menu ─────────────────────────────────────────
+// â”€â”€ Convo 3-dot menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let _activeConvoMenu = null;
 
 function _ensureConvoMenuEl() {
@@ -189,7 +189,7 @@ function showConvoMenu(event, userId) {
 
 function markImportant(userId) {
     const el = document.getElementById('convoname-' + userId);
-    if (el && !el.textContent.startsWith('⭐')) el.textContent = '⭐ ' + el.textContent;
+    if (el && !el.textContent.startsWith('â­')) el.textContent = 'â­ ' + el.textContent;
 }
 
 async function deleteConversation(userId) {
@@ -213,7 +213,7 @@ async function deleteConversation(userId) {
     }
 }
 
-// ── Open conversation ─────────────────────────────────────────
+// â”€â”€ Open conversation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function openConversation(userId) {
     if (!userId) return;
     activeUserId = userId;
@@ -229,7 +229,7 @@ async function openConversation(userId) {
     pollTimer = setInterval(fetchMessages, 5000);
 }
 
-// ── Fetch & render messages ───────────────────────────────────
+// â”€â”€ Fetch & render messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const _icoUnsend = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>`;
 const _icoTrash  = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>`;
 
@@ -296,7 +296,7 @@ async function fetchMessages() {
     } catch {}
 }
 
-// ── Send ──────────────────────────────────────────────────────
+// â”€â”€ Send â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function sendMessage(e) {
     e.preventDefault();
     const input   = document.getElementById('msgInput');
@@ -314,7 +314,7 @@ async function sendMessage(e) {
     await loadConvoList();
 }
 
-// ── Message context menu ─────────────────────────────────────
+// â”€â”€ Message context menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function showMsgMenu(event, menuId) {
     event.preventDefault();
     document.querySelectorAll('.msg-menu').forEach(m => m.classList.add('hidden'));
@@ -343,7 +343,7 @@ async function deleteForMe(id) {
     if (res.ok) document.getElementById('msg-' + id)?.remove();
 }
 
-// ── Badge sync ────────────────────────────────────────────────
+// â”€â”€ Badge sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function updateEnvelopeBadge() {
     try {
         const data  = await fetch('/Message/UnreadCount').then(r => r.json());
@@ -354,7 +354,7 @@ async function updateEnvelopeBadge() {
     } catch {}
 }
 
-// ── User search dropdown ──────────────────────────────────────
+// â”€â”€ User search dropdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function showDropdown() { document.getElementById('userDropdown').classList.remove('hidden'); }
 
 function filterUsers(query) {
@@ -373,7 +373,7 @@ function selectUser(id, name, type) {
     openConversation(id);
 }
 
-// ── Close menus on outside click ─────────────────────────────
+// â”€â”€ Close menus on outside click â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.msg-menu') && !e.target.closest('.chat-msg-bubble'))
         document.querySelectorAll('.msg-menu').forEach(m => m.classList.add('hidden'));
@@ -385,8 +385,9 @@ document.addEventListener('click', function(e) {
         document.getElementById('userDropdown')?.classList.add('hidden');
 });
 
-// ── Init ─────────────────────────────────────────────────────
+// â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 loadConvoList();
 if (activeUserId) openConversation(activeUserId);
 </script>
 }
+

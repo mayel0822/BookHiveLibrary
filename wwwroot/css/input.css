@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Safelist classes used inside JS template literals (not scanned by Tailwind) */
+@source inline("group opacity-0 group-hover:opacity-100 transition-opacity");
+
 @theme {
   /* BookHive brand colors */
   --color-bh-navy:        #000147;

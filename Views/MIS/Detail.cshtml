@@ -144,20 +144,34 @@
         <!-- Change Password -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h3 class="text-sm font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100">Change Password</h3>
+
             <form method="post" action="@Url.Action("ChangeUserPassword","MIS")" class="flex flex-col gap-3">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" value="@Model.Id" />
-                <div>
-                    <label class="text-xs text-gray-500 font-medium block mb-1">New Password</label>
-                    <input type="password" name="newPassword" required
-                           class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                           placeholder="Enter new password" />
+                <div class="relative flex items-center">
+                    <input type="password" id="generatedPasswordDisplay" readonly
+                           value="@(TempData["GeneratedPassword"]?.ToString() ?? "")"
+                           placeholder="(temporary password will show here)"
+                           class="w-full border border-gray-300 rounded-xl px-4 py-2.5 pr-10 text-sm font-mono bg-gray-50 text-gray-700 focus:outline-none cursor-default" />
+                    <button type="button" onclick="toggleGenPassword(this)"
+                            class="absolute right-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+                            tabindex="-1">
+                        <!-- Eye open (visible when password is hidden) -->
+                        <svg id="eyeOpen" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        <!-- Eye off (visible when password is shown) -->
+                        <svg id="eyeOff" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.97 9.97 0 012.085-3.408M6.53 6.53A9.97 9.97 0 0112 5c4.477 0 8.268 2.943 9.542 7a10.05 10.05 0 01-4.132 5.411M3 3l18 18"/>
+                        </svg>
+                    </button>
                 </div>
                 <div class="flex justify-end">
                     <button type="submit"
                             class="px-5 py-2 text-sm text-white rounded-xl font-medium hover:opacity-90 transition"
                             style="background-color:#000147;">
-                        Update Password
+                        Generate Password
                     </button>
                 </div>
             </form>
@@ -205,11 +219,30 @@ function submitDeactivate() {
 
 
 
+// Generated password eye toggle
+function toggleGenPassword(btn) {
+    const inp = document.getElementById('generatedPasswordDisplay');
+    const eyeOpen = document.getElementById('eyeOpen');
+    const eyeOff  = document.getElementById('eyeOff');
+    if (inp.type === 'password') {
+        inp.type = 'text';
+        eyeOpen.classList.add('hidden');
+        eyeOff.classList.remove('hidden');
+    } else {
+        inp.type = 'password';
+        eyeOpen.classList.remove('hidden');
+        eyeOff.classList.add('hidden');
+    }
+}
+
 // RFID edit toggle
+let rfidOriginalValue = '';
+
 function startRfidEdit() {
     const inp = document.getElementById('rfidDetailInput');
     const editBtn = document.getElementById('rfidEditBtn');
     const saveBtn = document.getElementById('rfidSaveBtn');
+    rfidOriginalValue = inp.value.trim();
     inp.readOnly = false;
     inp.classList.remove('border-transparent', 'bg-gray-50');
     inp.classList.add('border-gray-300', 'bg-white');
@@ -218,6 +251,41 @@ function startRfidEdit() {
     saveBtn.classList.remove('hidden');
 }
 
+document.getElementById('rfidForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const inp = document.getElementById('rfidDetailInput');
+    const current = inp.value.trim();
+    if (current === rfidOriginalValue) {
+        showRfidPopup('There\'s no edit that has been made.', false);
+        return;
+    }
+    // Submit form normally
+    this.submit();
+});
+
+function showRfidPopup(msg, success) {
+    let popup = document.getElementById('rfidPopup');
+    if (!popup) {
+        popup = document.createElement('div');
+        popup.id = 'rfidPopup';
+        popup.style.cssText = 'position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:9999;padding:12px 24px;border-radius:10px;font-size:.875rem;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.15);transition:opacity .3s;';
+        document.body.appendChild(popup);
+    }
+    popup.textContent = msg;
+    popup.style.background = success ? '#dcfce7' : '#fef2f2';
+    popup.style.color = success ? '#166534' : '#991b1b';
+    popup.style.border = success ? '1px solid #bbf7d0' : '1px solid #fecaca';
+    popup.style.opacity = '1';
+    clearTimeout(popup._timer);
+    popup._timer = setTimeout(() => { popup.style.opacity = '0'; }, 3000);
+}
+
+@if (TempData["RfidSuccess"] != null)
+{
+    <text>
+    window.addEventListener('DOMContentLoaded', () => showRfidPopup('RFID updated successfully.', true));
+    </text>
+}
 
 // After form submit (page reload), field stays read-only by default — no extra JS needed.
 </script>

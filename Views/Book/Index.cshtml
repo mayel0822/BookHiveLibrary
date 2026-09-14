@@ -6,18 +6,22 @@
 }
 
 <!-- Stats Row -->
-<div class="grid grid-cols-3 gap-4 mb-6">
+<div class="grid grid-cols-4 gap-4 mb-6">
     <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
         <p class="text-xs text-blue-200 mb-1">Total Books</p>
-        <p class="text-3xl font-bold">@Model.Sum(b => b.TotalQuantity)</p>
+        <p class="text-3xl font-bold">@ViewBag.TotalBooks</p>
     </div>
     <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
         <p class="text-xs text-blue-200 mb-1">Available</p>
-        <p class="text-3xl font-bold">@Model.Sum(b => b.AvailableQuantity)</p>
+        <p class="text-3xl font-bold">@ViewBag.AvailableBooks</p>
     </div>
     <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
         <p class="text-xs text-blue-200 mb-1">Borrowed</p>
-        <p class="text-3xl font-bold">@Model.Sum(b => b.TotalQuantity - b.AvailableQuantity)</p>
+        <p class="text-3xl font-bold">@ViewBag.BorrowedBooks</p>
+    </div>
+    <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
+        <p class="text-xs text-blue-200 mb-1">Archive</p>
+        <p class="text-3xl font-bold">@ViewBag.ArchivedBooks</p>
     </div>
 </div>
 
@@ -65,8 +69,11 @@
         <table class="bh-table">
             <thead>
                 <tr>
-                    <th class="w-8">
-                        <input type="checkbox" id="selectAll" class="w-4 h-4 cursor-pointer" onchange="toggleAll(this)" />
+                    <th class="w-12">
+                        <label class="flex items-center gap-1 cursor-pointer select-none">
+                            <input type="checkbox" id="selectAll" class="w-4 h-4 cursor-pointer" onchange="toggleAll(this)" />
+                            <span class="text-xs font-semibold text-gray-500">All</span>
+                        </label>
                     </th>
                     <th>Call No.</th>
                     <th>Book Title</th>

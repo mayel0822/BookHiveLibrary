@@ -34,7 +34,10 @@
     <div id="userName" class="text-white font-extrabold text-center" style="font-size:2.8rem;line-height:1.1;"></div>
     <div id="userId" class="font-mono" style="font-size:1.2rem;color:rgba(255,255,255,.6);"></div>
     <div id="userMeta" class="uppercase" style="font-size:.95rem;color:rgba(255,255,255,.45);letter-spacing:.08em;"></div>
-    <div id="timeLabel" class="mt-2" style="font-size:1rem;color:rgba(255,255,255,.35);"></div>
+    <div id="timeLabel" class="mt-2 flex items-center gap-3 justify-center">
+        <span id="tapLabel" class="font-bold uppercase px-3 py-1 rounded-full text-xs" style="letter-spacing:.12em;"></span>
+        <span id="timeText" style="font-size:1.1rem;color:rgba(255,255,255,.5);"></span>
+    </div>
 </div>
 
 <script>
@@ -104,7 +107,18 @@ function showCard(data) {
         document.getElementById('userMeta').style.fontSize = ".95rem";
         document.getElementById('userMeta').style.textTransform = "uppercase";
     }
-    document.getElementById('timeLabel').textContent = data.time;
+    // Time + tap label
+    const tapLabelEl = document.getElementById('tapLabel');
+    const timeTextEl = document.getElementById('timeText');
+    timeTextEl.textContent = data.time;
+    if (isIncomplete) {
+        tapLabelEl.textContent = "";
+        tapLabelEl.style.background = "transparent";
+    } else {
+        tapLabelEl.textContent  = isIn ? "TAP IN" : "TAP OUT";
+        tapLabelEl.style.background = isIn ? "rgba(34,197,94,.25)" : "rgba(251,191,36,.25)";
+        tapLabelEl.style.color  = isIn ? "#86efac" : "#fde68a";
+    }
 
     // Switch screens
     document.getElementById('idle').style.display = 'none';

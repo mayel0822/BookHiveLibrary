@@ -6,6 +6,13 @@
     var rfidLogs = ViewBag.RFIDLogs as List<RFIDLog> ?? new();
     var bookReservations = ViewBag.BookReservations as List<BookReservation> ?? new();
     var computerSessions = ViewBag.ComputerSessions as List<ComputerSession> ?? new();
+
+    // PHT (UTC+08:00) conversion — stored times are UTC
+    var _phtZone = TimeZoneInfo.GetSystemTimeZones().FirstOrDefault(z =>
+        z.Id == "Asia/Manila" || z.Id == "Singapore Standard Time") ?? TimeZoneInfo.Utc;
+    DateTime ToPht(DateTime utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), _phtZone);
+    DateTime? ToPhtN(DateTime? utc) => utc.HasValue ? ToPht(utc.Value) : null;
 }
 
 <div class="mb-4">
@@ -45,15 +52,6 @@
             {
                 <p><span class="font-medium text-gray-700">Reason:</span> @Model.DeactivationReason</p>
             }
-        </div>
-        <div class="w-full pt-3 border-t border-gray-100">
-            <form method="post" action="/MIS/RestoreUser">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="id" value="@Model.Id" />
-                <button type="submit" class="w-full py-2 text-sm font-medium rounded-xl border border-green-300 text-green-700 hover:bg-green-50 transition">
-                    Restore Account
-                </button>
-            </form>
         </div>
     </div>
 
@@ -146,8 +144,8 @@
                         : "Still inside";
                     <tr class="hover:bg-gray-50">
                         <td class="px-5 py-3 text-gray-400 text-xs">@(n++)</td>
-                        <td class="px-5 py-3 text-gray-700">@log.TapInTime.ToString("MMM dd, yyyy hh:mm tt")</td>
-                        <td class="px-5 py-3 text-gray-700">@(log.TapOutTime.HasValue ? log.TapOutTime.Value.ToString("MMM dd, yyyy hh:mm tt") : "—")</td>
+                        <td class="px-5 py-3 text-gray-700">@ToPht(log.TapInTime).ToString("MMM dd, yyyy hh:mm tt")</td>
+                        <td class="px-5 py-3 text-gray-700">@(ToPhtN(log.TapOutTime)?.ToString("MMM dd, yyyy hh:mm tt") ?? "—")</td>
                         <td class="px-5 py-3 text-gray-500">@duration</td>
                     </tr>
                 }

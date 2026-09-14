@@ -19,20 +19,27 @@
     <link rel="stylesheet" href="~/css/output.css" />
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <style>
+    .mini-menu-btn{display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:8px 14px;font-size:12px;background:none;border:none;cursor:pointer;white-space:nowrap;}
+    /* Three-dot button hidden by default, shown on message row hover */
+    .mini-dots-btn { opacity: 0; transition: opacity 0.15s ease; }
+    #miniChatMessages .group:hover .mini-dots-btn { opacity: 1; }
+</style>
 </head>
 <body class="bg-[#dce6f5] flex h-screen overflow-hidden">
 
 <!-- Mobile backdrop -->
-<div id="lib-backdrop" class="fixed inset-0 bg-black/40 z-40 hidden lg:hidden" onclick="toggleLibSidebar()"></div>
+<div id="lib-backdrop" class="fixed inset-0 bg-black/40 z-40 hidden" onclick="toggleLibSidebar()"></div>
 
 <!-- Sidebar -->
-<aside id="lib-sidebar" class="fixed inset-y-0 left-0 z-50 w-64 text-white flex flex-col shadow-xl transition-transform duration-300 -translate-x-full lg:translate-x-0 lg:relative lg:flex-shrink-0" style="background-color:#000147;">
+<aside id="lib-sidebar" class="fixed inset-y-0 left-0 z-50 w-64 text-white flex flex-col shadow-xl transition-transform duration-300 -translate-x-full" style="background-color:#000147;">
 
     <!-- Logo -->
-    <div class="flex items-center px-6 py-5 border-b border-white/10 flex-shrink-0">
-        <a href="@Url.Action("Dashboard","Librarian")" class="flex items-center justify-center w-full">
-            <span style="font-family:'Dancing Script',cursive;font-size:2rem;font-weight:800;color:white;line-height:1;display:block;text-align:center;">BookHive</span>
-        </a>
+    <div class="flex items-center px-4 py-5 border-b border-white/10 flex-shrink-0 gap-3">
+        <button onclick="toggleLibSidebar()" class="text-white/60 hover:text-white transition flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <a href="@Url.Action("Dashboard","Librarian")" style="font-family:'Dancing Script',cursive;font-size:2rem;font-weight:800;color:white;line-height:1;text-decoration:none;">BookHive</a>
     </div>
 
     <!-- Nav -->
@@ -64,7 +71,14 @@
         </div>
 
         <!-- Transaction Activity -->
-        @{ var isTransaction = new[] { "Borrow", "Computer" }.Contains(currentController); }
+        @{
+            // "Transaction Activity" is active when:
+            //   - On the Borrow controller (book transactions), OR
+            //   - On Computer/Transaction specifically (the live session page)
+            // This avoids it lighting up alongside Computer Management when on other Computer pages.
+            var isTransaction = currentController == "Borrow"
+                             || (currentController == "Computer" && currentAction == "Transaction");
+        }
         <div>
             <button onclick="toggleLibMenu('libTransMenu', this)"
                     class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition @(isTransaction ? "bg-white/20 ring-1 ring-white/10 font-semibold" : "hover:bg-white/10")">
@@ -95,7 +109,11 @@
         </div>
 
         <!-- Computer Management -->
-        @{ var isComputer = currentController == "Computer"; }
+        @{
+            // "Computer Management" is active for all Computer pages EXCEPT the Transaction page
+            // (which belongs to Transaction Activity above).
+            var isComputer = currentController == "Computer" && currentAction != "Transaction";
+        }
         <div>
             <button onclick="toggleLibMenu('libComputerMenu', this)"
                     class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition @(isComputer ? "bg-white/20 ring-1 ring-white/10 font-semibold" : "hover:bg-white/10")">
@@ -117,22 +135,18 @@
 <div class="flex flex-col flex-1 overflow-hidden">
 
     <!-- Top Header -->
-    <header class="bg-white border-b border-gray-200 flex items-center justify-between px-6 py-3 shadow-sm flex-shrink-0">
+    <header class="flex items-center justify-between px-6 py-3 shadow-sm flex-shrink-0 border-b border-white/10" style="background-color:#000147;">
         <div class="flex items-center gap-3">
-            <!-- Mobile hamburger -->
-            <button onclick="toggleLibSidebar()" class="lg:hidden text-gray-500 hover:text-gray-700 transition">
+            <button onclick="toggleLibSidebar()" class="text-white/70 hover:text-white transition">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
-            <div class="mt-1">
-                <h2 class="text-base font-semibold text-gray-800">@ViewData["Title"]</h2>
-                <p class="text-xs text-gray-400 hidden sm:block">Librarian Portal — STI San Jose Del Monte</p>
-            </div>
+            <a href="@Url.Action("Dashboard","Librarian")" style="font-family:'Dancing Script',cursive;font-size:1.6rem;font-weight:800;color:white;line-height:1;text-decoration:none;">BookHive</a>
         </div>
 
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4 flex-shrink-0">
             <!-- Messages -->
             <div class="relative flex items-center" id="msgWrapper">
-                <button id="msgBtn" onclick="toggleMsgPanel()" class="relative flex items-center text-gray-500 hover:text-gray-700 focus:outline-none">
+                <button type="button" id="msgBtn" onclick="event.preventDefault();toggleMsgPanel()" class="relative flex items-center text-white/70 hover:text-white focus:outline-none">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                     <span id="msgBadge" class="hidden absolute -top-1 -right-1 w-4 h-4 text-white text-[10px] font-bold rounded-full flex items-center justify-center" style="background:#e53e3e;"></span>
                 </button>
@@ -140,7 +154,7 @@
 
             <!-- Notification Bell -->
             <div class="relative flex items-center" id="notifWrapper">
-                <button onclick="toggleNotifPanel()" class="relative flex items-center text-gray-500 hover:text-gray-700 focus:outline-none">
+                <button onclick="toggleNotifPanel()" class="relative flex items-center text-white/70 hover:text-white focus:outline-none">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                     <span id="notifBadge" class="hidden absolute -top-1 -right-1 w-4 h-4 text-white text-[10px] font-bold rounded-full flex items-center justify-center" style="background:#e53e3e;"></span>
                 </button>
@@ -160,8 +174,8 @@
 
             <!-- Profile Dropdown -->
             <div class="relative" id="lib-profile-wrapper">
-                <button onclick="toggleLibProfile()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 focus:outline-none transition">
-                    <span class="text-sm font-medium text-gray-700 hidden sm:inline">@libFirstName</span>
+                <button onclick="toggleLibProfile()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg focus:outline-none transition" style="border:1px solid rgba(255,255,255,0.6);background:rgba(255,255,255,0.1);">
+                    <span class="text-sm font-medium text-white hidden sm:inline">@libFirstName</span>
                     <div class="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background-color:#000147;">
                         @if (!string.IsNullOrEmpty(currentUser?.ProfilePicture))
                         {
@@ -211,14 +225,25 @@
     <main class="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
         @if (TempData["Success"] != null)
         {
-            <div class="mb-4 px-4 py-3 bg-green-100 border border-green-300 text-green-800 rounded-lg text-sm flex items-center gap-2">
+            <div id="flashSuccess" class="mb-4 px-4 py-3 bg-green-100 border border-green-300 text-green-800 rounded-lg text-sm flex items-center gap-2 relative overflow-hidden transition-all duration-500">
                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                @TempData["Success"]
+                <span class="flex-1">@TempData["Success"]</span>
+                <button onclick="dismissFlash('flashSuccess')" class="ml-2 text-green-600 hover:text-green-900 transition flex-shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+                <div id="flashSuccessBar" class="absolute bottom-0 left-0 h-0.5 bg-green-400" style="width:100%;transition:width 5s linear;"></div>
             </div>
         }
         @if (TempData["Error"] != null)
         {
-            <div class="mb-4 px-4 py-3 bg-red-100 border border-red-300 text-red-800 rounded-lg text-sm">@TempData["Error"]</div>
+            <div id="flashError" class="mb-4 px-4 py-3 bg-red-100 border border-red-300 text-red-800 rounded-lg text-sm flex items-center gap-2 relative overflow-hidden transition-all duration-500">
+                <svg class="w-4 h-4 flex-shrink-0 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                <span class="flex-1">@TempData["Error"]</span>
+                <button onclick="dismissFlash('flashError')" class="ml-2 text-red-500 hover:text-red-800 transition flex-shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+                <div id="flashErrorBar" class="absolute bottom-0 left-0 h-0.5 bg-red-400" style="width:100%;transition:width 5s linear;"></div>
+            </div>
         }
         @RenderBody()
     </main>
@@ -232,6 +257,15 @@ function toggleLibSidebar() {
     sidebar.classList.toggle('-translate-x-full', !hidden);
     backdrop.classList.toggle('hidden', !hidden);
 }
+// Close sidebar when any nav link is clicked
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('#lib-sidebar nav a').forEach(function(link) {
+        link.addEventListener('click', function() {
+            document.getElementById('lib-sidebar').classList.add('-translate-x-full');
+            document.getElementById('lib-backdrop').classList.add('hidden');
+        });
+    });
+});
 
 function toggleLibMenu(menuId, btn) {
     const menu  = document.getElementById(menuId);
@@ -260,34 +294,78 @@ document.addEventListener('click', function(e) {
         document.getElementById('notifPanel').classList.add('hidden');
 });
 
+// --- Notification read-state (stored in localStorage) ---
+function getSeenIds() {
+    try { return new Set(JSON.parse(localStorage.getItem('notif_seen') || '[]')); } catch { return new Set(); }
+}
+function markNotifSeen(id) {
+    try {
+        const seen = getSeenIds();
+        seen.add(id);
+        localStorage.setItem('notif_seen', JSON.stringify([...seen]));
+    } catch {}
+}
+// Remove IDs that are no longer pending (reservation was handled) to keep storage tidy
+function pruneSeenIds(activeIds) {
+    try {
+        const seen = getSeenIds();
+        const pruned = [...seen].filter(id => activeIds.includes(id));
+        localStorage.setItem('notif_seen', JSON.stringify(pruned));
+    } catch {}
+}
+
 async function loadNotifications() {
     const list = document.getElementById('notifList');
     try {
         const res  = await fetch('/Librarian/GetNotifications');
         const data = await res.json();
-        updateBadge(data.count);
+
+        const activeIds = data.items.map(n => n.id);
+        pruneSeenIds(activeIds);
+        const seen = getSeenIds();
+        const unseenCount = activeIds.filter(id => !seen.has(id)).length;
+
+        updateBadge(unseenCount);
         document.getElementById('notifCount').textContent = data.count > 0 ? data.count + ' pending' : 'No pending';
+
         if (!data.items.length) {
             list.innerHTML = '<p class="px-4 py-6 text-center text-sm text-gray-400">No pending reservations</p>';
             return;
         }
-        list.innerHTML = data.items.map(n => `
-            <div class="px-4 py-3 hover:bg-gray-50 cursor-pointer" onclick="openReservationDetail(${n.id}, '${n.user.replace(/'/g,"\\'")}', '${n.userType}', '${n.book.replace(/'/g,"\\'")}', '${n.createdAt}')">
+        list.innerHTML = data.items.map(n => {
+            const isSeen = seen.has(n.id);
+            return `
+            <div class="px-4 py-3 cursor-pointer transition-colors ${isSeen ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}"
+                 onclick="onNotifClick(${n.id}, '${n.user.replace(/'/g,"\\'")}', '${n.userType}', '${n.book.replace(/'/g,"\\'")}', '${n.createdAt}')">
                 <div class="flex items-start gap-3">
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5" style="background:#000147;">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 ${isSeen ? 'bg-gray-300 text-gray-600' : 'text-white'}"
+                         ${isSeen ? '' : 'style="background:#000147;"'}>
                         ${n.user.charAt(0).toUpperCase()}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-800 truncate">${n.user} <span class="text-xs font-normal text-gray-400 ml-1">${n.userType}</span></p>
-                        <p class="text-xs text-gray-500 truncate">Reserved: <span class="font-medium text-gray-700">${n.book}</span></p>
+                        <p class="text-sm font-medium truncate ${isSeen ? 'text-gray-400' : 'text-gray-800'}">${n.user} <span class="text-xs font-normal text-gray-400 ml-1">${n.userType}</span></p>
+                        <p class="text-xs text-gray-400 truncate">Reserved: <span class="${isSeen ? 'text-gray-400' : 'font-medium text-gray-700'}">${n.book}</span></p>
                         <p class="text-xs text-gray-400 mt-0.5">${n.createdAt}</p>
                     </div>
-                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 flex-shrink-0">Pending</span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${isSeen ? 'bg-gray-100 text-gray-400' : 'bg-yellow-100 text-yellow-700'}">Pending</span>
                 </div>
-            </div>`).join('');
+            </div>`;
+        }).join('');
     } catch {
         list.innerHTML = '<p class="px-4 py-6 text-center text-sm text-gray-400">Could not load notifications</p>';
     }
+}
+
+function onNotifClick(id, user, userType, book, createdAt) {
+    markNotifSeen(id);
+    // Decrement badge immediately
+    const badge = document.getElementById('notifBadge');
+    const current = parseInt(badge.textContent) || 0;
+    updateBadge(Math.max(0, current - 1));
+    // Re-render list so clicked item goes gray
+    loadNotifications();
+    // Open the detail modal
+    openReservationDetail(id, user, userType, book, createdAt);
 }
 
 function updateBadge(count) {
@@ -298,7 +376,13 @@ function updateBadge(count) {
 
 // Initial badge load
 async function pollBadge() {
-    try { const res = await fetch('/Librarian/GetNotifications'); const data = await res.json(); updateBadge(data.count); } catch {}
+    try {
+        const res = await fetch('/Librarian/GetNotifications');
+        const data = await res.json();
+        const seen = getSeenIds();
+        const unseenCount = data.items.filter(n => !seen.has(n.id)).length;
+        updateBadge(unseenCount);
+    } catch {}
 }
 pollBadge();
 
@@ -369,6 +453,14 @@ libraryConnection.on('ReceiveMessage', function(msg) {
     if (_chatUserId && msg.senderId === _chatUserId) loadChatMessages();
 });
 
+// When the other person unsends a message, replace its bubble instantly
+libraryConnection.on('MessageUnsent', function(data) {
+    const el = document.getElementById('chatmsg-' + data.id);
+    if (el) {
+        el.innerHTML = '<span class="text-xs italic text-gray-400 px-3 py-1 border border-gray-200 rounded-2xl">Message unsent</span>';
+    }
+});
+
 function showMessageToast(msg) {
     const toast = document.getElementById('msgToast');
     if (!toast) return;
@@ -388,6 +480,29 @@ function dismissMessageToast() {
     toast.classList.add('translate-x-full', 'opacity-0');
 }
 
+// ── Flash message auto-dismiss (5 s) ─────────────────────────────────────
+function dismissFlash(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.opacity = '0';
+    el.style.maxHeight = '0';
+    el.style.marginBottom = '0';
+    el.style.paddingTop = '0';
+    el.style.paddingBottom = '0';
+    setTimeout(() => el.remove(), 500);
+}
+(function() {
+    ['flashSuccess', 'flashError'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        // Start the shrinking progress bar after a tiny delay so CSS transition fires
+        const bar = document.getElementById(id + 'Bar');
+        if (bar) requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.width = '0%'; }));
+        // Auto-dismiss after 5 s
+        setTimeout(() => dismissFlash(id), 5000);
+    });
+})();
+
 window._libConnected = libraryConnection.start().then(() => {
     libraryConnection.invoke("JoinLibrarian").catch(err => console.error(err));
 }).catch(err => console.error('SignalR error:', err));
@@ -399,14 +514,13 @@ let _msgConvos   = [];
 async function toggleMsgPanel() {
     msgPanelOpen = !msgPanelOpen;
     const panel = document.getElementById('msgPanel');
-    if (!msgPanelOpen) { panel.classList.add('hidden'); return; }
-    // Position panel under the mail button
+    if (!msgPanelOpen) { panel.style.display = 'none'; return; }
     const btn  = document.getElementById('msgBtn');
     const rect = btn.getBoundingClientRect();
-    panel.style.top   = (rect.bottom + 6) + 'px';
-    panel.style.right = (window.innerWidth - rect.right) + 'px';
+    panel.style.top   = (rect.bottom + 8) + 'px';
+    panel.style.right = Math.max(8, window.innerWidth - rect.right) + 'px';
     panel.style.left  = 'auto';
-    panel.classList.remove('hidden');
+    panel.style.display = 'block';
     await loadMsgPanel();
 }
 
@@ -458,10 +572,13 @@ function msgConvoRow(c, active) {
 
 document.addEventListener('click', function(e) {
     // Close msg dropdown
-    if (!e.target.closest('#msgWrapper') && !e.target.closest('#msgPanel')) {
-        document.getElementById('msgPanel')?.classList.add('hidden');
+    if (!e.target.closest('#msgWrapper') && !e.target.closest('#msgPanel') && !e.target.closest('#miniChatPopup')) {
+        const _p = document.getElementById('msgPanel'); if (_p) _p.style.display = 'none';
         msgPanelOpen = false;
     }
+    // Close mini chat bubble menus
+    if (!e.target.closest('.mini-chat-bubble') && !e.target.closest('.mini-msg-menu') && !e.target.closest('.mini-dots-btn'))
+        document.querySelectorAll('.mini-msg-menu').forEach(m => m.style.display = 'none');
     // Close message bubble menus
     if (!e.target.closest('.chat-msg-bubble') && !e.target.closest('.chat-msg-menu'))
         document.querySelectorAll('.chat-msg-menu').forEach(m => m.classList.add('hidden'));
@@ -570,27 +687,136 @@ async function deleteForMeModal(id) {
 let _chatUserId = '', _chatMyId = '';
 
 async function openMsgChat(userId, name, userType) {
+    // Close the mini dropdown panel
     document.getElementById('msgPanel').classList.add('hidden');
     msgPanelOpen = false;
 
+    // Open mini chat popup instead of the big modal
     _chatUserId = userId;
-    document.getElementById('chat-avatar').textContent = name.charAt(0).toUpperCase();
-    document.getElementById('chat-name').textContent   = name;
-    document.getElementById('chat-type').textContent   = userType;
-    document.getElementById('chat-messages').innerHTML = '<p class="text-center text-sm text-gray-400 py-8">Loading…</p>';
-
-    if (_msgConvos.length === 0) {
-        try { _msgConvos = await fetch('/Message/GetConversationList').then(r => r.json()); } catch {}
-    }
-    document.getElementById('chat-sidebar').innerHTML = _msgConvos.map(c => msgConvoRow(c, c.userId === userId)).join('');
-
-    document.getElementById('msgChatModal').classList.remove('hidden');
-    await loadChatMessages();
-    document.getElementById('chat-input').focus();
+    _miniChatUserId = userId;
+    document.getElementById('miniChatAvatar').textContent = name.charAt(0).toUpperCase();
+    document.getElementById('miniChatName').textContent = name;
+    document.getElementById('miniChatType').textContent = userType || '';
+    document.getElementById('miniChatPopup').style.display = 'flex';
+    document.getElementById('miniChatBackdrop').style.display = 'block';
+    document.getElementById('miniChatInput').focus();
+    await loadMiniChatMessages();
 }
 
+// ── Mini Chat Popup ───────────────────────────────────────────────────────
+let _miniChatUserId = '', _miniChatMyId = '';
+
+const _miniIcoUnsend = `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>`;
+const _miniIcoTrash  = `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>`;
+
+async function loadMiniChatMessages() {
+    const box = document.getElementById('miniChatMessages');
+    box.innerHTML = '<p class="text-center text-xs text-gray-400 py-4">Loading…</p>';
+    if (!_miniChatUserId) return;
+    try {
+        const data = await fetch('/Message/GetConversation?otherUserId=' + encodeURIComponent(_miniChatUserId)).then(r => r.json());
+        const msgs = data.messages || [];
+        _miniChatMyId = data.myId;
+        if (!msgs.length) { box.innerHTML = '<p class="text-center text-xs text-gray-400 py-4">No messages yet</p>'; return; }
+        box.innerHTML = msgs.map(m => {
+            const isMe = m.senderId === _miniChatMyId;
+            if (m.isUnsent) return `<div class="flex ${isMe?'justify-end':'justify-start'}" id="mini-msg-${m.id}">
+                <span class="text-xs italic text-gray-400 px-3 py-1.5 border border-dashed border-gray-300 rounded-2xl">Message unsent</span>
+            </div>`;
+            const menuItems = isMe
+                ? `<button onclick="unsendMiniMsg(${m.id})" class="mini-menu-btn" style="color:#dc2626;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='none'">${_miniIcoUnsend} Unsend for everyone</button>
+                   <div style="height:1px;background:#f3f4f6;"></div>
+                   <button onclick="deleteForMeMini(${m.id})" class="mini-menu-btn" style="color:#6b7280;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='none'">${_miniIcoTrash} Delete for me</button>`
+                : `<button onclick="deleteForMeMini(${m.id})" class="mini-menu-btn" style="color:#6b7280;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='none'">${_miniIcoTrash} Delete for me</button>`;
+            // Three-dot button — hidden by default, shown on row hover via JS
+            const threeDotBtn = `
+                <button onclick="showMiniMsgMenu(event,'minimenu-${m.id}')"
+                        id="minidots-${m.id}"
+                        style="display:none;flex-shrink:0;width:22px;height:22px;align-items:center;justify-content:center;border-radius:50%;border:none;background:none;cursor:pointer;color:#9ca3af;"
+                        onmouseover="this.style.background='#f3f4f6';this.style.color='#6b7280'"
+                        onmouseout="this.style.background='none';this.style.color='#9ca3af'"
+                        title="Message options">
+                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="5"  r="1.5"/>
+                        <circle cx="12" cy="12" r="1.5"/>
+                        <circle cx="12" cy="19" r="1.5"/>
+                    </svg>
+                </button>`;
+
+            return `<div class="flex items-center gap-1 ${isMe?'justify-end':'justify-start'}" id="mini-msg-${m.id}"
+                onmouseenter="var b=document.getElementById('minidots-${m.id}');if(b){b.style.display='flex';}"
+                onmouseleave="var b=document.getElementById('minidots-${m.id}');if(b){b.style.display='none';}">
+                ${isMe ? threeDotBtn : ''}
+                <div class="relative max-w-[80%]">
+                    <div class="mini-chat-bubble px-3 py-1.5 rounded-xl text-xs select-none ${isMe?'text-white':'bg-white border border-gray-200 text-gray-800'}"
+                         style="${isMe?'background-color:#000147;':''}"
+                         oncontextmenu="showMiniMsgMenu(event,'minimenu-${m.id}')"
+                         ondblclick="showMiniMsgMenu(event,'minimenu-${m.id}')">
+                        ${escHtml(m.content)}
+                    </div>
+                    <div id="minimenu-${m.id}" class="mini-msg-menu" style="display:none;position:fixed;z-index:10002;background:white;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:175px;overflow:hidden;">
+                        ${menuItems}
+                    </div>
+                </div>
+                ${!isMe ? threeDotBtn : ''}
+            </div>`;
+        }).join('');
+        box.scrollTop = box.scrollHeight;
+    } catch { box.innerHTML = '<p class="text-center text-xs text-gray-400 py-4">Failed to load</p>'; }
+}
+
+function showMiniMsgMenu(event, menuId) {
+    event.preventDefault();
+    document.querySelectorAll('.mini-msg-menu').forEach(m => m.style.display = 'none');
+    const menu = document.getElementById(menuId); if (!menu) return;
+    menu.style.display = 'block';
+    menu.style.left = Math.min(event.clientX, window.innerWidth - 185) + 'px';
+    menu.style.top  = Math.min(event.clientY + 4, window.innerHeight - 110) + 'px';
+}
+
+async function unsendMiniMsg(id) {
+    document.querySelectorAll('.mini-msg-menu').forEach(m => m.style.display = 'none');
+    if (!confirm('Unsend this message for everyone?')) return;
+    const fd = new FormData(); fd.append('id', id); fd.append('__RequestVerificationToken', _tok());
+    const res = await fetch('/Message/Unsend', { method: 'POST', body: fd });
+    if (res.ok) {
+        const el = document.getElementById('mini-msg-' + id);
+        if (el) el.innerHTML = '<span class="text-xs italic text-gray-400 px-3 py-1.5 border border-dashed border-gray-300 rounded-2xl">Message unsent</span>';
+    }
+}
+
+async function deleteForMeMini(id) {
+    document.querySelectorAll('.mini-msg-menu').forEach(m => m.style.display = 'none');
+    const fd = new FormData(); fd.append('id', id); fd.append('__RequestVerificationToken', _tok());
+    const res = await fetch('/Message/DeleteForMe', { method: 'POST', body: fd });
+    if (res.ok) document.getElementById('mini-msg-' + id)?.remove();
+}
+
+async function sendMiniChat() {
+    const input = document.getElementById('miniChatInput');
+    const text = input.value.trim();
+    if (!text || !_miniChatUserId) return;
+    input.value = '';
+    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+    try {
+        const fd = new FormData();
+        fd.append('receiverId', _miniChatUserId);
+        fd.append('content', text);
+        if (token) fd.append('__RequestVerificationToken', token);
+        const res = await fetch('/Message/Send', { method: 'POST', body: fd });
+        if (res.ok) await loadMiniChatMessages();
+    } catch {}
+}
+
+function closeMiniChat() {
+    document.getElementById('miniChatPopup').style.display = 'none';
+    document.getElementById('miniChatBackdrop').style.display = 'none';
+    _miniChatUserId = '';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 function closeMsgChat() {
-    document.getElementById('msgChatModal').classList.add('hidden');
+    document.getElementById('msgChatModal').style.display = 'none';
     _chatUserId = ''; _msgConvos = [];
     document.querySelectorAll('.chat-msg-menu').forEach(m => m.classList.add('hidden'));
     const gcm = document.getElementById('globalConvoMenuModal');
@@ -632,9 +858,25 @@ async function loadChatMessages() {
                        ${_icoTrash} Delete for me
                    </button>`;
 
-            return `<div class="flex ${isMe?'justify-end':'justify-start'}" id="chatmsg-${m.id}">
+            const chatDotBtn = `
+                <button onclick="showMsgMenuModal(event,'cmmenu-${m.id}')"
+                        id="chatdots-${m.id}"
+                        style="display:none;flex-shrink:0;width:24px;height:24px;align-items:center;justify-content:center;border-radius:50%;border:none;background:none;cursor:pointer;color:#9ca3af;align-self:center;"
+                        onmouseover="this.style.background='#f3f4f6';this.style.color='#6b7280'"
+                        onmouseout="this.style.background='none';this.style.color='#9ca3af'"
+                        title="Message options">
+                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="5"  r="1.5"/>
+                        <circle cx="12" cy="12" r="1.5"/>
+                        <circle cx="12" cy="19" r="1.5"/>
+                    </svg>
+                </button>`;
+            return `<div class="flex items-end gap-1 ${isMe?'justify-end':'justify-start'}" id="chatmsg-${m.id}"
+                onmouseenter="var b=document.getElementById('chatdots-${m.id}');if(b){b.style.display='flex';}"
+                onmouseleave="var b=document.getElementById('chatdots-${m.id}');if(b){b.style.display='none';}">
+                ${isMe ? chatDotBtn : ''}
                 <div class="max-w-[72%] relative">
-                    <div class="chat-msg-bubble px-4 py-2 rounded-2xl text-sm cursor-pointer select-none ${isMe?'text-white rounded-br-sm':'bg-white border border-gray-200 text-gray-800 rounded-bl-sm'}"
+                    <div class="chat-msg-bubble px-4 py-2 rounded-2xl text-sm select-none ${isMe?'text-white rounded-br-sm':'bg-white border border-gray-200 text-gray-800 rounded-bl-sm'}"
                          style="${isMe?'background-color:#000147;':''}"
                          oncontextmenu="showMsgMenuModal(event,'cmmenu-${m.id}')"
                          ondblclick="showMsgMenuModal(event,'cmmenu-${m.id}')">
@@ -645,6 +887,7 @@ async function loadChatMessages() {
                         ${menuItems}
                     </div>
                 </div>
+                ${!isMe ? chatDotBtn : ''}
             </div>`;
         }).join('');
         box.scrollTop = box.scrollHeight;
@@ -731,19 +974,50 @@ function closeReservationDetail() {
         </div>
     </div>
 </div>
-<!-- Message Dropdown Panel (fixed so it overlays everything) -->
-<div id="msgPanel" class="hidden fixed z-[9997] bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden" style="width:380px;">
+<!-- Small Message Dropdown -->
+<div id="msgPanel" class="fixed z-[9997] bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden" style="display:none;width:340px;">
     <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between" style="background-color:#000147;">
         <span class="text-sm font-semibold text-white">Messages</span>
         <a href="@Url.Action("Index","Message")" class="text-xs text-blue-200 hover:text-white transition">See all</a>
     </div>
-    <div id="msgPanelList" class="divide-y divide-gray-100 overflow-y-auto" style="max-height:240px;">
+    <div id="msgPanelList" class="divide-y divide-gray-100 overflow-y-auto" style="max-height:260px;">
         <p class="px-4 py-6 text-center text-sm text-gray-400">Loading…</p>
     </div>
 </div>
 
+<!-- Mini Chat Backdrop -->
+<div id="miniChatBackdrop" onclick="closeMiniChat()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9998;"></div>
+
+<!-- Small Compact Chat Popup -->
+<div id="miniChatPopup" class="fixed z-[9999] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden" style="display:none;width:480px;height:580px;top:50%;left:50%;transform:translate(-50%,-50%);">
+    <div class="px-4 py-3 flex items-center justify-between flex-shrink-0" style="background-color:#000147;">
+        <div class="flex items-center gap-2 min-w-0">
+            <div id="miniChatAvatar" class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 bg-white/20"></div>
+            <div class="min-w-0">
+                <p id="miniChatName" class="text-sm font-semibold text-white truncate"></p>
+                <p id="miniChatType" class="text-[10px] text-white/60"></p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+            <button onclick="closeMiniChat()" class="text-white/60 hover:text-white transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+    </div>
+    <div id="miniChatMessages" class="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-gray-50">
+        <p class="text-center text-xs text-gray-400 py-4">Loading…</p>
+    </div>
+    <div class="px-3 py-2 border-t border-gray-100 flex gap-2 flex-shrink-0 bg-white">
+        @Html.AntiForgeryToken()
+        <input id="miniChatInput" type="text" placeholder="Type a message…"
+               class="flex-1 border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();sendMiniChat();}" />
+        <button onclick="sendMiniChat()" class="px-3 py-1.5 text-xs text-white rounded-xl font-medium transition hover:opacity-90 flex-shrink-0" style="background-color:#000147;">Send</button>
+    </div>
+</div>
+
 <!-- Message Chat Modal (two-panel: sidebar + conversation) -->
-<div id="msgChatModal" class="fixed inset-0 z-[9998] hidden flex items-center justify-center bg-black/40 px-4" onclick="if(event.target===this)closeMsgChat()">
+<div id="msgChatModal" class="fixed inset-0 z-[9998] items-center justify-center bg-black/40 px-4" style="display:none;" onclick="if(event.target===this)closeMsgChat()">
     <div class="bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden w-full" style="max-width:780px;height:580px;">
 
         <!-- Full-width header row -->

@@ -68,7 +68,7 @@
         </div>
     </div>
 
-    <form method="post" asp-action="Register">
+    <form method="post" asp-action="Register" enctype="multipart/form-data">
         @Html.AntiForgeryToken()
         @if (!ViewData.ModelState.IsValid)
         {
@@ -78,31 +78,34 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
             <!-- Cover Image Preview -->
             <div class="flex flex-col items-center gap-4">
-                <div id="coverPreview" class="w-48 h-64 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
-                    @if (!string.IsNullOrEmpty(Model.CoverImageUrl))
-                    {
-                        <img id="coverImg" src="@Model.CoverImageUrl" class="w-full h-full object-cover" alt="Cover" />
-                    }
-                    else
-                    {
-                        <div id="coverPlaceholder" class="text-center text-gray-400">
-                            <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
-                            <p class="text-xs">Cover Preview</p>
-                        </div>
-                    }
+                <!-- Clickable preview area — opens file picker -->
+                <div id="coverPreview"
+                     onclick="document.getElementById('coverImageFile').click()"
+                     class="w-40 h-56 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition flex-shrink-0">
+                    <div id="coverPlaceholder" class="text-center text-gray-400 pointer-events-none px-3">
+                        <svg class="w-10 h-10 mx-auto mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
+                        <p class="text-xs font-medium">Click to upload cover</p>
+                        <p class="text-[10px] mt-0.5 text-gray-300">JPG, PNG, WEBP</p>
+                    </div>
+                    <img id="coverImg" src="" class="w-full h-full object-cover hidden" alt="Cover" />
                 </div>
-                <div class="w-full">
-                    <label class="block text-sm font-medium text-gray-600 mb-1">Cover Image URL</label>
-                    <input type="text" asp-for="CoverImageUrl" id="coverUrlInput"
-                           placeholder="https://..."
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                           oninput="updatePreview(this.value)" />
-                </div>
+                <!-- Hidden file input -->
+                <input type="file" id="coverImageFile" name="coverImageFile"
+                       accept="image/*" class="hidden" onchange="onCoverChosen(this)" />
+                <p id="coverFileName" class="text-xs text-gray-400 -mt-2 text-center hidden"></p>
+
+                <!-- Total Quantity — stepper with − / + buttons -->
                 <div class="w-full">
                     <label class="block text-sm font-medium text-gray-600 mb-1">Total Quantity</label>
-                    <input type="number" asp-for="TotalQuantity" min="1"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                           style="appearance:auto; -webkit-appearance:auto;" />
+                    <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden w-full">
+                        <button type="button" onclick="stepQty(-1)"
+                                class="px-4 py-2 text-lg font-bold text-gray-600 hover:bg-gray-100 transition select-none flex-shrink-0">−</button>
+                        <input type="number" asp-for="TotalQuantity" id="qtyInput" min="1"
+                               class="flex-1 text-center text-sm font-medium text-gray-800 focus:outline-none border-0 py-2"
+                               style="-webkit-appearance:none; -moz-appearance:textfield; appearance:textfield;" />
+                        <button type="button" onclick="stepQty(1)"
+                                class="px-4 py-2 text-lg font-bold text-gray-600 hover:bg-gray-100 transition select-none flex-shrink-0">+</button>
+                    </div>
                 </div>
                 <input type="hidden" asp-for="AvailableQuantity" id="availableQtyInput" />
             </div>
@@ -137,13 +140,8 @@
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
                     </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-1">Book For</label>
-                    <select asp-for="BookFor" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-                        <option value="Student">Student</option>
-                        <option value="Professor">Professor Only</option>
-                    </select>
-                </div>
+                <!-- BookFor is driven by the Professor Only checkbox below; default = Student -->
+                <input type="hidden" asp-for="BookFor" id="bookForHidden" value="Student" />
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Grade Level</label>
                     <select asp-for="GradeLevel"
@@ -157,7 +155,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Category</label>
-                        <select asp-for="Category" required
+                        <select asp-for="Category" id="categorySelect" required onchange="onCategoryChange()"
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
                             <option value="">Select category...</option>
                             <optgroup label="Junior High School">
@@ -191,7 +189,7 @@
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">Aisle</label>
-                            <select id="aisleSelect" onchange="syncLocation()"
+                            <select id="aisleSelect" onchange="onLocationChange()"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
                                 <option value="">Aisle...</option>
                                 @foreach (var c in Enumerable.Range(0, 10).Select(i => ((char)('A' + i)).ToString()))
@@ -202,7 +200,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">Shelf</label>
-                            <select id="shelfSelect" onchange="syncLocation()"
+                            <select id="shelfSelect" onchange="onLocationChange()"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
                                 <option value="">Shelf...</option>
                                 @foreach (var n in Enumerable.Range(1, 6))
@@ -219,10 +217,17 @@
                     <textarea asp-for="Description" rows="4"
                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"></textarea>
                 </div>
-                <div class="flex items-center gap-2">
-                    <input type="checkbox" asp-for="IsRoomUseOnly" id="roomUseOnly" class="w-4 h-4" />
-                    <label for="roomUseOnly" class="text-sm text-gray-600 cursor-pointer">
-                        Room Use Only <span class="text-gray-400">(cannot be borrowed outside the library)</span>
+                <div class="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <input type="checkbox" id="professorOnly" class="w-4 h-4 accent-blue-700"
+                           onchange="document.getElementById('bookForHidden').value = this.checked ? 'Professor' : 'Student'" />
+                    <label for="professorOnly" class="text-sm font-medium text-blue-800 cursor-pointer">
+                        Professor Only <span class="text-blue-600 font-normal">(students cannot reserve this book)</span>
+                    </label>
+                </div>
+                <div class="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <input type="checkbox" asp-for="IsRoomUseOnly" id="roomUseOnly" class="w-4 h-4 accent-amber-600" />
+                    <label for="roomUseOnly" class="text-sm font-medium text-amber-800 cursor-pointer">
+                        Room Use Only <span class="text-amber-600 font-normal">(cannot be borrowed outside the library)</span>
                     </label>
                 </div>
             </div>
@@ -239,6 +244,100 @@
 
 @section Scripts {
 <script>
+// Hide native number-input spinner arrows
+(function() {
+    const style = document.createElement('style');
+    style.textContent = '#qtyInput::-webkit-outer-spin-button,#qtyInput::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}';
+    document.head.appendChild(style);
+})();
+
+function stepQty(delta) {
+    const inp = document.getElementById('qtyInput');
+    const val = parseInt(inp.value) || 1;
+    inp.value = Math.max(1, val + delta);
+    inp.dispatchEvent(new Event('input'));
+}
+
+// ── Fixed category ↔ aisle/shelf mapping ─────────────────────────────────
+// Each category is stored in a specific physical location.
+// Changing the category auto-fills aisle+shelf; changing aisle+shelf auto-fills category.
+const LOCATION_MAP = {
+    // Junior High School
+    'Mathematics':              { aisle: 'A', shelf: '1' },
+    'Science':                  { aisle: 'A', shelf: '2' },
+    'English':                  { aisle: 'A', shelf: '3' },
+    'Filipino':                 { aisle: 'A', shelf: '4' },
+    'Araling Panlipunan':       { aisle: 'A', shelf: '5' },
+    'MAPEH':                    { aisle: 'A', shelf: '6' },
+    'TLE':                      { aisle: 'B', shelf: '1' },
+    'EsP':                      { aisle: 'B', shelf: '2' },
+    'Mother Tongue':            { aisle: 'B', shelf: '3' },
+    'Research':                 { aisle: 'B', shelf: '4' },
+    // Senior High School
+    'General Mathematics':           { aisle: 'C', shelf: '1' },
+    'Statistics & Probability':      { aisle: 'C', shelf: '2' },
+    'Earth and Life Science':        { aisle: 'C', shelf: '3' },
+    'Physical Science':              { aisle: 'C', shelf: '4' },
+    'Reading and Writing':           { aisle: 'C', shelf: '5' },
+    '21st Century Literature':       { aisle: 'C', shelf: '6' },
+    'Oral Communication':            { aisle: 'D', shelf: '1' },
+    'Media and Information Literacy':{ aisle: 'D', shelf: '2' },
+    'Personal Development':          { aisle: 'D', shelf: '3' },
+    'Understanding Culture & Society':{ aisle: 'D', shelf: '4' },
+    'Introduction to Philosophy':    { aisle: 'D', shelf: '5' },
+    'Komunikasyon at Pananaliksik':  { aisle: 'D', shelf: '6' },
+    'Practical Research':            { aisle: 'E', shelf: '1' },
+    'Entrepreneurship':              { aisle: 'E', shelf: '2' },
+    'Work Immersion':                { aisle: 'E', shelf: '3' },
+    // Tertiary / College
+    'Computer Science & IT':         { aisle: 'F', shelf: '1' },
+    'Information Technology':        { aisle: 'F', shelf: '2' },
+    'Programming & Software Dev.':   { aisle: 'F', shelf: '3' },
+    'Computer Engineering':          { aisle: 'F', shelf: '4' },
+    'Engineering':                   { aisle: 'F', shelf: '5' },
+    'Business Administration':       { aisle: 'F', shelf: '6' },
+    'Accounting & Finance':          { aisle: 'G', shelf: '1' },
+    'Marketing':                     { aisle: 'G', shelf: '2' },
+    'Tourism Management':            { aisle: 'G', shelf: '3' },
+    'Hospitality Management':        { aisle: 'G', shelf: '4' },
+    'Culinary Arts':                 { aisle: 'G', shelf: '5' },
+    'Psychology':                    { aisle: 'G', shelf: '6' },
+    'Communication':                 { aisle: 'H', shelf: '1' },
+    'Education':                     { aisle: 'H', shelf: '2' },
+    'Social Sciences':               { aisle: 'H', shelf: '3' },
+    'Natural Science':               { aisle: 'H', shelf: '4' },
+    'Law':                           { aisle: 'H', shelf: '5' },
+    'Criminology':                   { aisle: 'H', shelf: '6' },
+    'Reference':                     { aisle: 'I', shelf: '1' },
+    'General':                       { aisle: 'I', shelf: '2' },
+};
+
+// Reverse map: "A-1" → "Mathematics"
+const REVERSE_MAP = {};
+Object.entries(LOCATION_MAP).forEach(([cat, loc]) => {
+    REVERSE_MAP[loc.aisle + '-' + loc.shelf] = cat;
+});
+
+function onCategoryChange() {
+    const cat   = document.getElementById('categorySelect').value;
+    const loc   = LOCATION_MAP[cat];
+    if (loc) {
+        document.getElementById('aisleSelect').value = loc.aisle;
+        document.getElementById('shelfSelect').value = loc.shelf;
+    }
+    syncLocation();
+}
+
+function onLocationChange() {
+    const aisle = document.getElementById('aisleSelect').value;
+    const shelf = document.getElementById('shelfSelect').value;
+    if (aisle && shelf) {
+        const cat = REVERSE_MAP[aisle + '-' + shelf];
+        if (cat) document.getElementById('categorySelect').value = cat;
+    }
+    syncLocation();
+}
+
 function syncLocation() {
     const aisle = document.getElementById('aisleSelect').value;
     const shelf = document.getElementById('shelfSelect').value;
@@ -247,7 +346,7 @@ function syncLocation() {
 
 // Keep AvailableQuantity in sync with TotalQuantity on new registration
 (function() {
-    const totalInput = document.querySelector('input[name="TotalQuantity"]');
+    const totalInput = document.getElementById('qtyInput');
     const availInput = document.getElementById('availableQtyInput');
     if (!totalInput || !availInput) return;
     function sync() { availInput.value = totalInput.value; }
@@ -255,11 +354,19 @@ function syncLocation() {
     totalInput.addEventListener('input', sync);
 })();
 
-function updatePreview(url) {
-    const preview = document.getElementById('coverPreview');
-    if (url) {
-        preview.innerHTML = '<img src="' + url + '" class="w-full h-full object-cover" onerror="this.style.display=\'none\'" />';
-    }
+function onCoverChosen(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('coverImg').src = e.target.result;
+        document.getElementById('coverImg').classList.remove('hidden');
+        document.getElementById('coverPlaceholder').classList.add('hidden');
+        const nameEl = document.getElementById('coverFileName');
+        nameEl.textContent = file.name;
+        nameEl.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
 }
 function closeImportModal() {
     document.getElementById('importModal').classList.add('hidden');

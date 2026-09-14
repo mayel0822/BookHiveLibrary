@@ -6,7 +6,7 @@
 }
 
 <!-- Stats Row -->
-<div class="grid grid-cols-4 gap-4 mb-6">
+<div class="grid grid-cols-5 gap-4 mb-6">
     <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
         <p class="text-xs text-blue-200 mb-1">Total Computers</p>
         <p class="text-3xl font-bold text-center">@ViewBag.TotalComputers</p>
@@ -20,64 +20,20 @@
         <p class="text-3xl font-bold text-center">@ViewBag.InUseComputers</p>
     </div>
     <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
+        <p class="text-xs text-blue-200 mb-1">Unavailable</p>
+        <p class="text-3xl font-bold text-center">@ViewBag.UnavailableComputers</p>
+    </div>
+    <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
         <p class="text-xs text-blue-200 mb-1">Archived</p>
         <p class="text-3xl font-bold text-center">@ViewBag.ArchivedComputers</p>
     </div>
 </div>
 
-<div class="bg-white rounded-xl shadow-sm border border-gray-100">
-    <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-        <h2 class="text-2xl font-bold text-gray-900">Registered Computers</h2>
-        <a href="@Url.Action("Register","Computer")" class="btn-primary">+ Add Computer</a>
-    </div>
+@Html.AntiForgeryToken()
 
-    <div class="overflow-x-auto">
-        <table class="bh-table">
-            <thead>
-                <tr>
-                    <th>PC No.</th>
-                    <th>Status</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var pc in Model)
-                {
-                    var inUse = pc.Sessions.Any(s => s.IsActive);
-                    <tr>
-                        <td class="px-6 py-4 font-semibold text-gray-800">@pc.ComputerNumber</td>
-                        <td class="px-6 py-4">
-                            @if (inUse)
-                            {
-                                <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">In Use</span>
-                            }
-                            else if (pc.IsAvailable)
-                            {
-                                <span class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Available</span>
-                            }
-                            else
-                            {
-                                <span class="px-2 py-1 bg-gray-100 text-gray-500 rounded-full text-xs font-medium">Unavailable</span>
-                            }
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                            <button onclick="showArchiveModal(@pc.Id, '@pc.ComputerNumber')"
-                                    class="text-gray-400 hover:text-red-500 p-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12"/>
-                                </svg>
-                            </button>
-                        </td>
-                    </tr>
-                }
-                @if (!Model.Any())
-                {
-                    <tr><td colspan="3" class="px-6 py-10 text-center text-gray-400">No computers registered yet</td></tr>
-                }
-            </tbody>
-        </table>
-    </div>
-</div>
+<!-- Computer Usage Grid (shared partial — same as Transaction Management page) -->
+@{ ViewData["IsTransaction"] = false; }
+@await Html.PartialAsync("_ComputerGrid", Model)
 
 <!-- Archive Modal -->
 <div id="archiveModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
@@ -89,13 +45,21 @@
             <input type="hidden" name="id" id="archivePcId" />
             <div class="mb-4">
                 <label class="block text-xs text-gray-500 mb-1">Reason</label>
-                <select name="reason" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+                <select id="archiveReasonSelect" onchange="onArchiveReasonChange()"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
                     <option value="">Select reason...</option>
                     <option value="Damaged">Damaged</option>
                     <option value="For Repair">For Repair</option>
                     <option value="Decommissioned">Decommissioned</option>
                     <option value="Other">Other</option>
                 </select>
+                <!-- Hidden "Other" text input — shown only when Other is selected -->
+                <div id="archiveOtherWrap" class="hidden mt-2">
+                    <input type="text" id="archiveOtherInput" placeholder="Please specify reason..."
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                </div>
+                <!-- Actual submitted value — merged from select + text field -->
+                <input type="hidden" name="reason" id="archiveReasonFinal" />
             </div>
             <div class="flex gap-3">
                 <button type="button" onclick="document.getElementById('archiveModal').classList.add('hidden')"
@@ -108,10 +72,84 @@
 
 @section Scripts {
 <script>
+// Archive modal
 function showArchiveModal(id, name) {
     document.getElementById('archivePcId').value = id;
     document.getElementById('archivePcLabel').textContent = name;
+    // Reset reason fields
+    document.getElementById('archiveReasonSelect').value = '';
+    document.getElementById('archiveOtherInput').value = '';
+    document.getElementById('archiveOtherWrap').classList.add('hidden');
+    document.getElementById('archiveReasonFinal').value = '';
     document.getElementById('archiveModal').classList.remove('hidden');
+}
+
+function onArchiveReasonChange() {
+    const sel  = document.getElementById('archiveReasonSelect').value;
+    const wrap = document.getElementById('archiveOtherWrap');
+    const inp  = document.getElementById('archiveOtherInput');
+    if (sel === 'Other') {
+        wrap.classList.remove('hidden');
+        setTimeout(() => inp.focus(), 50);
+    } else {
+        wrap.classList.add('hidden');
+        inp.value = '';
+    }
+    document.getElementById('archiveReasonFinal').value = sel === 'Other' ? '' : sel;
+}
+
+// Merge Other text into final hidden field before form submits
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('#archiveModal form');
+    if (!form) return;
+    form.addEventListener('submit', function(e) {
+        const sel = document.getElementById('archiveReasonSelect').value;
+        if (sel === 'Other') {
+            const txt = document.getElementById('archiveOtherInput').value.trim();
+            if (!txt) {
+                e.preventDefault();
+                document.getElementById('archiveOtherInput').focus();
+                document.getElementById('archiveOtherInput').classList.add('border-red-400');
+                return;
+            }
+            document.getElementById('archiveReasonFinal').value = txt;
+        } else {
+            document.getElementById('archiveReasonFinal').value = sel;
+        }
+    });
+});
+
+// Duration badges — ticks elapsed time on in-use PC cards (same as Transaction page)
+function fmtElapsed(startISO) {
+    const s = Math.floor((Date.now() - new Date(startISO)) / 1000);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+}
+function tickBadges() {
+    document.querySelectorAll('.duration-badge').forEach(el => el.textContent = fmtElapsed(el.dataset.start));
+}
+setInterval(tickBadges, 1000);
+tickBadges();
+
+// Availability toggle (same endpoint as Transaction page)
+async function toggleAvailability(computerId, btn) {
+    btn.disabled = true;
+    try {
+        const fd = new FormData();
+        fd.append('id', computerId);
+        fd.append('__RequestVerificationToken', document.querySelector('input[name="__RequestVerificationToken"]').value);
+        const res  = await fetch('@Url.Action("ToggleAvailability","Computer")', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message || 'Could not toggle availability.');
+            btn.disabled = false;
+        }
+    } catch {
+        alert('Server error. Please try again.');
+        btn.disabled = false;
+    }
 }
 </script>
 }
