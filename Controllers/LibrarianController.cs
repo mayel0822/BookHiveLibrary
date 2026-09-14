@@ -735,28 +735,6 @@ namespace BookHiveLibrary.Controllers
             return Json(new { success = true });
         }
 
-        // Marks a student as irregular instead of assigning them to a fixed section.
-        // Irregular students don't belong to a specific class but can still use the library.
-        // The librarian provides the student's course and the Program Head's name as their adviser.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AssignIrregularStudent(string userId, string course, string programHead)
-        {
-            var student = await _userManager.FindByIdAsync(userId);
-            if (student == null)
-                return Json(new { success = false, message = "Student not found." });
-
-            student.IsIrregular  = true;
-            student.Section      = "Irregular";   // So the system knows they are activated
-            student.Course       = course;
-            student.Level        = "Irregular";
-            student.AdviserName  = programHead;   // Program Head acts as their adviser for reminders
-            student.IsActive     = true;
-
-            await _userManager.UpdateAsync(student);
-            return Json(new { success = true });
-        }
-
         // Removes a student from their section and deactivates their account.
         // The student will be logged out automatically on their next action.
         [HttpPost]

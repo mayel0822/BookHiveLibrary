@@ -80,9 +80,6 @@ namespace BookHiveLibrary.Models
         /// </summary>
         public string OutlookEmail { get; set; } = "";
 
-        /// <summary>Adviser's name — for irregular students this is the Program Head's name</summary>
-        public string AdviserName { get; set; } = "";
-
         /// <summary>Adviser's email — used to send overdue book notifications</summary>
         public string AdviserEmail { get; set; } = "";
 
@@ -92,13 +89,6 @@ namespace BookHiveLibrary.Models
         public string Level { get; set; } = "";
 
         public string Course { get; set; } = "";
-
-        /// <summary>
-        /// True if the student is irregular (not enrolled in a fixed section).
-        /// Irregular students are assigned a Program Head as their adviser instead of a class adviser.
-        /// They can still use the library normally — borrow books, reserve, etc.
-        /// </summary>
-        public bool IsIrregular { get; set; } = false;
 
         // ── Profile ───────────────────────────────────────────────────────────
 

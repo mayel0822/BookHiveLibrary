@@ -184,12 +184,10 @@ namespace BookHiveLibrary.Controllers
                     ? RedirectToAction("BookDetail", new { id = bookId })
                     : RedirectToAction("BookViewing");
 
-            // Check 1: The student must be assigned to a section OR be marked as irregular.
-            // Regular students need the librarian to assign them a section first.
-            // Irregular students have IsIrregular = true instead of a fixed section.
-            bool hasSection  = !string.IsNullOrEmpty(student.Section);
-            bool isIrregular = student.IsIrregular;
-            if (!hasSection && !isIrregular)
+            // Check 1: The student must be assigned to a section.
+            // The librarian must assign a section before a student can reserve.
+            bool hasSection = !string.IsNullOrEmpty(student.Section);
+            if (!hasSection)
             {
                 TempData["Error"] = "You must be assigned to a section before making a reservation. Please contact the librarian.";
                 return RedirectBack(returnToDetail);
