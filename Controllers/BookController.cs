@@ -54,32 +54,35 @@ namespace BookHiveLibrary.Controllers
             ViewBag.Search     = search;
             ViewBag.Category   = category;
             ViewBag.Categories = categories;
-
-            // Stat cards — same rule on every book page:
-            //   Total    = SUM(TotalQuantity) non-archived
-            //   Borrowed = PickedUp or Overdue reservations only (Approved/Pending = still Available)
-            //   Available = Total − Borrowed
-            ViewBag.TotalBooks     = await _context.Books.Where(b => !b.IsArchived).SumAsync(b => (int?)b.TotalQuantity) ?? 0;
-            ViewBag.BorrowedBooks  = await _context.BookReservations.CountAsync(r => r.Status == "PickedUp" || r.Status == "Overdue");
-            ViewBag.AvailableBooks = (int)ViewBag.TotalBooks - (int)ViewBag.BorrowedBooks;
-            ViewBag.ArchivedBooks  = await _context.Books.CountAsync(b => b.IsArchived);
+            await LoadBookStats();
 
             return View(books);
+        }
+
+        // Stat card rules (same on every book page — Index, Register, and Register's
+        // own re-render on a validation failure):
+        //   Total    = SUM(TotalQuantity) of non-archived books
+        //   Borrowed = reservations physically picked up and not yet returned (PickedUp or Overdue)
+        //              Approved/Pending do NOT count — if student never picks up, it becomes Void and stays Available
+        //   Available = Total − Borrowed  (derived, never from AvailableQuantity field)
+        //
+        // Pulled into one place because it was copy-pasted at every call site — the
+        // POST Register action below used to skip this entirely on its "duplicate
+        // title" validation failure, re-rendering the same view with all four stat
+        // cards blank since nothing had ever set them for that code path.
+        private async Task LoadBookStats()
+        {
+            ViewBag.TotalBooks     = await _context.Books.Where(book => !book.IsArchived).SumAsync(book => (int?)book.TotalQuantity) ?? 0;
+            ViewBag.BorrowedBooks  = await _context.BookReservations.CountAsync(r => r.Status == "PickedUp" || r.Status == "Overdue");
+            ViewBag.AvailableBooks = (int)ViewBag.TotalBooks - (int)ViewBag.BorrowedBooks;
+            ViewBag.ArchivedBooks  = await _context.Books.CountAsync(book => book.IsArchived);
         }
 
         // Shows the form for adding a new book to the library.
         // Also shows summary numbers at the top (total, available, borrowed, archived).
         public async Task<IActionResult> Register()
         {
-            // Stat card rules (same on every page):
-            //   Total    = SUM(TotalQuantity) of non-archived books
-            //   Borrowed = reservations physically picked up and not yet returned (PickedUp or Overdue)
-            //              Approved/Pending do NOT count — if student never picks up, it becomes Void and stays Available
-            //   Available = Total − Borrowed  (derived, never from AvailableQuantity field)
-            ViewBag.TotalBooks     = await _context.Books.Where(book => !book.IsArchived).SumAsync(book => (int?)book.TotalQuantity) ?? 0;
-            ViewBag.BorrowedBooks  = await _context.BookReservations.CountAsync(r => r.Status == "PickedUp" || r.Status == "Overdue");
-            ViewBag.AvailableBooks = (int)ViewBag.TotalBooks - (int)ViewBag.BorrowedBooks;
-            ViewBag.ArchivedBooks  = await _context.Books.CountAsync(book => book.IsArchived);
+            await LoadBookStats();
             return View(new BookFormViewModel());
         }
 
@@ -101,7 +104,11 @@ namespace BookHiveLibrary.Controllers
                     $"\"{model.Title}\" has already been registered. Please add another book.");
             }
 
-            if (!ModelState.IsValid) return View(model);
+            if (!ModelState.IsValid)
+            {
+                await LoadBookStats(); // the view needs these on every render, not just the first GET
+                return View(model);
+            }
 
             // Save uploaded cover image file if provided
             string coverImageUrl = model.CoverImageUrl ?? "";
@@ -384,11 +391,7 @@ namespace BookHiveLibrary.Controllers
         // Shows the list of archived books along with summary stats.
         public async Task<IActionResult> Archive()
         {
-            // Same stat card rules as Register page
-            ViewBag.TotalBooks     = await _context.Books.Where(book => !book.IsArchived).SumAsync(book => (int?)book.TotalQuantity) ?? 0;
-            ViewBag.BorrowedBooks  = await _context.BookReservations.CountAsync(r => r.Status == "PickedUp" || r.Status == "Overdue");
-            ViewBag.AvailableBooks = (int)ViewBag.TotalBooks - (int)ViewBag.BorrowedBooks;
-            ViewBag.ArchivedBooks  = await _context.Books.CountAsync(book => book.IsArchived);
+            await LoadBookStats(); // same stat card rules as every other book page
 
             var archivedBooks = await _context.Books
                 .Where(book => book.IsArchived)
