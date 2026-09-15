@@ -239,8 +239,25 @@ namespace BookHiveLibrary.Controllers
                 return RedirectBack(returnToDetail);
             }
 
-            // Check 7: The student shouldn't be able to reserve the same book twice.
-            var activeStatuses   = new[] { "Pending", "Approved", "PickedUp" };
+            var activeStatuses = new[] { "Pending", "Approved", "PickedUp" };
+
+            // Check 7: cap active reservations at 3 total — matches the librarian's
+            // walk-in borrow limit (BorrowController.MaxBooksPerUser). A reservation
+            // still counts toward this even before pickup, since once picked up it
+            // becomes a borrow; letting reservations stack unbounded would let a
+            // student sidestep the same 3-book policy just by reserving online instead.
+            const int MaxActiveReservations = 3;
+            int activeReservationCount = await _context.BookReservations
+                .CountAsync(reservation => reservation.UserId == student.Id
+                    && activeStatuses.Contains(reservation.Status));
+            if (activeReservationCount >= MaxActiveReservations)
+            {
+                TempData["Error"] = $"You already have {MaxActiveReservations} active reservations. " +
+                    "Please pick up or return a book before reserving another.";
+                return RedirectBack(returnToDetail);
+            }
+
+            // Check 8: the student shouldn't be able to reserve the same book twice.
             var existingReservation = await _context.BookReservations
                 .Where(reservation => reservation.UserId == student.Id
                     && reservation.BookId == bookId

@@ -136,12 +136,20 @@
 
 <!-- Borrowed Books Table -->
 <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
         <h2 class="font-semibold" class="text-gray-900">Borrowed Books</h2>
-        <button onclick="openBorrowModal()" class="btn-primary">+ Borrow Book</button>
+        <div class="flex items-center gap-3 flex-1 justify-end min-w-[200px]">
+            <!-- Find the person returning a book by name or student number.
+                 Filters the table below instantly as you type — no round trip,
+                 since the full list is already rendered on the page. -->
+            <input id="returnSearchInput" type="text" placeholder="Find by name or student number..."
+                   oninput="filterReturnTable()" autocomplete="off"
+                   class="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+            <button onclick="openBorrowModal()" class="btn-primary flex-shrink-0">+ Borrow Book</button>
+        </div>
     </div>
     <div class="overflow-x-auto max-h-[32rem] overflow-y-auto">
-        <table class="bh-table">
+        <table class="bh-table" id="returnTable">
             <thead>
                 <tr>
                     <th>Stud ID</th>
@@ -159,7 +167,8 @@
             <tbody>
                 @foreach (var r in Model)
                 {
-                    <tr class="@(r.Status == "ReturnedLate" ? "bh-selected" : "")">
+                    var searchKey = $"{r.User?.StudentNumber} {r.User?.FirstName} {r.User?.LastName}".ToLower();
+                    <tr class="return-row @(r.Status == "ReturnedLate" ? "bh-selected" : "")" data-search="@searchKey">
                         <td class="px-4 py-3 text-gray-600 text-xs">@r.User?.StudentNumber</td>
                         <td class="px-4 py-3 font-medium text-gray-800">
                             @r.User?.FirstName @r.User?.LastName
@@ -561,6 +570,35 @@ function clearHighlight() {
         r.style.backgroundColor = '';
         r.style.borderLeft = '';
     });
+}
+
+// ── Find the person returning a book (Borrowed Books table) ─────────────
+// Client-side filter — the whole list is already on the page, so this is
+// instant with no server round trip. Matches name or student number.
+function filterReturnTable() {
+    const term = document.getElementById('returnSearchInput').value.trim().toLowerCase();
+    const rows = document.querySelectorAll('#returnTable tbody tr.return-row');
+    let anyVisible = false;
+
+    rows.forEach(row => {
+        const matches = !term || (row.dataset.search || '').includes(term);
+        row.style.display = matches ? '' : 'none';
+        if (matches) anyVisible = true;
+    });
+
+    let emptyRow = document.getElementById('returnSearchEmptyRow');
+    if (!anyVisible && term) {
+        if (!emptyRow) {
+            const tbody = document.querySelector('#returnTable tbody');
+            emptyRow = document.createElement('tr');
+            emptyRow.id = 'returnSearchEmptyRow';
+            emptyRow.innerHTML = '<td colspan="10" class="px-4 py-8 text-center text-gray-400">No matching student found.</td>';
+            tbody.appendChild(emptyRow);
+        }
+        emptyRow.style.display = '';
+    } else if (emptyRow) {
+        emptyRow.style.display = 'none';
+    }
 }
 
 async function lookupRfid(rfid) {
