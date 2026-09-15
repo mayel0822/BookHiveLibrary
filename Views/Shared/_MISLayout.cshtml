@@ -196,9 +196,13 @@ const misConnection = new signalR.HubConnectionBuilder()
     .withAutomaticReconnect()
     .build();
 
-misConnection.start().then(() => {
-    misConnection.invoke("JoinMIS").catch(err => console.error(err));
-}).catch(err => console.error('MIS SignalR error:', err));
+// Group membership is tied to the connection id, so re-join on every reconnect.
+function _joinMIS() {
+    misConnection.invoke("JoinMIS").catch(err => console.error('JoinMIS error:', err));
+}
+
+misConnection.start().then(_joinMIS).catch(err => console.error('MIS SignalR error:', err));
+misConnection.onreconnected(_joinMIS);
 </script>
 
 @await RenderSectionAsync("Scripts", required: false)

@@ -62,9 +62,15 @@ connection.on("KioskTap", function(data) {
     showCard(data);
 });
 
-connection.start().then(() => {
-    connection.invoke("JoinKiosk");
-}).catch(err => console.error(err));
+// Joining the "kiosk" group is tied to the connection id, so it has to be
+// re-done every time the connection comes back — otherwise this screen keeps
+// looking fine but silently stops receiving taps after the first network blip.
+function joinKiosk() {
+    connection.invoke("JoinKiosk").catch(err => console.error('JoinKiosk error:', err));
+}
+
+connection.start().then(joinKiosk).catch(err => console.error(err));
+connection.onreconnected(joinKiosk);
 
 // ── Show tap card ─────────────────────────────────────────────────────────
 function showCard(data) {

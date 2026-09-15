@@ -503,9 +503,16 @@ function dismissFlash(id) {
     });
 })();
 
-window._libConnected = libraryConnection.start().then(() => {
-    libraryConnection.invoke("JoinLibrarian").catch(err => console.error(err));
-}).catch(err => console.error('SignalR error:', err));
+// Group membership is tied to the connection id, so re-join on every reconnect.
+function _joinLibrarian() {
+    libraryConnection.invoke("JoinLibrarian").catch(err => console.error('JoinLibrarian error:', err));
+}
+
+window._libConnected = libraryConnection.start()
+    .then(_joinLibrarian)
+    .catch(err => console.error('SignalR error:', err));
+
+libraryConnection.onreconnected(_joinLibrarian);
 
 // ── Message Panel ────────────────────────────────────────────────────────
 let msgPanelOpen = false;

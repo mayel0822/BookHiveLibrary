@@ -590,10 +590,14 @@ document.getElementById('sm-search').addEventListener('input', function() {
 // Join the transaction SignalR group so DeskRfidTap events are received here.
 // We wait for _libConnected (the layout's start() promise) so the connection
 // is fully open before invoking — otherwise invoke silently fails mid-connect.
+// That promise only resolves once, so we also re-join on every reconnect:
+// group membership is tied to the connection id and is lost when it changes.
 if (typeof libraryConnection !== 'undefined') {
-    (window._libConnected || Promise.resolve()).then(() => {
+    function _joinTransactionSectioning() {
         libraryConnection.invoke('JoinTransaction').catch(err => console.error('JoinTransaction error:', err));
-    });
+    }
+    (window._libConnected || Promise.resolve()).then(_joinTransactionSectioning);
+    libraryConnection.onreconnected(_joinTransactionSectioning);
 
     libraryConnection.on('DeskRfidTap', function(data) {
         const modal    = document.getElementById('sectionStudentsModal');
