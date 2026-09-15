@@ -18,8 +18,9 @@ namespace BookHiveLibrary.Models
         public int BookId { get; set; }
         public Book? Book { get; set; }
 
-        /// <summary>When the student submitted the reservation online</summary>
-        public DateTime ReservationDate { get; set; } = DateTime.Now;
+        /// <summary>When the student submitted the reservation online. Stored as UTC —
+        /// convert with Helpers.PhTime.FromUtc() before displaying to a user.</summary>
+        public DateTime ReservationDate { get; set; } = DateTime.UtcNow;
 
         /// <summary>
         /// Deadline by which the student must physically pick up the book (3-hour window).
@@ -55,6 +56,7 @@ namespace BookHiveLibrary.Models
         /// <summary>Librarian's note (e.g. denial reason, auto-void reason)</summary>
         public string LibrarianRemarks { get; set; } = "";
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        /// <summary>Stored as UTC — convert with Helpers.PhTime.FromUtc() before display.</summary>
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

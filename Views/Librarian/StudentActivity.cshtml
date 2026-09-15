@@ -148,9 +148,9 @@
                                 <td class="px-4 py-3 text-gray-800">@r.User?.FirstName</td>
                                 <td class="px-4 py-3 text-gray-600">@(string.IsNullOrEmpty(r.User?.MiddleName) ? "—" : r.User!.MiddleName![0] + ".")</td>
                                 <td class="px-4 py-3 text-gray-700">@r.Book?.Title</td>
-                                <td class="px-4 py-3 text-gray-600">@r.ReservationDate.ToString("MM/dd/yyyy")</td>
-                                <td class="px-4 py-3 text-gray-600">@(r.DueDate?.ToString("MM/dd/yyyy") ?? "—")</td>
-                                <td class="px-4 py-3 text-gray-600">@(r.ActualReturnDate?.ToString("MM/dd/yyyy") ?? "—")</td>
+                                <td class="px-4 py-3 text-gray-600">@PhTime.FromUtc(r.ReservationDate).ToString("MM/dd/yyyy")</td>
+                                <td class="px-4 py-3 text-gray-600">@(PhTime.FromUtc(r.DueDate)?.ToString("MM/dd/yyyy") ?? "—")</td>
+                                <td class="px-4 py-3 text-gray-600">@(PhTime.FromUtc(r.ActualReturnDate)?.ToString("MM/dd/yyyy") ?? "—")</td>
                                 <td class="px-4 py-3">
                                     @{
                                         var (bg, fg) = r.Status switch {

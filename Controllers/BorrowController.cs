@@ -1,4 +1,5 @@
 using BookHiveLibrary.Data;
+using BookHiveLibrary.Helpers;
 using BookHiveLibrary.Hubs;
 using BookHiveLibrary.Models;
 using Microsoft.AspNetCore.Identity;
@@ -28,21 +29,29 @@ namespace BookHiveLibrary.Controllers
         private static readonly TimeSpan LibraryOpenTime  = new TimeSpan(8, 0, 0);    // 8:00 AM
         private static readonly TimeSpan LibraryCloseTime = new TimeSpan(16, 30, 0);  // 4:30 PM
 
-        // The due date is always 2 days from today at 4:30 PM
+        // The due date is always 2 days from today at 4:30 PM Philippine time.
+        // Computed in PH wall-clock time, then converted to UTC since DueDate is
+        // stored in the database and compared against DateTime.UtcNow elsewhere.
+        // (DateTime.Now/.Today here would silently use the SERVER's clock instead
+        // of PH time — UTC on Azure, so "4:30 PM" would actually land at 4:30 AM
+        // the next day in the Philippines.)
         private static DateTime CalculateDueDate()
         {
-            return DateTime.Today.AddDays(BorrowDays).Date + LibraryCloseTime;
+            DateTime dueDatePh = PhTime.Now.Date.AddDays(BorrowDays) + LibraryCloseTime;
+            return PhTime.ToUtc(dueDatePh);
         }
 
-        // The pickup deadline is 3 hours from now (or from library open time if it's before hours)
+        // The pickup deadline is 3 hours from now (or from library open time if it's before hours).
+        // Same PH-time-then-convert-to-UTC approach as CalculateDueDate above.
         private static DateTime CalculatePickupDeadline()
         {
-            DateTime now       = DateTime.Now;
-            DateTime openToday = DateTime.Today + LibraryOpenTime;
+            DateTime nowPh     = PhTime.Now;
+            DateTime openToday = nowPh.Date + LibraryOpenTime;
 
             // If we're before the library opens, start counting from open time
-            DateTime countFrom = now < openToday ? openToday : now;
-            return countFrom.AddHours(ReservationWindowHours);
+            DateTime countFrom = nowPh < openToday ? openToday : nowPh;
+            DateTime deadlinePh = countFrom.AddHours(ReservationWindowHours);
+            return PhTime.ToUtc(deadlinePh);
         }
 
         private readonly ApplicationDbContext _context;
@@ -109,7 +118,7 @@ namespace BookHiveLibrary.Controllers
         {
             // Step 1: Auto-cancel reservations where the student didn't pick up in time
             var expiredReservations = await _context.BookReservations
-                .Where(reservation => reservation.Status == "Pending" && reservation.PickupDeadline < DateTime.Now)
+                .Where(reservation => reservation.Status == "Pending" && reservation.PickupDeadline < DateTime.UtcNow)
                 .ToListAsync();
 
             foreach (var expired in expiredReservations)
@@ -121,7 +130,7 @@ namespace BookHiveLibrary.Controllers
 
             // Step 2: Mark books as overdue if the due date has already passed
             var overdueBooks = await _context.BookReservations
-                .Where(reservation => reservation.Status == "PickedUp" && reservation.DueDate < DateTime.Now)
+                .Where(reservation => reservation.Status == "PickedUp" && reservation.DueDate < DateTime.UtcNow)
                 .ToListAsync();
 
             foreach (var overdueBook in overdueBooks)
@@ -130,7 +139,7 @@ namespace BookHiveLibrary.Controllers
             if (overdueBooks.Any()) await _context.SaveChangesAsync();
 
             // Step 3: Auto-clear "ReturnedLate" records that are older than 3 days
-            DateTime lateClearCutoff = DateTime.Now.AddDays(-LateReturnClearDays);
+            DateTime lateClearCutoff = DateTime.UtcNow.AddDays(-LateReturnClearDays);
             var oldLateReturns = await _context.BookReservations
                 .Where(reservation => reservation.Status == "ReturnedLate"
                     && reservation.ActualReturnDate < lateClearCutoff)
@@ -155,7 +164,7 @@ namespace BookHiveLibrary.Controllers
                 .ToDictionaryAsync(section => section.SectionName, section => section.AdviserName);
 
             // Books due back within 12 hours that haven't received a reminder yet
-            DateTime reminderCutoff = DateTime.Now.AddHours(ReminderHoursAhead);
+            DateTime reminderCutoff = DateTime.UtcNow.AddHours(ReminderHoursAhead);
             var booksDueForReminder = await _context.BookReservations
                 .Include(reservation => reservation.User)
                 .Include(reservation => reservation.Book)
@@ -251,9 +260,9 @@ namespace BookHiveLibrary.Controllers
                 UserId           = userId,
                 BookId           = bookId,
                 Status           = "PickedUp", // Already in the student's hands
-                ActualPickupTime = DateTime.Now,
+                ActualPickupTime = DateTime.UtcNow,
                 DueDate          = CalculateDueDate(),
-                PickupDeadline   = DateTime.Now
+                PickupDeadline   = DateTime.UtcNow
             };
             _context.BookReservations.Add(newBorrow);
 
@@ -281,7 +290,7 @@ namespace BookHiveLibrary.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SendReminder()
         {
-            DateTime reminderCutoff = DateTime.Now.AddHours(ReminderHoursAhead);
+            DateTime reminderCutoff = DateTime.UtcNow.AddHours(ReminderHoursAhead);
 
             var dueReservations = await _context.BookReservations
                 .Include(reservation => reservation.User)
@@ -403,14 +412,14 @@ namespace BookHiveLibrary.Controllers
             // Look for a pending reservation that hasn't expired yet
             var reservation = await _context.BookReservations
                 .Include(r => r.Book)
-                .Where(r => r.UserId == user.Id && r.Status == "Pending" && r.PickupDeadline >= DateTime.Now)
+                .Where(r => r.UserId == user.Id && r.Status == "Pending" && r.PickupDeadline >= DateTime.UtcNow)
                 .OrderBy(r => r.CreatedAt)
                 .FirstOrDefaultAsync();
 
             if (reservation == null)
                 return Json(new { found = false, message = $"No active reservation found for {user.FirstName} {user.LastName}." });
 
-            TimeSpan timeLeft = reservation.PickupDeadline - DateTime.Now;
+            TimeSpan timeLeft = reservation.PickupDeadline - DateTime.UtcNow;
 
             // Format the middle initial (e.g., "Santos" → "S.")
             string middleInitial = string.IsNullOrEmpty(user.MiddleName) ? "" : user.MiddleName[0] + ".";
@@ -427,7 +436,7 @@ namespace BookHiveLibrary.Controllers
                 level         = user.Level,
                 bookTitle     = reservation.Book?.Title,
                 bookAuthor    = reservation.Book?.Author,
-                reservedAt    = reservation.CreatedAt.ToString("MMM dd, hh:mm tt"),
+                reservedAt    = PhTime.FromUtc(reservation.CreatedAt).ToString("MMM dd, hh:mm tt"),
                 timeLeft      = $"{(int)timeLeft.TotalHours}h {timeLeft.Minutes:D2}m"
             });
         }
@@ -463,7 +472,7 @@ namespace BookHiveLibrary.Controllers
                 BookId          = bookId,
                 Status          = "Pending",
                 PickupDeadline  = CalculatePickupDeadline(),
-                ReservationDate = DateTime.Now
+                ReservationDate = DateTime.UtcNow
             };
             _context.BookReservations.Add(newReservation);
 
@@ -501,7 +510,7 @@ namespace BookHiveLibrary.Controllers
             if (reservation == null) return NotFound();
 
             // If the student waited too long, automatically cancel the reservation
-            bool pickupWindowExpired = reservation.PickupDeadline < DateTime.Now;
+            bool pickupWindowExpired = reservation.PickupDeadline < DateTime.UtcNow;
             if (pickupWindowExpired)
             {
                 reservation.Status           = "Void";
@@ -523,7 +532,7 @@ namespace BookHiveLibrary.Controllers
             }
 
             reservation.Status           = "PickedUp";
-            reservation.ActualPickupTime = DateTime.Now;
+            reservation.ActualPickupTime = DateTime.UtcNow;
             reservation.DueDate          = CalculateDueDate();
             reservation.ReminderSent     = false; // Reset so a reminder can still be sent later
 
@@ -572,7 +581,7 @@ namespace BookHiveLibrary.Controllers
             if (reservation == null) return NotFound();
 
             reservation.Status           = "PickedUp";
-            reservation.ActualPickupTime = DateTime.Now;
+            reservation.ActualPickupTime = DateTime.UtcNow;
             reservation.DueDate          = CalculateDueDate();
             reservation.ReminderSent     = false;
 
@@ -612,7 +621,7 @@ namespace BookHiveLibrary.Controllers
 
             bool returnedLate     = reservation.Status == "Overdue";
             reservation.Status    = returnedLate ? "ReturnedLate" : "Returned";
-            reservation.ActualReturnDate = DateTime.Now;
+            reservation.ActualReturnDate = DateTime.UtcNow;
 
             // Add the copy back to the shelf (but never exceed the total count)
             if (reservation.Book != null)

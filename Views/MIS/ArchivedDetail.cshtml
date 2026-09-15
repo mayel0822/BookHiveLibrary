@@ -177,9 +177,9 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-5 py-3 text-gray-400 text-xs">@(n++)</td>
                         <td class="px-5 py-3 font-medium text-gray-800">@(r.Book?.Title ?? "—")</td>
-                        <td class="px-5 py-3 text-gray-600">@r.ReservationDate.ToString("MMM dd, yyyy")</td>
-                        <td class="px-5 py-3 text-gray-600">@(r.DueDate.HasValue ? r.DueDate.Value.ToString("MMM dd, yyyy") : "—")</td>
-                        <td class="px-5 py-3 text-gray-600">@(r.ActualReturnDate.HasValue ? r.ActualReturnDate.Value.ToString("MMM dd, yyyy") : "—")</td>
+                        <td class="px-5 py-3 text-gray-600">@PhTime.FromUtc(r.ReservationDate).ToString("MMM dd, yyyy")</td>
+                        <td class="px-5 py-3 text-gray-600">@(PhTime.FromUtc(r.DueDate)?.ToString("MMM dd, yyyy") ?? "—")</td>
+                        <td class="px-5 py-3 text-gray-600">@(PhTime.FromUtc(r.ActualReturnDate)?.ToString("MMM dd, yyyy") ?? "—")</td>
                         <td class="px-5 py-3">
                             <span class="px-2 py-1 rounded-full text-xs font-medium
                                 @(r.Status == "Returned" ? "bg-green-100 text-green-700" :

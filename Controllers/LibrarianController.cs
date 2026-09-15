@@ -1,4 +1,5 @@
 using BookHiveLibrary.Data;
+using BookHiveLibrary.Helpers;
 using BookHiveLibrary.Hubs;
 using BookHiveLibrary.Models;
 using Microsoft.AspNetCore.Identity;
@@ -344,7 +345,7 @@ namespace BookHiveLibrary.Controllers
             // Helper: build UTC range from a PHT calendar day
             (DateTime utcStart, DateTime utcEnd) PhtDayToUtcRange(DateTime phtDay)
             {
-                var start = TimeZoneInfo.ConvertTimeToUtc(phtDay.Date, _phZone);
+                var start = PhTime.ToUtc(phtDay.Date);
                 return (start, start.AddDays(1));
             }
 
@@ -525,7 +526,7 @@ namespace BookHiveLibrary.Controllers
                 if (parsedDate.HasValue)
                 {
                     var dayStartPht = parsedDate.Value.Date;
-                    var utcStart    = TimeZoneInfo.ConvertTimeToUtc(dayStartPht, _phZone);
+                    var utcStart    = PhTime.ToUtc(dayStartPht);
                     var utcEnd      = utcStart.AddDays(1);
                     query = query.Where(log => log.TapInTime >= utcStart && log.TapInTime < utcEnd);
                 }
@@ -550,10 +551,8 @@ namespace BookHiveLibrary.Controllers
                     sheet.Cells[rowIndex, 2].Value = $"{log.User?.LastName}, {log.User?.FirstName}";
                     sheet.Cells[rowIndex, 3].Value = log.User?.UserType;
                     sheet.Cells[rowIndex, 4].Value = log.User?.Section;
-                    var tapInPh  = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(log.TapInTime, DateTimeKind.Utc), _phZone);
-                    var tapOutPh = log.TapOutTime.HasValue
-                        ? TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(log.TapOutTime.Value, DateTimeKind.Utc), _phZone)
-                        : (DateTime?)null;
+                    var tapInPh  = PhTime.FromUtc(log.TapInTime);
+                    var tapOutPh = PhTime.FromUtc(log.TapOutTime);
                     sheet.Cells[rowIndex, 5].Value = tapInPh.ToString("MMM d, yyyy h:mm tt");
                     sheet.Cells[rowIndex, 6].Value = tapOutPh?.ToString("MMM d, yyyy h:mm tt") ?? "-";
                 }
@@ -630,13 +629,10 @@ namespace BookHiveLibrary.Controllers
                 .OrderBy(log => log.TapInTime)
                 .ToListAsync();
 
-            TimeZoneInfo phZone = _phZone;
-
             var result = logs.Select(log =>
             {
                 // Convert the stored UTC time to Philippine time for display
-                DateTime tapInPhTime = TimeZoneInfo.ConvertTimeFromUtc(
-                    DateTime.SpecifyKind(log.TapInTime, DateTimeKind.Utc), phZone);
+                DateTime tapInPhTime = PhTime.FromUtc(log.TapInTime);
 
                 return new
                 {
@@ -856,7 +852,7 @@ namespace BookHiveLibrary.Controllers
                     section       = "",
                     profilePic    = user.ProfilePicture ?? "",
                     initial       = firstInitial,
-                    time          = PhTime().ToString("hh:mm tt")
+                    time          = PhTime.Now.ToString("hh:mm tt")
                 };
                 await _hub.Clients.Group("kiosk").SendAsync("KioskTap", incompletePayload);
                 return Ok(new { action = "incomplete", name = $"{user.FirstName} {user.LastName}" });
@@ -894,7 +890,7 @@ namespace BookHiveLibrary.Controllers
                 action,
                 name     = $"{user.FirstName} {user.LastName}",
                 userType = user.UserType,
-                time     = PhTime().ToString("MMM d, h:mm tt")
+                time     = PhTime.Now.ToString("MMM d, h:mm tt")
             };
             var allLibrarians = await _userManager.GetUsersInRoleAsync("Librarian");
             foreach (var librarian in allLibrarians)
@@ -914,26 +910,12 @@ namespace BookHiveLibrary.Controllers
                 section       = user.Section ?? "",
                 profilePic    = user.ProfilePicture ?? "",
                 initial       = userInitial,
-                time          = PhTime().ToString("hh:mm tt"),
+                time          = PhTime.Now.ToString("hh:mm tt"),
                 tapLabel
             };
             await _hub.Clients.Group("kiosk").SendAsync("KioskTap", kioskPayload);
 
             return Ok(new { action, name = $"{user.FirstName} {user.LastName}", userType = user.UserType });
         }
-
-        // ── Philippine Time Helper ────────────────────────────────────────────
-
-        // Gets the Philippine timezone. On Linux servers it's "Asia/Manila", on Windows it's
-        // "Singapore Standard Time" (same timezone, just different name).
-        // Falls back to UTC if neither is found.
-        private static readonly TimeZoneInfo _phZone =
-            TimeZoneInfo.GetSystemTimeZones().FirstOrDefault(zone =>
-                zone.Id == "Asia/Manila" || zone.Id == "Singapore Standard Time")
-            ?? TimeZoneInfo.Utc;
-
-        // Returns the current time in the Philippines.
-        private static DateTime PhTime() =>
-            TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _phZone);
     }
 }

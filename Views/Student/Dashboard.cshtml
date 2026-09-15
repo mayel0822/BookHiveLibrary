@@ -77,12 +77,12 @@
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-bold text-gray-800 truncate">@b.Book?.Title</p>
                                 <p class="text-xs text-gray-500 truncate">@b.Book?.Author</p>
-                                <p class="text-xs text-gray-400 mt-1">Picked up: @b.CreatedAt.ToString("MMM dd, yyyy")</p>
+                                <p class="text-xs text-gray-400 mt-1">Picked up: @PhTime.FromUtc(b.CreatedAt).ToString("MMM dd, yyyy")</p>
                                 @if (b.DueDate.HasValue)
                                 {
-                                    var overdue = b.DueDate.Value < DateTime.Now;
+                                    var overdue = b.DueDate.Value < DateTime.UtcNow;
                                     <p class="text-xs mt-0.5 font-medium @(overdue ? "text-red-500" : "text-emerald-600")">
-                                        Due: @b.DueDate.Value.ToString("MMM dd, yyyy") @(overdue ? "âš  Overdue" : "")
+                                        Due: @PhTime.FromUtc(b.DueDate.Value).ToString("MMM dd, yyyy") @(overdue ? "âš  Overdue" : "")
                                     </p>
                                 }
                             </div>
@@ -148,10 +148,15 @@
                             <span class="@(first.Status == "Approved" ? "bg-green-500" : "bg-yellow-500") text-white text-xs px-3 py-1 rounded-full whitespace-nowrap">@first.Status</span>
                         </div>
                         <div class="border-t border-gray-100 pt-3">
-                            <p class="text-sm text-gray-500 mb-1">Pickup before <span class="text-gray-700 font-medium">@first.PickupDeadline.ToString("MMM dd, yyyy h:mm tt")</span></p>
+                            <p class="text-sm text-gray-500 mb-1">Pickup before <span class="text-gray-700 font-medium">@PhTime.FromUtc(first.PickupDeadline).ToString("MMM dd, yyyy h:mm tt")</span></p>
                             <div class="flex items-center gap-2">
                                 <svg class="w-4 h-4 text-yellow-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <p id="reservationCountdown" data-deadline="@first.PickupDeadline.ToString("o")" class="text-sm font-semibold text-yellow-600"></p>
+                                @* DateTimeKind.Utc is forced explicitly so the "o" format ends in "Z" —
+                                   EF Core reads DateTime columns back as Kind=Unspecified, and without
+                                   the "Z", the browser's `new Date(...)` below would treat this as the
+                                   viewer's OWN local time instead of UTC, throwing the countdown off by
+                                   a full 8 hours for anyone in the Philippines. *@
+                                <p id="reservationCountdown" data-deadline="@DateTime.SpecifyKind(first.PickupDeadline, DateTimeKind.Utc).ToString("o")" class="text-sm font-semibold text-yellow-600"></p>
                             </div>
                         </div>
                     </div>
@@ -177,14 +182,14 @@
                     {
                         @foreach (var item in booksToReturn)
                         {
-                            var overdue = item.DueDate.HasValue && item.DueDate.Value < DateTime.Now;
+                            var overdue = item.DueDate.HasValue && item.DueDate.Value < DateTime.UtcNow;
                             <div class="flex justify-between items-start pb-4 border-b border-gray-100 last:border-b-0">
                                 <div>
                                     <p class="text-gray-900 font-semibold">@item.Book?.Title</p>
                                     <p class="text-sm text-gray-500">@item.Book?.Author</p>
                                     @if (item.DueDate.HasValue)
                                     {
-                                        <p class="text-xs text-gray-400 mt-1">Due Date: @item.DueDate.Value.ToString("MM/dd/yy")</p>
+                                        <p class="text-xs text-gray-400 mt-1">Due Date: @PhTime.FromUtc(item.DueDate.Value).ToString("MM/dd/yy")</p>
                                     }
                                 </div>
                                 @if (overdue)

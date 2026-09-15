@@ -56,10 +56,10 @@
                         foreach (var r in (List<BookReservation>)ViewBag.CurrentBorrowers)
                         {
                             <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-3 text-gray-600">@r.CreatedAt.ToString("MM/dd/yyyy")</td>
+                                <td class="px-4 py-3 text-gray-600">@PhTime.FromUtc(r.CreatedAt).ToString("MM/dd/yyyy")</td>
                                 <td class="px-4 py-3 font-medium text-gray-800">@r.User?.FirstName @r.User?.LastName</td>
                                 <td class="px-4 py-3 text-gray-600">@r.Book?.Title</td>
-                                <td class="px-4 py-3 text-gray-600">@r.DueDate?.ToString("MM/dd/yyyy")</td>
+                                <td class="px-4 py-3 text-gray-600">@PhTime.FromUtc(r.DueDate)?.ToString("MM/dd/yyyy")</td>
                                 <td class="px-4 py-3">
                                     @if (r.Status == "Overdue")
                                     {
@@ -140,7 +140,7 @@
                         <div class="flex items-center gap-3">
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-gray-800 truncate">@r.Book?.Title</p>
-                                <p class="text-xs text-gray-500">@r.User?.FirstName @r.User?.LastName &bull; Due @r.DueDate?.ToString("MM/dd")</p>
+                                <p class="text-xs text-gray-500">@r.User?.FirstName @r.User?.LastName &bull; Due @PhTime.FromUtc(r.DueDate)?.ToString("MM/dd")</p>
                             </div>
                             <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs flex-shrink-0">Due Soon</span>
                         </div>

@@ -78,28 +78,28 @@
             <dl class="grid grid-cols-2 gap-4 text-sm">
                 <div>
                     <dt class="text-gray-500 text-xs">Reserved</dt>
-                    <dd>@Model.ReservationDate.ToString("MMM dd, yyyy hh:mm tt")</dd>
+                    <dd>@PhTime.FromUtc(Model.ReservationDate).ToString("MMM dd, yyyy hh:mm tt")</dd>
                 </div>
                 @if (Model.Status != "Pending" && Model.Status != "Denied")
                 {
                     <div>
                         <dt class="text-gray-500 text-xs">Pickup Deadline</dt>
-                        <dd>@Model.PickupDeadline.ToString("MMM dd, yyyy hh:mm tt")</dd>
+                        <dd>@PhTime.FromUtc(Model.PickupDeadline).ToString("MMM dd, yyyy hh:mm tt")</dd>
                     </div>
                 }
                 @if (Model.ActualPickupTime.HasValue)
                 {
                     <div>
                         <dt class="text-gray-500 text-xs">Picked Up</dt>
-                        <dd>@Model.ActualPickupTime.Value.ToString("MMM dd, yyyy hh:mm tt")</dd>
+                        <dd>@PhTime.FromUtc(Model.ActualPickupTime.Value).ToString("MMM dd, yyyy hh:mm tt")</dd>
                     </div>
                 }
                 @if (Model.DueDate.HasValue)
                 {
                     <div>
                         <dt class="text-gray-500 text-xs">Due Date</dt>
-                        <dd class="@(Model.DueDate < DateTime.Now && Model.Status != "Returned" ? "text-red-600 font-semibold" : "")">
-                            @Model.DueDate.Value.ToString("MMM dd, yyyy hh:mm tt")
+                        <dd class="@(Model.DueDate < DateTime.UtcNow && Model.Status != "Returned" ? "text-red-600 font-semibold" : "")">
+                            @PhTime.FromUtc(Model.DueDate.Value).ToString("MMM dd, yyyy hh:mm tt")
                         </dd>
                     </div>
                 }
@@ -107,7 +107,7 @@
                 {
                     <div>
                         <dt class="text-gray-500 text-xs">Returned</dt>
-                        <dd>@Model.ActualReturnDate.Value.ToString("MMM dd, yyyy hh:mm tt")</dd>
+                        <dd>@PhTime.FromUtc(Model.ActualReturnDate.Value).ToString("MMM dd, yyyy hh:mm tt")</dd>
                     </div>
                 }
                 @if (!string.IsNullOrEmpty(Model.LibrarianRemarks))

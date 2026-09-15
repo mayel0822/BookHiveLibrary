@@ -1,4 +1,5 @@
 using BookHiveLibrary.Data;
+using BookHiveLibrary.Helpers;
 using BookHiveLibrary.Hubs;
 using BookHiveLibrary.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -36,11 +37,17 @@ namespace BookHiveLibrary.Controllers
         // - If it's before the library opens: deadline = library open time + 3 hours
         // - If it's during library hours: deadline = right now + 3 hours (but never past 5 PM)
         // - If it's already past closing time: deadline = 5 PM the next day
+        //
+        // Computed in PH wall-clock time (PhTime.Now/.Date), then converted to UTC
+        // before returning, since PickupDeadline is stored in the database and
+        // compared against DateTime.UtcNow elsewhere. DateTime.Now/.Today here would
+        // silently use the SERVER's clock instead — UTC on Azure — so "5 PM" would
+        // actually land at 5 AM the next day in the Philippines.
         private static DateTime CalculatePickupDeadline()
         {
-            DateTime now          = DateTime.Now;
-            DateTime openToday    = DateTime.Today + LibraryOpenTime;
-            DateTime closeToday   = DateTime.Today + LibraryCloseTime;
+            DateTime now          = PhTime.Now;
+            DateTime openToday    = now.Date + LibraryOpenTime;
+            DateTime closeToday   = now.Date + LibraryCloseTime;
 
             // Start counting from library open time if we're before hours
             DateTime countFrom    = now < openToday ? openToday : now;
@@ -53,9 +60,9 @@ namespace BookHiveLibrary.Controllers
             // If the library is already closed today, deadline moves to closing time tomorrow
             bool libraryIsClosed = now >= closeToday;
             if (libraryIsClosed)
-                deadline = DateTime.Today.AddDays(1) + LibraryCloseTime;
+                deadline = now.Date.AddDays(1) + LibraryCloseTime;
 
-            return deadline;
+            return PhTime.ToUtc(deadline);
         }
 
         // Shows the student's main dashboard page.
@@ -204,8 +211,13 @@ namespace BookHiveLibrary.Controllers
 
             // Check 3: Reservations close at 3:00 PM (2 hours before the library closes at 5 PM).
             // This gives the librarian enough time to prepare and hand over books.
-            DateTime reservationCutoffTime = DateTime.Today + LibraryCloseTime - ReservationCutoff;
-            bool reservationsAreClosed = DateTime.Now >= reservationCutoffTime;
+            //
+            // Compared in PH wall-clock time deliberately — DateTime.Now/.Today here
+            // would use the SERVER's clock instead, which is UTC on Azure, silently
+            // shifting a "3:00 PM" cutoff to 11:00 PM in the Philippines.
+            DateTime nowPh = PhTime.Now;
+            DateTime reservationCutoffTimePh = nowPh.Date + LibraryCloseTime - ReservationCutoff;
+            bool reservationsAreClosed = nowPh >= reservationCutoffTimePh;
             if (reservationsAreClosed)
             {
                 TempData["Error"] = "Reservations are closed after 3:00 PM. Please come back the next library day.";
@@ -279,10 +291,10 @@ namespace BookHiveLibrary.Controllers
             {
                 UserId          = student.Id,
                 BookId          = bookId,
-                ReservationDate = DateTime.Now,
+                ReservationDate = DateTime.UtcNow,
                 PickupDeadline  = CalculatePickupDeadline(),
                 Status          = "Pending",
-                CreatedAt       = DateTime.Now
+                CreatedAt       = DateTime.UtcNow
             };
             _context.BookReservations.Add(newReservation);
             await _context.SaveChangesAsync();
@@ -294,7 +306,7 @@ namespace BookHiveLibrary.Controllers
                 user      = $"{student.FirstName} {student.LastName}",
                 userType  = student.UserType,
                 book      = book.Title,
-                createdAt = DateTime.Now.ToString("MMM d, h:mm tt")
+                createdAt = PhTime.Now.ToString("MMM d, h:mm tt") // displayed to the librarian, so PH time
             };
             foreach (var librarian in allLibrarians)
                 await _hub.Clients.Group($"user-{librarian.Id}").SendAsync("NewReservation", notificationPayload);
@@ -363,7 +375,7 @@ namespace BookHiveLibrary.Controllers
             // the app ever sets (the real in-hand statuses are "PickedUp"/"Overdue" —
             // see BookReservation.Status) — so this query never matched anything and
             // "due soon" reminders never actually appeared here.
-            DateTime threeDaysFromNow = DateTime.Now.AddDays(3);
+            DateTime threeDaysFromNow = DateTime.UtcNow.AddDays(3);
             var booksDueSoon = await _context.BookReservations
                 .Include(reservation => reservation.Book)
                 .Where(reservation => reservation.UserId == student.Id
@@ -380,7 +392,7 @@ namespace BookHiveLibrary.Controllers
                 type    = "reservation",
                 title   = reservation.Book?.Title ?? "Book",
                 message = "Your reservation is pending pickup.",
-                time    = "Pickup by " + reservation.PickupDeadline.ToString("hh:mm tt, MMM dd"),
+                time    = "Pickup by " + PhTime.FromUtc(reservation.PickupDeadline).ToString("hh:mm tt, MMM dd"),
                 label   = "Pending"
             });
 
@@ -388,9 +400,9 @@ namespace BookHiveLibrary.Controllers
             {
                 type    = "due",
                 title   = reservation.Book?.Title ?? "Book",
-                message = reservation.DueDate < DateTime.Now ? "This book is overdue!" : "Due soon.",
-                time    = reservation.DueDate.HasValue ? reservation.DueDate.Value.ToString("MMM dd, yyyy") : "",
-                label   = reservation.DueDate < DateTime.Now ? "Overdue" : "Due Soon"
+                message = reservation.DueDate < DateTime.UtcNow ? "This book is overdue!" : "Due soon.",
+                time    = PhTime.FromUtc(reservation.DueDate)?.ToString("MMM dd, yyyy") ?? "",
+                label   = reservation.DueDate < DateTime.UtcNow ? "Overdue" : "Due Soon"
             });
 
             var allNotifications = reservationItems.Concat(dueItems).ToList();

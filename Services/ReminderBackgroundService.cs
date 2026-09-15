@@ -1,4 +1,5 @@
 using BookHiveLibrary.Data;
+using BookHiveLibrary.Helpers;
 using BookHiveLibrary.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -63,7 +64,11 @@ namespace BookHiveLibrary.Services
             var emailService  = scope.ServiceProvider.GetRequiredService<EmailService>();
             var smsService    = scope.ServiceProvider.GetRequiredService<SmsService>();
 
-            DateTime now                  = DateTime.Now;
+            // DueDate is stored as UTC (see BookReservation.DueDate), so comparisons
+            // here use UtcNow. DateTime.Now happened to equal this by coincidence on
+            // Azure (its OS clock is UTC) — the same code would have been quietly
+            // wrong on a server set to any other timezone.
+            DateTime now                  = DateTime.UtcNow;
             DateTime reminderCutoff       = now.AddHours(ReminderHoursAhead); // 12 hours from now
 
             // ── Step 1: Send "almost due" reminders ───────────────────────────
@@ -87,12 +92,17 @@ namespace BookHiveLibrary.Services
             {
                 try
                 {
+                    // DueDate is stored as UTC — convert to PH time before it goes into
+                    // an email/SMS a student actually reads, or the due time quoted
+                    // back to them is off by 8 hours.
+                    DateTime dueDatePh = PhTime.FromUtc(reservation.DueDate!.Value); // DueDate is DateTime? — .Value is safe here because we filtered for non-null due dates
+
                     // Send an email reminder to the student
                     await emailService.SendReturnReminderAsync(
                         reservation.User!.Email!,
                         reservation.User.FirstName + " " + reservation.User.LastName,
                         reservation.Book!.Title,
-                        reservation.DueDate!.Value); // DueDate is DateTime? — .Value is safe here because we filtered for non-null due dates
+                        dueDatePh);
 
                     // Also send an SMS if the student has a phone number
                     bool studentHasPhone = !string.IsNullOrEmpty(reservation.User.PhoneNumber);
@@ -102,7 +112,7 @@ namespace BookHiveLibrary.Services
                             reservation.User.PhoneNumber!,
                             reservation.User.FirstName + " " + reservation.User.LastName,
                             reservation.Book.Title,
-                            reservation.DueDate!.Value);
+                            dueDatePh);
                     }
 
                     // Mark the reminder as sent so we don't send it again
@@ -149,7 +159,7 @@ namespace BookHiveLibrary.Services
                             reservation.User!.AdviserEmail!,
                             reservation.User.FirstName + " " + reservation.User.LastName,
                             reservation.Book!.Title,
-                            reservation.DueDate!.Value);
+                            PhTime.FromUtc(reservation.DueDate!.Value));
                     }
 
                     _logger.LogInformation(
