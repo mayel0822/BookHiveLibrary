@@ -142,7 +142,8 @@
             <input type="hidden" name="id" id="archiveBookId" />
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-600 mb-1">Reason for archiving</label>
-                <select name="reason" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+                <select id="bookArchiveReasonSelect" onchange="onBookArchiveReasonChange()"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
                     <option value="">Select reason...</option>
                     <option value="Damaged">Damaged</option>
                     <option value="Lost">Lost</option>
@@ -150,6 +151,13 @@
                     <option value="Replaced">Replaced by new edition</option>
                     <option value="Other">Other</option>
                 </select>
+                <!-- Hidden "Other" text input — shown only when Other is selected -->
+                <div id="bookArchiveOtherWrap" class="hidden mt-2">
+                    <input type="text" id="bookArchiveOtherInput" placeholder="Please specify reason..."
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                </div>
+                <!-- Actual submitted value — merged from select + text field -->
+                <input type="hidden" name="reason" id="bookArchiveReasonFinal" />
             </div>
             <div class="flex gap-3">
                 <button type="submit" class="btn-primary flex-1 justify-center">Archive</button>
@@ -163,11 +171,57 @@
 <script>
 function showArchiveModal(id) {
     document.getElementById('archiveBookId').value = id;
+    // Reset reason fields so a previous book's leftover selection/text doesn't
+    // carry over into this one
+    document.getElementById('bookArchiveReasonSelect').value = '';
+    document.getElementById('bookArchiveOtherInput').value = '';
+    document.getElementById('bookArchiveOtherWrap').classList.add('hidden');
+    document.getElementById('bookArchiveReasonFinal').value = '';
     document.getElementById('archiveModal').classList.remove('hidden');
 }
 function closeArchiveModal() {
     document.getElementById('archiveModal').classList.add('hidden');
 }
+
+function onBookArchiveReasonChange() {
+    const sel  = document.getElementById('bookArchiveReasonSelect').value;
+    const wrap = document.getElementById('bookArchiveOtherWrap');
+    const inp  = document.getElementById('bookArchiveOtherInput');
+    if (sel === 'Other') {
+        wrap.classList.remove('hidden');
+        setTimeout(() => inp.focus(), 50);
+    } else {
+        wrap.classList.add('hidden');
+        inp.value = '';
+    }
+    document.getElementById('bookArchiveReasonFinal').value = sel === 'Other' ? '' : sel;
+}
+
+// Merge Other text into the actual submitted field before the form submits
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('archiveForm');
+    if (!form) return;
+    form.addEventListener('submit', function(e) {
+        const sel = document.getElementById('bookArchiveReasonSelect').value;
+        if (!sel) {
+            e.preventDefault();
+            document.getElementById('bookArchiveReasonSelect').focus();
+            return;
+        }
+        if (sel === 'Other') {
+            const txt = document.getElementById('bookArchiveOtherInput').value.trim();
+            if (!txt) {
+                e.preventDefault();
+                document.getElementById('bookArchiveOtherInput').focus();
+                document.getElementById('bookArchiveOtherInput').classList.add('border-red-400');
+                return;
+            }
+            document.getElementById('bookArchiveReasonFinal').value = txt;
+        } else {
+            document.getElementById('bookArchiveReasonFinal').value = sel;
+        }
+    });
+});
 
 function getChecked() {
     return Array.from(document.querySelectorAll('.book-check:checked')).map(c => c.value);
