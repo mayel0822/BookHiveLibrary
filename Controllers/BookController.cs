@@ -1,4 +1,5 @@
 using BookHiveLibrary.Data;
+using BookHiveLibrary.Helpers;
 using BookHiveLibrary.Models;
 using BookHiveLibrary.ViewModels;
 using Microsoft.AspNetCore.Mvc;
@@ -221,12 +222,8 @@ namespace BookHiveLibrary.Controllers
             else
                 book.CoverImageUrl = model.CoverImageUrl ?? "";
 
-            // Count how many copies are currently borrowed (status = PickedUp)
-            int copiesCurrentlyBorrowed = await _context.BookReservations
-                .CountAsync(reservation => reservation.BookId == book.Id && reservation.Status == "PickedUp");
-
-            book.TotalQuantity     = model.TotalQuantity;
-            book.AvailableQuantity = Math.Max(0, model.TotalQuantity - copiesCurrentlyBorrowed);
+            book.TotalQuantity = model.TotalQuantity;
+            await BookAvailability.Recalculate(_context, book); // counts PickedUp AND Overdue
 
             await _context.SaveChangesAsync();
             TempData["Success"] = "Book updated successfully.";

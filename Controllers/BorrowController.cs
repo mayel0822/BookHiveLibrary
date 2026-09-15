@@ -287,8 +287,13 @@ namespace BookHiveLibrary.Controllers
                 return RedirectToAction("Index");
             }
 
-            // Reduce the available count by 1 since one copy is now being taken
-            book.AvailableQuantity -= 1;
+            // Recalculate from scratch (not just -1 off whatever the field currently
+            // holds) so a call here also self-heals any earlier drift in this book's
+            // AvailableQuantity, rather than compounding it. This reservation hasn't
+            // been added yet, so the current count doesn't include it — safe to
+            // subtract 1 for the copy about to be taken.
+            await BookAvailability.Recalculate(_context, book);
+            book.AvailableQuantity = Math.Max(0, book.AvailableQuantity - 1);
             await NotifyOtherReserversIfBookJustRanOut(book, userId);
 
             var newBorrow = new BookReservation
@@ -572,11 +577,14 @@ namespace BookHiveLibrary.Controllers
             reservation.DueDate          = CalculateDueDate();
             reservation.ReminderSent     = false; // Reset so a reminder can still be sent later
 
-            // Subtract one available copy since the student is taking it
+            // Recalculated from scratch rather than -1 off the stored field, so this
+            // self-heals any earlier drift instead of compounding it. reservation.Status
+            // was just changed above but not saved yet, so the recalculated count still
+            // reflects the state before this pickup — safe to subtract 1 for it.
             if (reservation.Book != null)
             {
-                int newAvailableCount               = reservation.Book.AvailableQuantity - 1;
-                reservation.Book.AvailableQuantity  = Math.Max(0, newAvailableCount);
+                await BookAvailability.Recalculate(_context, reservation.Book);
+                reservation.Book.AvailableQuantity = Math.Max(0, reservation.Book.AvailableQuantity - 1);
                 await NotifyOtherReserversIfBookJustRanOut(reservation.Book, reservation.UserId);
             }
 
@@ -649,8 +657,10 @@ namespace BookHiveLibrary.Controllers
 
             if (reservation.Book != null)
             {
-                int newAvailableCount               = reservation.Book.AvailableQuantity - 1;
-                reservation.Book.AvailableQuantity  = Math.Max(0, newAvailableCount);
+                // Recalculated from scratch — see the comment on the same pattern in
+                // Approve() above.
+                await BookAvailability.Recalculate(_context, reservation.Book);
+                reservation.Book.AvailableQuantity = Math.Max(0, reservation.Book.AvailableQuantity - 1);
                 await NotifyOtherReserversIfBookJustRanOut(reservation.Book, reservation.UserId);
             }
 
@@ -686,11 +696,15 @@ namespace BookHiveLibrary.Controllers
             reservation.Status    = returnedLate ? "ReturnedLate" : "Returned";
             reservation.ActualReturnDate = DateTime.UtcNow;
 
-            // Add the copy back to the shelf (but never exceed the total count)
+            // Recalculated from scratch rather than +1 off the stored field. The
+            // status change above isn't saved yet, so this reservation still reads as
+            // PickedUp/Overdue in the database — the recalculated count correctly
+            // still counts it as borrowed, and the +1 accounts for the return itself.
             if (reservation.Book != null)
             {
-                int newAvailableCount              = reservation.Book.AvailableQuantity + 1;
-                reservation.Book.AvailableQuantity = Math.Min(reservation.Book.TotalQuantity, newAvailableCount);
+                await BookAvailability.Recalculate(_context, reservation.Book);
+                reservation.Book.AvailableQuantity =
+                    Math.Min(reservation.Book.TotalQuantity, reservation.Book.AvailableQuantity + 1);
             }
 
             await _context.SaveChangesAsync();
