@@ -23,6 +23,7 @@ namespace BookHiveLibrary.Hubs
     //   UnregisteredRfidTap     — An unknown RFID card was scanned
     //   ReceiveMessage          — A new chat message was sent to this user
     //   MessageUnsent           — A previously sent message was unsent
+    //   BookAvailabilityChanged — A book's available copy count changed (pickup/return)
     public class LibraryHub : Hub
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -46,6 +47,15 @@ namespace BookHiveLibrary.Hubs
                 {
                     string personalGroup = $"user-{user.Id}";
                     await Groups.AddToGroupAsync(Context.ConnectionId, personalGroup);
+
+                    // Students and professors auto-join "students" so the server can
+                    // broadcast catalog-wide changes (e.g. a book running out of copies)
+                    // to everyone browsing, not just whoever's own reservation changed.
+                    // Done here (not via an explicit Join call from the page) so it can't
+                    // be lost on reconnect the way group joins tied to a client invoke can.
+                    bool isStudentOrProfessor = user.UserType == "Student" || user.UserType == "Professor";
+                    if (isStudentOrProfessor)
+                        await Groups.AddToGroupAsync(Context.ConnectionId, "students");
                 }
             }
 

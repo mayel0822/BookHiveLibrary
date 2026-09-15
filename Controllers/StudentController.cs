@@ -341,12 +341,16 @@ namespace BookHiveLibrary.Controllers
                 .Take(10)
                 .ToListAsync();
 
-            // Books they currently have borrowed that are due back within 3 days
+            // Books they currently have borrowed that are due back within 3 days.
+            // NOTE: this previously checked Status == "Borrowed", a value nothing in
+            // the app ever sets (the real in-hand statuses are "PickedUp"/"Overdue" —
+            // see BookReservation.Status) — so this query never matched anything and
+            // "due soon" reminders never actually appeared here.
             DateTime threeDaysFromNow = DateTime.Now.AddDays(3);
             var booksDueSoon = await _context.BookReservations
                 .Include(reservation => reservation.Book)
                 .Where(reservation => reservation.UserId == student.Id
-                    && reservation.Status == "Borrowed"
+                    && (reservation.Status == "PickedUp" || reservation.Status == "Overdue")
                     && reservation.DueDate != null
                     && reservation.DueDate <= threeDaysFromNow)
                 .OrderBy(reservation => reservation.DueDate)

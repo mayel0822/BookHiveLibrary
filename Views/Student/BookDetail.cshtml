@@ -136,3 +136,17 @@
     </div>
 </div>
 
+@section Scripts {
+<script>
+// If THIS book's copy count changes while the student is looking at it —
+// someone else picks it up, or a copy gets returned — reload so the
+// Available/Not Available badge and Reserve button reflect it immediately,
+// instead of staying stale until a manual refresh.
+if (typeof stuConnection !== 'undefined') {
+    stuConnection.on('BookAvailabilityChanged', function(data) {
+        if (data.bookId === @Model.Id) location.reload();
+    });
+}
+</script>
+}
+

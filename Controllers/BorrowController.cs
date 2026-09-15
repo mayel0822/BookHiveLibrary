@@ -263,6 +263,12 @@ namespace BookHiveLibrary.Controllers
             await PushBookEvent("BookTransactionUpdated",
                 new { action = "PickedUp", book = book.Title, user = studentName }, userId);
 
+            // Broadcast to every logged-in student/professor (not just this one) so
+            // anyone browsing the catalog sees the copy count update, instead of the
+            // book staying stuck at "Available" until they happen to refresh.
+            await _hub.Clients.Group("students").SendAsync("BookAvailabilityChanged",
+                new { bookId = book.Id, availableQuantity = book.AvailableQuantity });
+
             TempData["Success"] = $"Book \"{book.Title}\" borrowed by {studentName}. Due in {BorrowDays} days.";
             return RedirectToAction("Index");
         }
@@ -580,6 +586,12 @@ namespace BookHiveLibrary.Controllers
             await PushBookEvent("BookTransactionUpdated",
                 new { action = "PickedUp", book = reservation.Book?.Title }, reservation.UserId);
 
+            if (reservation.Book != null)
+            {
+                await _hub.Clients.Group("students").SendAsync("BookAvailabilityChanged",
+                    new { bookId = reservation.Book.Id, availableQuantity = reservation.Book.AvailableQuantity });
+            }
+
             TempData["Success"] = $"Book picked up. Due date: {reservation.DueDate:MMM dd, yyyy}.";
             return RedirectToAction("Index", new { tab = "Active" });
         }
@@ -612,6 +624,12 @@ namespace BookHiveLibrary.Controllers
             await _context.SaveChangesAsync();
             await PushBookEvent("BookTransactionUpdated",
                 new { action = "Returned", book = reservation.Book?.Title }, reservation.UserId);
+
+            if (reservation.Book != null)
+            {
+                await _hub.Clients.Group("students").SendAsync("BookAvailabilityChanged",
+                    new { bookId = reservation.Book.Id, availableQuantity = reservation.Book.AvailableQuantity });
+            }
 
             TempData["Success"] = returnedLate
                 ? "Book returned late. The record will be cleared after 3 days."

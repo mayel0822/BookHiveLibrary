@@ -117,3 +117,17 @@
 
 </div>
 
+@section Scripts {
+<script>
+// A book's availability (quantity, borrowed/returned) can change while ANY
+// student has this page open — broadcast to everyone browsing, not just the
+// one whose own reservation changed. Otherwise a book that just ran out keeps
+// showing "Available" here until someone happens to manually refresh.
+// The search/category filter survives the reload since this is a plain GET
+// form (query string in the URL).
+if (typeof stuConnection !== 'undefined') {
+    stuConnection.on('BookAvailabilityChanged', function() { location.reload(); });
+}
+</script>
+}
+

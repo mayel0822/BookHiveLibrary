@@ -689,5 +689,10 @@ async function sendChatMsg() {
         </div><!-- end two-column body -->
     </div>
 </div>
+
+@* Lets child views (e.g. BookViewing, BookDetail) add their own <script> that runs
+   after stuConnection above is declared — a plain inline script in the body would
+   run too early, since @RenderBody() is placed before this layout's own script. *@
+@await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
