@@ -89,6 +89,17 @@ namespace BookHiveLibrary.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(BookFormViewModel model, IFormFile? coverImageFile)
         {
+            // Block exact-title duplicates (case-insensitive) among active books.
+            // Archived books don't count — a librarian may legitimately re-add a
+            // title that was previously archived.
+            bool titleAlreadyExists = await _context.Books.AnyAsync(book =>
+                !book.IsArchived && book.Title.ToLower() == model.Title.ToLower());
+            if (titleAlreadyExists)
+            {
+                ModelState.AddModelError(nameof(model.Title),
+                    $"\"{model.Title}\" has already been registered. Please add another book.");
+            }
+
             if (!ModelState.IsValid) return View(model);
 
             // Save uploaded cover image file if provided
@@ -176,6 +187,16 @@ namespace BookHiveLibrary.Controllers
         [HttpPost]
         public async Task<IActionResult> Edit(BookFormViewModel model, IFormFile? coverImageFile)
         {
+            // Same duplicate-title guard as Register, but excluding this book's own
+            // existing record so saving without changing the title doesn't false-positive.
+            bool titleAlreadyExists = await _context.Books.AnyAsync(book =>
+                book.Id != model.Id && !book.IsArchived && book.Title.ToLower() == model.Title.ToLower());
+            if (titleAlreadyExists)
+            {
+                ModelState.AddModelError(nameof(model.Title),
+                    $"\"{model.Title}\" has already been registered. Please add another book.");
+            }
+
             if (!ModelState.IsValid) return View(model);
 
             var book = await _context.Books.FindAsync(model.Id);

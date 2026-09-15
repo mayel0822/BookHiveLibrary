@@ -80,10 +80,15 @@
     color: #000;
   }
 
-  /* TABLE WRAPPER */
+  /* TABLE WRAPPER
+     Fixed panel height with its own scrollbar, so a long table never pushes
+     the rest of the page down — the header row stays visible while the body
+     scrolls inside the panel. Override max-height per-page with an inline
+     style or a utility class when a table needs a different size. */
   .bh-table-wrap {
-    @apply overflow-x-auto rounded-xl;
+    @apply overflow-x-auto overflow-y-auto rounded-xl;
     border: 1px solid #C7D2FE;
+    max-height: 32rem; /* ~512px */
   }
 
   /* TABLE ELEMENT */
@@ -105,7 +110,11 @@
   }
   .bh-table thead th {
     @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-black;
+    background-color: #ffffff; /* opaque so the sticky header masks rows scrolling beneath it */
     border-bottom: 2px solid #C7D2FE;
+    position: sticky;
+    top: 0;
+    z-index: 1;
   }
 
   /* BODY ROWS */
