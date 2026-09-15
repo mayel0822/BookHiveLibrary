@@ -17,10 +17,22 @@ namespace BookHiveLibrary.ViewModels
 
         public string GradeLevel { get; set; } = "";
 
-        [Required]
+        // Digits only. Note: this is a deliberate change from the free-form call
+        // numbers the Book model's own doc comment used as an example
+        // ("REF 620 B12") — if the library actually uses a classification scheme
+        // like Dewey/LC rather than plain sequential numbering, this needs
+        // loosening. Only affects new registrations; existing non-numeric call
+        // numbers already in the database aren't touched by this.
+        [Required(ErrorMessage = "Call No. is required.")]
+        [RegularExpression(@"^[0-9]+$", ErrorMessage = "Call No. must contain digits only.")]
         public string CallNumber { get; set; } = "";
 
+        // Optional — no [Required], and the field's own "e.g. ..." placeholder
+        // signals it's a hint, not a requirement — so empty is allowed, but if
+        // something is entered it must look like an ISBN: digits and hyphens only,
+        // matching the "978-3-16-148410-0" format shown in that placeholder.
         [Display(Name = "ISBN")]
+        [RegularExpression(@"^[0-9\-]*$", ErrorMessage = "ISBN must contain only digits and hyphens (e.g. 978-3-16-148410-0).")]
         public string ISBN { get; set; } = "";
 
         [Required]
@@ -31,7 +43,10 @@ namespace BookHiveLibrary.ViewModels
         [Display(Name = "Cover Image URL")]
         public string CoverImageUrl { get; set; } = "";
 
+        // Optional, same reasoning as ISBN above. When provided, must be a plain
+        // 4-digit year — not a range, not "circa", not text.
         [Display(Name = "Published Year")]
+        [RegularExpression(@"^([0-9]{4})?$", ErrorMessage = "Published Year must be a 4-digit year (e.g. 2023).")]
         public string PublishedYear { get; set; } = "";
 
         [Range(1, 1000)]

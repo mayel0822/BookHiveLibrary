@@ -126,18 +126,24 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Call No.</label>
-                        <input type="text" asp-for="CallNumber" required
+                        <input type="text" asp-for="CallNumber" required inputmode="numeric" maxlength="20"
+                               oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                        <span asp-validation-for="CallNumber" class="text-red-500 text-xs"></span>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">ISBN</label>
-                        <input type="text" asp-for="ISBN" placeholder="e.g. 978-3-16-148410-0"
+                        <input type="text" asp-for="ISBN" placeholder="e.g. 978-3-16-148410-0" inputmode="numeric" maxlength="17"
+                               oninput="this.value = this.value.replace(/[^0-9\-]/g, '')"
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                        <span asp-validation-for="ISBN" class="text-red-500 text-xs"></span>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Published Year</label>
-                        <input type="text" asp-for="PublishedYear" placeholder="e.g. 2023"
+                        <input type="text" asp-for="PublishedYear" placeholder="e.g. 2023" inputmode="numeric" maxlength="4"
+                               oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                        <span asp-validation-for="PublishedYear" class="text-red-500 text-xs"></span>
                     </div>
                 </div>
                 <!-- BookFor is driven by the Professor Only checkbox below; default = Student -->
