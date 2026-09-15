@@ -139,9 +139,13 @@
     </div>
 </div>
 
-<!-- Borrowed Books Table -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-100">
-    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+<!-- Borrowed Books Table — same fixed-height card pattern as the two panels
+     above: max-height on the OUTER card (not just the inner table wrapper), so
+     the whole box has one predictable size instead of growing to whatever the
+     header row plus table happen to need. Header stays pinned via flex-shrink-0;
+     only the table body scrolls, in the flex-1 area beneath it. -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="max-height:32rem;">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap flex-shrink-0">
         <h2 class="font-semibold" class="text-gray-900">Borrowed Books</h2>
         <div class="flex items-center gap-3 flex-1 justify-end min-w-[200px]">
             <!-- Find the person returning a book by name or student number.
@@ -153,7 +157,7 @@
             <button onclick="openBorrowModal()" class="btn-primary flex-shrink-0">+ Borrow Book</button>
         </div>
     </div>
-    <div class="overflow-x-auto max-h-[32rem] overflow-y-auto">
+    <div class="flex-1 overflow-auto">
         <table class="bh-table" id="returnTable">
             <thead>
                 <tr>
