@@ -144,7 +144,7 @@
                     <div class="flex items-center gap-3">
                         <svg class="w-4 h-4 text-gray-300 group-hover:text-blue-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                         <form method="post" action="@Url.Action("DeleteSection","Librarian")"
-                              onsubmit="event.stopPropagation(); return confirm('Delete this section?')" onclick="event.stopPropagation()">
+                              onsubmit="return bhConfirmSubmit(event, 'Delete this section?')" onclick="event.stopPropagation()">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@s.Id" />
                             <button type="submit" class="text-red-400 hover:text-red-600">
@@ -182,7 +182,7 @@
         <p class="text-sm text-gray-400 mb-5">Select which level to reset. This will delete all sections under that level.</p>
 
         <form method="post" action="@Url.Action("DeleteAllSections","Librarian")"
-              onsubmit="return confirm('Reset all sections for the selected level? This cannot be undone.')">
+              onsubmit="return bhConfirmSubmit(event, 'Reset all sections for the selected level? This cannot be undone.')">
             @Html.AntiForgeryToken()
 
             <div class="space-y-3 mb-6">
@@ -616,7 +616,7 @@ if (typeof libraryConnection !== 'undefined') {
 }
 
 async function removeStudent(userId, name, btnEl) {
-    if (!confirm('Remove ' + name + ' from this section? This will deactivate their RFID card.')) return;
+    if (!await bhConfirm('Remove ' + name + ' from this section? This will deactivate their RFID card.')) return;
     btnEl.disabled = true;
     try {
         const res  = await fetch('/Librarian/RemoveStudentFromSection', {

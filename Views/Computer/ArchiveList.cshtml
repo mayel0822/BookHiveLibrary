@@ -55,7 +55,7 @@
                                     class="px-4 py-1.5 bg-green-500 text-white rounded text-xs hover:bg-green-600">Restore</button>
                         </form>
                         <form method="post" action="@Url.Action("Delete","Computer")"
-                              onsubmit="return confirm('Permanently delete @pc.ComputerNumber?')">
+                              onsubmit="return bhConfirmSubmit(event, 'Permanently delete @pc.ComputerNumber?')">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@pc.Id" />
                             <button type="submit"

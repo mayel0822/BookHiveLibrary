@@ -249,7 +249,65 @@
     </main>
 </div>
 
+<!-- Reusable confirmation dialog (bhConfirm()) — styled replacement for the
+     browser's native confirm(), same look as the End Session dialog on the
+     Transaction page. One shared instance; content is swapped in per call. -->
+<div id="bhConfirmModal" class="fixed inset-0 bg-black/40 flex items-center justify-center z-[9999] hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-80 mx-4 overflow-hidden">
+        <div class="px-6 pt-6 pb-4 text-center">
+            <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
+                <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                </svg>
+            </div>
+            <h3 id="bhConfirmTitle" class="text-base font-bold text-gray-900 mb-1">Are you sure?</h3>
+            <p id="bhConfirmMessage" class="text-sm text-gray-500"></p>
+        </div>
+        <div class="px-6 pb-5 flex gap-3">
+            <button id="bhConfirmCancelBtn" type="button" class="flex-1 px-4 py-2.5 text-sm font-medium border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition">Cancel</button>
+            <button id="bhConfirmYesBtn" type="button" class="flex-1 px-4 py-2.5 text-sm font-semibold text-white rounded-xl bg-red-500 hover:bg-red-600 transition">Confirm</button>
+        </div>
+    </div>
+</div>
+
 <script>
+// Promise-based replacement for window.confirm() — resolves true/false once
+// the user picks a button, styled to match the rest of the app instead of
+// the browser's native (and unstyleable) confirm dialog.
+//   const ok = await bhConfirm('Delete this section?');
+function bhConfirm(message, title) {
+    return new Promise(resolve => {
+        const modal = document.getElementById('bhConfirmModal');
+        document.getElementById('bhConfirmTitle').textContent   = title || 'Are you sure?';
+        document.getElementById('bhConfirmMessage').textContent = message || '';
+        modal.classList.remove('hidden');
+
+        const yesBtn    = document.getElementById('bhConfirmYesBtn');
+        const cancelBtn = document.getElementById('bhConfirmCancelBtn');
+
+        function cleanup(result) {
+            modal.classList.add('hidden');
+            yesBtn.onclick = null;
+            cancelBtn.onclick = null;
+            resolve(result);
+        }
+        yesBtn.onclick    = () => cleanup(true);
+        cancelBtn.onclick = () => cleanup(false);
+    });
+}
+
+// Helper for a <form onsubmit="return bhConfirmSubmit(event, '...')"> —
+// blocks the native submit, shows bhConfirm, then submits the form for real
+// if the user confirms. Needed because a form's onsubmit must return
+// true/false immediately, which an async dialog can't do directly.
+function bhConfirmSubmit(event, message, title) {
+    event.preventDefault();
+    event.stopPropagation();
+    const form = event.target;
+    bhConfirm(message, title).then(ok => { if (ok) form.submit(); });
+    return false;
+}
+
 function toggleLibSidebar() {
     const sidebar  = document.getElementById('lib-sidebar');
     const backdrop = document.getElementById('lib-backdrop');
