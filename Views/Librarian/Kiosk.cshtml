@@ -18,6 +18,7 @@
 <body class="m-0 font-sans overflow-hidden" style="background:#000147;">
 
 <div id="clock" class="fixed top-6 right-8 font-mono text-lg" style="color:rgba(255,255,255,.3);"></div>
+<div id="netDot" class="fixed top-7 left-8 rounded-full" style="width:9px;height:9px;background:#ef4444;transition:background .3s;" title="Connecting…"></div>
 <div id="progressBar" class="fixed bottom-0 left-0 h-1 w-full bg-blue-400 origin-left" style="transform:scaleX(0)"></div>
 
 <!-- Idle screen -->
@@ -51,26 +52,92 @@ setInterval(updateClock, 1000);
 updateClock();
 
 // ── SignalR ──────────────────────────────────────────────────────────────
+// This screen is unattended and runs for weeks at the library door, so it has
+// to heal itself from every outage without anyone touching it.
+//
+// Deliberately NOT reloading the page on failure: a reload during an outage
+// lands on the browser's "can't reach this site" page, which has no script
+// left to retry, and the kiosk would stay stuck there until staff noticed.
+// Staying loaded and retrying the connection forever always recovers.
 let clearTimer = null;
 
 const connection = new signalR.HubConnectionBuilder()
     .withUrl("/hubs/library")
-    .withAutomaticReconnect()
+    // The default policy gives up after 4 attempts (~42s). A router reboot,
+    // an Azure restart or an overnight outage all outlast that, so retry
+    // forever instead — quickly at first, then settling at 5s.
+    .withAutomaticReconnect({
+        nextRetryDelayInMilliseconds: ctx => {
+            if (ctx.elapsedMilliseconds < 10000) return 1000;
+            if (ctx.elapsedMilliseconds < 60000) return 3000;
+            return 5000;
+        }
+    })
     .build();
 
 connection.on("KioskTap", function(data) {
     showCard(data);
 });
 
+// A dim green dot means live; red means reconnecting. The idle screen looks
+// identical either way, so without this nobody can tell a dead kiosk from a
+// working one that simply hasn't been tapped yet.
+function setConnected(ok) {
+    const dot = document.getElementById('netDot');
+    dot.style.background = ok ? 'rgba(134,239,172,.5)' : '#ef4444';
+    dot.title = ok ? 'Connected' : 'Reconnecting…';
+}
+
 // Joining the "kiosk" group is tied to the connection id, so it has to be
 // re-done every time the connection comes back — otherwise this screen keeps
 // looking fine but silently stops receiving taps after the first network blip.
 function joinKiosk() {
-    connection.invoke("JoinKiosk").catch(err => console.error('JoinKiosk error:', err));
+    connection.invoke("JoinKiosk")
+        .then(() => setConnected(true))
+        .catch(err => console.error('JoinKiosk error:', err));
 }
 
-connection.start().then(joinKiosk).catch(err => console.error(err));
+// Retries until the first connection succeeds. The library PC usually boots
+// before the Azure app is awake, and a plain start().catch() would leave the
+// screen dead for the rest of the day.
+function startConnection() {
+    connection.start()
+        .then(joinKiosk)
+        .catch(err => {
+            console.error('SignalR start failed, retrying in 5s:', err);
+            setConnected(false);
+            setTimeout(startConnection, 5000);
+        });
+}
+
+connection.onreconnecting(() => setConnected(false));
 connection.onreconnected(joinKiosk);
+// Reached only if the retry policy is exhausted or the connection is closed
+// outright — start the whole cycle again rather than giving up.
+connection.onclose(() => {
+    setConnected(false);
+    setTimeout(startConnection, 5000);
+});
+
+startConnection();
+
+// ── Keep the display awake ───────────────────────────────────────────────
+// Stops the monitor blanking by itself. The lock is dropped whenever the OS
+// blanks the screen or the tab is hidden, so it's re-requested on return.
+let wakeLock = null;
+function requestWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    navigator.wakeLock.request('screen')
+        .then(lock => {
+            wakeLock = lock;
+            lock.addEventListener('release', () => { wakeLock = null; });
+        })
+        .catch(err => console.warn('Wake lock unavailable:', err));
+}
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && wakeLock === null) requestWakeLock();
+});
+requestWakeLock();
 
 // ── Show tap card ─────────────────────────────────────────────────────────
 function showCard(data) {
