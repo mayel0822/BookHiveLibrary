@@ -85,6 +85,41 @@ namespace BookHiveLibrary.Controllers
                 await _hub.Clients.Group($"user-{studentUserId}").SendAsync(eventName, payload);
         }
 
+        // Call right after a pickup decrements a book's AvailableQuantity. If that
+        // pickup was the LAST copy, everyone else still waiting on a Pending
+        // reservation for the same book gets notified — it's first-come-first-served
+        // at pickup, not at reservation time, so a student who reserved early can
+        // still lose out to someone who reserves later but arrives to collect first.
+        // Without this, a waiting student has no way to know their reservation just
+        // became effectively stuck until a copy is returned.
+        private async Task NotifyOtherReserversIfBookJustRanOut(Book book, string pickedUpByUserId)
+        {
+            if (book.AvailableQuantity > 0) return; // copies remain — nobody else is affected
+
+            var otherWaitingReservations = await _context.BookReservations
+                .Where(r => r.BookId == book.Id
+                    && r.Status == "Pending"
+                    && r.UserId != pickedUpByUserId)
+                .Select(r => r.UserId)
+                .Distinct()
+                .ToListAsync();
+
+            foreach (var waitingUserId in otherWaitingReservations)
+            {
+                _context.StudentNotifications.Add(new StudentNotification
+                {
+                    UserId  = waitingUserId,
+                    Type    = "Unavailable",
+                    Title   = book.Title,
+                    Message = "This book just ran out of copies while your reservation was pending. " +
+                              "You'll still be considered once a copy is returned, but it's no longer " +
+                              "guaranteed — first to arrive and pick up gets it.",
+                });
+            }
+            // Caller is expected to SaveChangesAsync() afterward (already about to,
+            // alongside the pickup itself).
+        }
+
         // Loads the dropdowns used in the walk-in borrow form:
         //   - List of active students/professors
         //   - List of books that still have copies available
@@ -254,6 +289,7 @@ namespace BookHiveLibrary.Controllers
 
             // Reduce the available count by 1 since one copy is now being taken
             book.AvailableQuantity -= 1;
+            await NotifyOtherReserversIfBookJustRanOut(book, userId);
 
             var newBorrow = new BookReservation
             {
@@ -541,11 +577,18 @@ namespace BookHiveLibrary.Controllers
             {
                 int newAvailableCount               = reservation.Book.AvailableQuantity - 1;
                 reservation.Book.AvailableQuantity  = Math.Max(0, newAvailableCount);
+                await NotifyOtherReserversIfBookJustRanOut(reservation.Book, reservation.UserId);
             }
 
             await _context.SaveChangesAsync();
             await PushBookEvent("BookTransactionUpdated",
                 new { action = "PickedUp", book = reservation.Book?.Title, user = reservation.UserId }, reservation.UserId);
+
+            if (reservation.Book != null)
+            {
+                await _hub.Clients.Group("students").SendAsync("BookAvailabilityChanged",
+                    new { bookId = reservation.Book.Id, availableQuantity = reservation.Book.AvailableQuantity });
+            }
 
             TempData["Success"] = $"Book granted. Due date: {reservation.DueDate:MMM dd, yyyy}.";
             return RedirectToAction("Index");
@@ -556,11 +599,30 @@ namespace BookHiveLibrary.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Deny(int id, string? remarks)
         {
-            var reservation = await _context.BookReservations.FindAsync(id);
+            var reservation = await _context.BookReservations
+                .Include(r => r.Book)
+                .FirstOrDefaultAsync(r => r.Id == id);
             if (reservation == null) return NotFound();
 
             reservation.Status           = "Denied";
             reservation.LibrarianRemarks = remarks ?? "";
+
+            // Persisted so the student actually sees this — before this, a denial
+            // produced no notification at all: it's not covered by the "pending
+            // pickup" or "due soon" reminders (those are for still-active
+            // reservations), and the live page reload on BookTransactionUpdated
+            // only helps if the student happens to be on the Dashboard at that exact
+            // moment. Unlike those, this doesn't disappear once read — it just stops
+            // counting toward the unread badge.
+            _context.StudentNotifications.Add(new StudentNotification
+            {
+                UserId  = reservation.UserId,
+                Type    = "Denied",
+                Title   = reservation.Book?.Title ?? "Book",
+                Message = string.IsNullOrWhiteSpace(remarks)
+                    ? "Your reservation was denied by the librarian."
+                    : $"Your reservation was denied: {remarks}",
+            });
 
             await _context.SaveChangesAsync();
             await PushBookEvent("BookTransactionUpdated", new { action = "Denied" }, reservation.UserId);
@@ -589,6 +651,7 @@ namespace BookHiveLibrary.Controllers
             {
                 int newAvailableCount               = reservation.Book.AvailableQuantity - 1;
                 reservation.Book.AvailableQuantity  = Math.Max(0, newAvailableCount);
+                await NotifyOtherReserversIfBookJustRanOut(reservation.Book, reservation.UserId);
             }
 
             await _context.SaveChangesAsync();

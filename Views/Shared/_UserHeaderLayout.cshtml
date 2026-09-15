@@ -225,7 +225,20 @@ function updateStuNotifBadge(count) {
 function toggleStuNotifPanel() {
     const panel = document.getElementById('stuNotifPanel');
     panel.classList.toggle('hidden');
-    if (!panel.classList.contains('hidden')) loadStuNotifications();
+    if (!panel.classList.contains('hidden')) {
+        loadStuNotifications();
+        // Clears the unread badge without removing anything from the list — a
+        // notification the student has now seen stays visible, it just stops
+        // being counted. Re-polls afterward rather than zeroing the badge outright,
+        // since the count can still include pending-pickup/due-soon items, which
+        // aren't part of this read/unread mechanic — those clear on their own once
+        // the student resolves them, not just by opening the panel.
+        const fd = new FormData();
+        fd.append('__RequestVerificationToken', _tok());
+        fetch('/Student/MarkNotificationsRead', { method: 'POST', body: fd })
+            .then(pollStuNotifBadge)
+            .catch(() => {});
+    }
 }
 
 document.addEventListener('click', function(e) {
@@ -245,9 +258,11 @@ async function loadStuNotifications() {
             return;
         }
         const labelColors = {
-            'Pending':   'bg-yellow-100 text-yellow-700',
-            'Due Soon':  'bg-orange-100 text-orange-700',
-            'Overdue':   'bg-red-100 text-red-700',
+            'Pending':     'bg-yellow-100 text-yellow-700',
+            'Due Soon':    'bg-orange-100 text-orange-700',
+            'Overdue':     'bg-red-100 text-red-700',
+            'Denied':      'bg-red-100 text-red-700',
+            'Unavailable': 'bg-gray-200 text-gray-700',
         };
         list.innerHTML = data.items.map(n => `
             <div class="px-4 py-3 hover:bg-gray-50 cursor-default">

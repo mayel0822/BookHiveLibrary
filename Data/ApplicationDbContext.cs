@@ -40,5 +40,10 @@ namespace BookHiveLibrary.Data
 
         /// <summary>Direct messages between users (Students, Professors, Librarians)</summary>
         public DbSet<Message> Messages { get; set; }
+
+        /// <summary>Persisted one-time student notifications (denied reservation, book
+        /// ran out while reserved) — distinct from the notification bell's other items,
+        /// which are computed live from current reservation state.</summary>
+        public DbSet<StudentNotification> StudentNotifications { get; set; }
     }
 }

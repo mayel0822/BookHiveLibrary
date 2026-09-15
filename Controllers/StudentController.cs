@@ -405,9 +405,56 @@ namespace BookHiveLibrary.Controllers
                 label   = reservation.DueDate < DateTime.UtcNow ? "Overdue" : "Due Soon"
             });
 
-            var allNotifications = reservationItems.Concat(dueItems).ToList();
+            // Persisted one-time notifications (denied reservation, book ran out while
+            // reserved). Unlike the two lists above — which reflect current state and
+            // naturally stop appearing once resolved — these are events, so they stay
+            // in the list even after being read. Read/unread only affects the bell's
+            // unread badge count, via MarkNotificationsRead below.
+            var persistedNotifications = await _context.StudentNotifications
+                .Where(n => n.UserId == student.Id)
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(20)
+                .ToListAsync();
 
-            return Json(new { count = allNotifications.Count, items = allNotifications });
+            int unreadPersistedCount = persistedNotifications.Count(n => !n.IsRead);
+
+            var persistedItems = persistedNotifications.Select(n => (object)new
+            {
+                type    = n.Type == "Denied" ? "denied" : "unavailable",
+                title   = n.Title,
+                message = n.Message,
+                time    = PhTime.FromUtc(n.CreatedAt).ToString("MMM d, h:mm tt"),
+                label   = n.Type // "Denied" or "Unavailable"
+            });
+
+            var allNotifications = persistedItems.Concat(reservationItems).Concat(dueItems).ToList();
+
+            // Badge count: the two live-state lists always count (nothing to "read" —
+            // they represent an active condition), plus only the UNREAD persisted ones.
+            int badgeCount = pendingReservations.Count + booksDueSoon.Count + unreadPersistedCount;
+
+            return Json(new { count = badgeCount, items = allNotifications });
+        }
+
+        // Called when the student opens the notification bell. Clears the unread
+        // badge count without removing anything from the list — a read notification
+        // stays visible, it just stops being counted.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MarkNotificationsRead()
+        {
+            var student = await _userManager.GetUserAsync(User);
+            if (student == null) return Json(new { success = false });
+
+            var unread = await _context.StudentNotifications
+                .Where(n => n.UserId == student.Id && !n.IsRead)
+                .ToListAsync();
+
+            foreach (var n in unread)
+                n.IsRead = true;
+
+            if (unread.Any()) await _context.SaveChangesAsync();
+            return Json(new { success = true });
         }
 
         // Shows the computer lab vacancy page so students can see which computers are free
