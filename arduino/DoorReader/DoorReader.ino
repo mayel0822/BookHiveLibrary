@@ -7,7 +7,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
-#include "secrets.h"   // defines WIFI_SSID, WIFI_PASSWORD, DEVICE_KEY — see ../secrets.example.h
+#include "secrets.h"   // WIFI_SSID, WIFI_PASSWORD, DEVICE_KEY — already sitting in this same folder
 
 #define SS_PIN  5
 #define RST_PIN 22
