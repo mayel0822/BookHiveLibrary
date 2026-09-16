@@ -195,7 +195,6 @@
                     <th>Borrow Date</th>
                     <th>Due Date</th>
                     <th>Status</th>
-                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -241,25 +240,11 @@
                             }
                             <span class="px-2 py-1 rounded-full text-xs font-medium @badgeClass">@label</span>
                         </td>
-                        <td class="px-4 py-3">
-                            @if (r.Status == "PickedUp" || r.Status == "Overdue")
-                            {
-                                <span class="text-xs text-gray-400">Click row to return</span>
-                            }
-                            else if (r.Status == "ReturnedLate")
-                            {
-                                <form method="post" action="@Url.Action("AcknowledgeLateReturn","Borrow")" class="inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@r.Id" />
-                                    <button type="submit" class="text-xs px-3 py-1.5 bg-orange-500 text-white rounded hover:bg-orange-600">Acknowledge</button>
-                                </form>
-                            }
-                        </td>
                     </tr>
                 }
                 @if (!Model.Any())
                 {
-                    <tr><td colspan="10" class="px-4 py-8 text-center text-gray-400">No borrowed books yet. Use <strong>+ Borrow Book</strong> to record a walk-up borrow.</td></tr>
+                    <tr><td colspan="9" class="px-4 py-8 text-center text-gray-400">No borrowed books yet. Use <strong>+ Borrow Book</strong> to record a walk-up borrow.</td></tr>
                 }
             </tbody>
         </table>
@@ -842,7 +827,7 @@ function filterReturnTable() {
             const tbody = document.querySelector('#returnTable tbody');
             emptyRow = document.createElement('tr');
             emptyRow.id = 'returnSearchEmptyRow';
-            emptyRow.innerHTML = '<td colspan="10" class="px-4 py-8 text-center text-gray-400">No matching student found.</td>';
+            emptyRow.innerHTML = '<td colspan="9" class="px-4 py-8 text-center text-gray-400">No matching student found.</td>';
             tbody.appendChild(emptyRow);
         }
         emptyRow.style.display = '';
