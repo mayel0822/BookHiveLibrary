@@ -220,7 +220,9 @@ namespace BookHiveLibrary.Controllers
             bool reservationsAreClosed = nowPh >= reservationCutoffTimePh;
             if (reservationsAreClosed)
             {
-                TempData["Error"] = "Reservations are closed after 3:00 PM. Please come back the next library day.";
+                TempData["Error"] = "Online reservations are closed after 3:00 PM and open again at 8:00 AM. " +
+                    "If you still want to borrow this book today, you can go to the library and borrow it " +
+                    "in person (walk-in).";
                 return RedirectBack(returnToDetail);
             }
 
