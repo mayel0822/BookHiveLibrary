@@ -196,7 +196,7 @@
                 @foreach (var r in Model)
                 {
                     var searchKey = $"{r.User?.StudentNumber} {r.User?.FirstName} {r.User?.LastName}".ToLower();
-                    <tr class="return-row @(r.Status == "ReturnedLate" ? "bh-selected" : "")" data-search="@searchKey">
+                    <tr class="return-row @(r.Status == "ReturnedLate" ? "bh-selected" : "")" data-search="@searchKey" data-student-no="@r.User?.StudentNumber">
                         <td class="px-4 py-3 text-gray-600 text-xs">@r.User?.StudentNumber</td>
                         <td class="px-4 py-3 font-medium text-gray-800">
                             @r.User?.FirstName @r.User?.LastName
@@ -624,6 +624,31 @@ function clearHighlight() {
     });
 }
 
+// Same highlight treatment as Pending Reservations above, but for the
+// Borrowed Books table — used after an RFID tap resolves to a specific
+// student, so the matching row (already isolated by filterReturnTable)
+// is also visually called out, not just left as the only visible row.
+function highlightReturnRow(studentNo) {
+    clearReturnHighlight();
+    if (!studentNo) return;
+    const rows = document.querySelectorAll('.return-row');
+    for (const row of rows) {
+        if (row.dataset.studentNo === studentNo) {
+            row.style.backgroundColor = '#eff6ff';
+            row.style.borderLeft = '3px solid #3b82f6';
+            row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            break;
+        }
+    }
+}
+
+function clearReturnHighlight() {
+    document.querySelectorAll('.return-row').forEach(r => {
+        r.style.backgroundColor = '';
+        r.style.borderLeft = '';
+    });
+}
+
 // ── RFID tap for the Borrowed Books search ───────────────────────────────
 // Resolves the tapped card to a student, then fills in and runs the same
 // client-side filter typing would trigger. Uses FindUserByRfid (identity
@@ -664,6 +689,7 @@ async function lookupReturnRfid(rfid) {
 
         document.getElementById('returnSearchInput').value = data.studentNumber || '';
         filterReturnTable(); // setting .value directly doesn't fire oninput
+        highlightReturnRow(data.studentNumber); // called after filter — filter clears any stale highlight first
     } catch {
         deactivateReturnRfidScan();
         const errorEl = document.getElementById('returnRfidError');
@@ -676,6 +702,9 @@ async function lookupReturnRfid(rfid) {
 // Client-side filter — the whole list is already on the page, so this is
 // instant with no server round trip. Matches name or student number.
 function filterReturnTable() {
+    // Clears any highlight left over from a previous RFID tap — typing a new
+    // search shouldn't leave a stale blue highlight on an unrelated row.
+    clearReturnHighlight();
     const term = document.getElementById('returnSearchInput').value.trim().toLowerCase();
     const rows = document.querySelectorAll('#returnTable tbody tr.return-row');
     let anyVisible = false;
