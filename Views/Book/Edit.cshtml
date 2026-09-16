@@ -64,36 +64,43 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Book Title</label>
                     <input type="text" asp-for="Title" required
+                           oninput="checkLettersRequired(this, 'titleWarning', 'Book Title')"
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
                     <span asp-validation-for="Title" class="text-red-500 text-xs"></span>
+                    <p id="titleWarning" class="text-amber-600 text-xs mt-1 hidden"></p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Author</label>
                     <input type="text" asp-for="Author" required
+                           oninput="checkLettersRequired(this, 'authorWarning', 'Author')"
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
                     <span asp-validation-for="Author" class="text-red-500 text-xs"></span>
+                    <p id="authorWarning" class="text-amber-600 text-xs mt-1 hidden"></p>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Call No.</label>
                         <input type="text" asp-for="CallNumber" required inputmode="numeric" maxlength="20"
-                               oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                               oninput="checkNumbersOnly(this, 'callNoWarning', 'Call No.', /[^0-9]/g)"
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
                         <span asp-validation-for="CallNumber" class="text-red-500 text-xs"></span>
+                        <p id="callNoWarning" class="text-amber-600 text-xs mt-1 hidden"></p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">ISBN</label>
                         <input type="text" asp-for="ISBN" placeholder="e.g. 978-3-16-148410-0" inputmode="numeric" maxlength="17"
-                               oninput="this.value = this.value.replace(/[^0-9\-]/g, '')"
+                               oninput="checkNumbersOnly(this, 'isbnWarning', 'ISBN', /[^0-9\-]/g, 'numbers and hyphens (-)')"
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
                         <span asp-validation-for="ISBN" class="text-red-500 text-xs"></span>
+                        <p id="isbnWarning" class="text-amber-600 text-xs mt-1 hidden"></p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Published Year</label>
                         <input type="text" asp-for="PublishedYear" placeholder="e.g. 2023" inputmode="numeric" maxlength="4"
-                               oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                               oninput="checkNumbersOnly(this, 'yearWarning', 'Published Year', /[^0-9]/g)"
                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
                         <span asp-validation-for="PublishedYear" class="text-red-500 text-xs"></span>
+                        <p id="yearWarning" class="text-amber-600 text-xs mt-1 hidden"></p>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -171,8 +178,10 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Book Synopsis</label>
                     <textarea asp-for="Description" rows="4"
+                              oninput="checkLettersRequired(this, 'descriptionWarning', 'Book Synopsis', true)"
                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"></textarea>
                     <span asp-validation-for="Description" class="text-red-500 text-xs"></span>
+                    <p id="descriptionWarning" class="text-amber-600 text-xs mt-1 hidden"></p>
                 </div>
                 <div class="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <input type="checkbox" id="professorOnly" class="w-4 h-4 accent-blue-700"
@@ -199,6 +208,36 @@
 
 @section Scripts {
 <script>
+// Live warnings for fields with a RegularExpression rule on the server side,
+// so the librarian sees why their input will be rejected before they submit
+// instead of only finding out from the summary at the top of the page.
+function checkLettersRequired(input, warningId, fieldLabel, optional) {
+    const el = document.getElementById(warningId);
+    if (!el) return;
+    const value = input.value;
+    const isEmpty = value.trim().length === 0;
+    const hasLetter = /[A-Za-z]/.test(value);
+    if (!isEmpty && !hasLetter) {
+        el.textContent = fieldLabel + ' must include letters or words — numbers alone are not allowed.';
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
+}
+
+function checkNumbersOnly(input, warningId, fieldLabel, stripPattern, allowedDescription) {
+    const el = document.getElementById(warningId);
+    const before = input.value;
+    input.value = before.replace(stripPattern, '');
+    if (!el) return;
+    if (before !== input.value) {
+        el.textContent = fieldLabel + ' can only contain ' + (allowedDescription || 'numbers') + '.';
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
+}
+
 // Pre-check Professor Only checkbox based on saved BookFor value
 (function() {
     const hidden = document.getElementById('bookForHidden');
