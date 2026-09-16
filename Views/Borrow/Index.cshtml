@@ -540,25 +540,35 @@ if (typeof libraryConnection !== 'undefined') {
     libraryConnection.onreconnected(() => _joinTransactionBorrow());
 
     libraryConnection.on("DeskRfidTap", function(data) {
-        // Checked first, and only when the librarian explicitly armed it by
-        // clicking "Tap RFID Card" next to the Borrowed Books search — so a tap
-        // meant for finding someone returning a book doesn't get swallowed by the
-        // pending-reservation/pickup-slip flow below, which has no equivalent
-        // explicit "arm" step of its own.
+        // This one physical desk reader is shared by three different scan
+        // targets on this page (Pending Reservations, Borrowed Books search, and
+        // the walk-in Borrow modal), so a broadcast tap has to go to whichever
+        // ONE the librarian actually armed — never more than one, and never a
+        // silent default when none of them were.
+        //
+        // Each check requires its own explicit "I clicked Tap RFID Card here"
+        // state (or, for the modal, "this modal is visibly open") before acting,
+        // and returns immediately once one claims the tap. Order matters only in
+        // that at most one of these should ever be true at a time in normal use;
+        // the librarian would have no reason to arm two scanners at once.
         if (returnRfidListening) {
             lookupReturnRfid(data.rfidNumber);
             return;
         }
+
         const borrowModal  = document.getElementById('borrowModal');
         const isBorrowOpen = borrowModal && !borrowModal.classList.contains('hidden');
         if (isBorrowOpen && currentBorrowType === 'Student') {
             lookupBorrowRfid(data.rfidNumber);
-        } else if (!isBorrowOpen) {
-            // Auto-activate scan mode then process the tap
-            rfidListening = true;
-            rfidInput.readOnly = false;
-            lookupRfid(data.rfidNumber);
+            return;
         }
+
+        if (rfidListening) {
+            lookupRfid(data.rfidNumber);
+            return;
+        }
+
+        // No scanner armed on this page — ignore the tap rather than guessing.
     });
 }
 // ─────────────────────────────────────────────────────────────────────────
