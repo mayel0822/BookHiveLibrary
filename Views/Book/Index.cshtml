@@ -28,7 +28,7 @@
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="height:600px;overflow:hidden;">
     <!-- Search & Filters -->
     <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-3 flex-shrink-0">
-        <form method="get" class="flex flex-1">
+        <form method="get" class="flex w-full max-w-xl">
             <div class="flex flex-1 border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-300">
                 <select name="category" class="px-3 py-2 text-sm outline-none bg-white text-gray-600 cursor-pointer">
                     <option value="">All Categories</option>
@@ -51,7 +51,7 @@
                 <a href="@Url.Action("Index","Book")" class="btn-secondary ml-2 self-center">Clear</a>
             }
         </form>
-        <a href="@Url.Action("Register","Book")" class="btn-primary flex-shrink-0">+ Add Book</a>
+        <a href="@Url.Action("Register","Book")" class="btn-primary flex-shrink-0 ml-auto">+ Add Book</a>
     </div>
 
     <!-- Bulk Print Toolbar (shows when books are selected) -->
