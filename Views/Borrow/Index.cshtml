@@ -27,9 +27,9 @@
 
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
     <!-- Pending Reservations Panel -->
-    <div class="col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="max-height:420px;">
+    <div class="col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="height:420px;overflow:hidden;">
         <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
-            <h2 class="font-semibold" class="text-gray-900">Pending Reservations</h2>
+            <h2 class="font-semibold text-gray-900">Pending Reservations</h2>
             <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">@pending.Count</span>
         </div>
 
@@ -46,7 +46,7 @@
             </div>
             <p id="rfidError" class="text-xs text-red-500 mt-1 hidden"></p>
         </div>
-        <div class="flex-1 overflow-y-auto divide-y divide-gray-100">
+        <div class="flex-1 min-h-0 overflow-y-auto divide-y divide-gray-100">
             @if (!pending.Any())
             {
                 <p class="px-5 py-8 text-center text-gray-400 text-sm">No pending reservations</p>
@@ -108,11 +108,11 @@
     </div>
 
     <!-- Books Due Panel -->
-    <div class="col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="max-height:420px;">
+    <div class="col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="height:420px;overflow:hidden;">
         <div class="px-5 py-4 border-b border-gray-100 flex-shrink-0">
-            <h2 class="font-semibold" class="text-gray-900">Books Due</h2>
+            <h2 class="font-semibold text-gray-900">Books Due</h2>
         </div>
-        <div class="flex-1 overflow-y-auto divide-y divide-gray-100">
+        <div class="flex-1 min-h-0 overflow-y-auto divide-y divide-gray-100">
             @if (!allDue.Any())
             {
                 <p class="px-5 py-8 text-center text-gray-400 text-sm">No active borrows</p>
@@ -158,10 +158,10 @@
      the whole box has one predictable size instead of growing to whatever the
      header row plus table happen to need. Header stays pinned via flex-shrink-0;
      only the table body scrolls, in the flex-1 area beneath it. -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="max-height:32rem;">
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="height:32rem;overflow:hidden;">
     <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap flex-shrink-0">
-        <h2 class="font-semibold" class="text-gray-900">Borrowed Books</h2>
-        <div class="flex items-center gap-3 flex-1 justify-end min-w-[200px]">
+        <h2 class="font-semibold text-gray-900">Borrowed Books</h2>
+        <div class="flex items-center gap-3 flex-1 justify-end" style="min-width:200px;">
             <!-- Find the person returning a book, either by typing a name/student
                  number (filters the table instantly, no round trip — the full list
                  is already rendered on the page) or by tapping their RFID card,
@@ -183,7 +183,7 @@
             <button onclick="openBorrowModal()" class="btn-primary flex-shrink-0">+ Borrow Book</button>
         </div>
     </div>
-    <div class="flex-1 overflow-auto">
+    <div class="flex-1 min-h-0 overflow-auto">
         <table class="bh-table" id="returnTable">
             <thead>
                 <tr>
