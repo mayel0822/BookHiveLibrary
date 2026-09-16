@@ -80,9 +80,9 @@
                 var rowId     = "pendingGroup-" + user?.Id;
 
                 <div class="border-b border-gray-50 reservation-row transition-colors duration-300"
-                     data-student-no="@user?.StudentNumber">
-                    <button type="button" onclick="togglePendingGroup('@rowId')"
-                            class="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-gray-50">
+                     data-student-no="@user?.StudentNumber" data-user-id="@user?.Id">
+                    <div class="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-gray-50 cursor-pointer"
+                         onclick="openPendingPopup('@user?.Id')">
                         <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-sm font-bold flex-shrink-0">
                             @user?.LastName?.FirstOrDefault()
                         </div>
@@ -94,8 +94,11 @@
                             <p class="text-xs text-gray-500">@sect@(adv != "" ? " — " + adv : "")</p>
                             <span class="text-xs @((isExpired || isExpiringSoon) ? "text-red-500 font-semibold" : "text-gray-400")">@timeDisplay</span>
                         </div>
-                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0 mt-1 transition-transform" id="@(rowId)-chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                    </button>
+                        <button type="button" onclick="event.stopPropagation(); togglePendingGroup('@rowId')"
+                                class="p-1 -m-1 flex-shrink-0 hover:bg-gray-200 rounded-full">
+                            <svg class="w-4 h-4 text-gray-400 transition-transform" id="@(rowId)-chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                    </div>
                     <div id="@rowId" class="hidden px-4 pb-3 pl-16 space-y-2">
                         @foreach (var r in group)
                         {
@@ -875,6 +878,10 @@ function togglePendingGroup(rowId) {
     if (chevron) chevron.style.transform = body.classList.contains('hidden') ? '' : 'rotate(180deg)';
 }
 
+// RFID tap only resolves and highlights the matching student row — same
+// two-step "tap to find, click to open" pattern as the Borrowed Books return
+// flow, rather than opening the popup straight from the tap. The librarian
+// then clicks the highlighted row to actually open it (openPendingPopup).
 async function lookupRfid(rfid) {
     rfidError.classList.add('hidden');
     rfidInput.placeholder = 'Looking up...';
@@ -897,10 +904,30 @@ async function lookupRfid(rfid) {
         rfidInput.placeholder = '';
         deactivateRfidScan();
 
-        // Highlight the matching pending reservation row
+        // Highlight the matching pending reservation row in blue
         highlightReservationRow(data.studentNumber);
+    } catch {
+        rfidError.textContent = 'Error communicating with server.';
+        rfidError.classList.remove('hidden');
+        deactivateRfidScan();
+    }
+}
 
-        // Fill and open the reservation pickup popup
+// Opens the Reservation Pickup popup for a specific student — called by
+// clicking their row in the Pending Reservations panel (whether or not it's
+// currently RFID-highlighted).
+async function openPendingPopup(userId) {
+    if (!userId) return;
+    try {
+        const res = await fetch(`@Url.Action("GetPendingReservationsForUser","Borrow")?userId=${encodeURIComponent(userId)}`);
+        const data = await res.json();
+
+        if (!data.found) {
+            rfidError.textContent = data.message || 'No active reservations found.';
+            rfidError.classList.remove('hidden');
+            return;
+        }
+
         const initial = (data.fullName || '?').trim().charAt(0).toUpperCase();
         document.getElementById('slipInitial').textContent    = initial;
         document.getElementById('slipStudentNo').textContent  = data.studentNumber || '—';
@@ -918,11 +945,11 @@ async function lookupRfid(rfid) {
             </label>`).join('');
         document.getElementById('slipSelectError').classList.add('hidden');
 
+        highlightReservationRow(data.studentNumber);
         document.getElementById('borrowSlipModal').classList.remove('hidden');
     } catch {
         rfidError.textContent = 'Error communicating with server.';
         rfidError.classList.remove('hidden');
-        deactivateRfidScan();
     }
 }
 

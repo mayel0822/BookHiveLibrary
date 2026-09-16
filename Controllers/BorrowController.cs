@@ -487,6 +487,12 @@ namespace BookHiveLibrary.Controllers
         // MaxBooksPerUser reservations waiting at once, and the pickup popup needs to
         // list all of them as a checklist so the librarian can pick which ones the
         // student is actually collecting today.
+        //
+        // Only used to resolve the RFID tap into a user id, which the Pending
+        // Reservations panel then highlights — same two-step pattern as the
+        // Borrowed Books "tap to find, click to open" flow, rather than opening the
+        // popup straight from the tap. GetPendingReservationsForUser below is what
+        // actually builds the popup once the librarian clicks the highlighted row.
         [HttpGet]
         public async Task<IActionResult> FindReservationsByRfid(string rfid)
         {
@@ -498,19 +504,44 @@ namespace BookHiveLibrary.Controllers
             if (!user.IsActive)
                 return Json(new { found = false, message = "This account has been deactivated. Please contact MIS." });
 
+            var payload = await BuildPendingReservationsPayload(user);
+            if (payload == null)
+                return Json(new { found = false, message = $"No active reservation found for {user.FirstName} {user.LastName}." });
+
+            return Json(payload);
+        }
+
+        // Feeds the Reservation Pickup popup when the librarian clicks a (typically
+        // already RFID-highlighted) student row directly, by user id rather than by
+        // tapping the card again.
+        [HttpGet]
+        public async Task<IActionResult> GetPendingReservationsForUser(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId ?? "");
+            if (user == null)
+                return Json(new { found = false, message = "Student not found." });
+
+            var payload = await BuildPendingReservationsPayload(user);
+            if (payload == null)
+                return Json(new { found = false, message = $"{user.FirstName} {user.LastName} has no active pending reservations." });
+
+            return Json(payload);
+        }
+
+        private async Task<object?> BuildPendingReservationsPayload(ApplicationUser user)
+        {
             var reservations = await _context.BookReservations
                 .Include(r => r.Book)
                 .Where(r => r.UserId == user.Id && r.Status == "Pending" && r.PickupDeadline >= DateTime.UtcNow)
                 .OrderBy(r => r.CreatedAt)
                 .ToListAsync();
 
-            if (!reservations.Any())
-                return Json(new { found = false, message = $"No active reservation found for {user.FirstName} {user.LastName}." });
+            if (!reservations.Any()) return null;
 
             string middleInitial = string.IsNullOrEmpty(user.MiddleName) ? "" : user.MiddleName[0] + ".";
             string fullName      = $"{user.LastName}, {user.FirstName} {middleInitial}".Trim();
 
-            return Json(new
+            return new
             {
                 found         = true,
                 studentNumber = user.StudentNumber ?? user.EmployeeNumber,
@@ -525,7 +556,7 @@ namespace BookHiveLibrary.Controllers
                     bookAuthor = r.Book?.Author ?? "",
                     pickupBy   = PhTime.FromUtc(r.PickupDeadline).ToString("h:mm tt, MMM dd")
                 })
-            });
+            };
         }
 
         // Lets a student place an online reservation (also accessible from the student side).
