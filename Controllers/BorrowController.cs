@@ -876,5 +876,110 @@ namespace BookHiveLibrary.Controllers
             TempData["Success"] = "Late return acknowledged and record cleared.";
             return RedirectToAction("Index");
         }
+
+        // Feeds the "Books Borrowed" return popup — every book a specific student
+        // currently has out (PickedUp or Overdue), so the librarian can check off
+        // whichever ones are actually being handed back today. Looked up by user id
+        // rather than by RFID directly since this is opened both from an RFID tap
+        // (via FindUserByRfid, which already resolves the id) and from clicking a row
+        // already on the page.
+        [HttpGet]
+        public async Task<IActionResult> GetBorrowedBooksForUser(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId ?? "");
+            if (user == null)
+                return Json(new { found = false, message = "Student not found." });
+
+            var borrowed = await _context.BookReservations
+                .Include(r => r.Book)
+                .Where(r => r.UserId == userId && (r.Status == "PickedUp" || r.Status == "Overdue"))
+                .OrderBy(r => r.DueDate)
+                .ToListAsync();
+
+            if (!borrowed.Any())
+                return Json(new { found = false, message = $"{user.FirstName} {user.LastName} has no books currently borrowed." });
+
+            string middleInitial = string.IsNullOrEmpty(user.MiddleName) ? "" : user.MiddleName[0] + ".";
+            string fullName      = $"{user.LastName}, {user.FirstName} {middleInitial}".Trim();
+
+            return Json(new
+            {
+                found         = true,
+                studentNumber = user.StudentNumber ?? user.EmployeeNumber,
+                fullName,
+                section       = user.Section,
+                course        = user.Course,
+                level         = user.Level,
+                books = borrowed.Select(r => new
+                {
+                    id        = r.Id,
+                    bookTitle = r.Book?.Title ?? "Untitled",
+                    dueDate   = PhTime.FromUtc(r.DueDate)?.ToString("MMM dd, yyyy") ?? "",
+                    isOverdue = r.Status == "Overdue"
+                })
+            });
+        }
+
+        // Same idea as ApproveSelected, but for returns: only the reservation ids the
+        // librarian checked in the "Books Borrowed" popup are marked returned.
+        // Anything left unchecked stays exactly as it was (still borrowed).
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ReturnSelected(List<int> ids)
+        {
+            if (ids == null || !ids.Any())
+            {
+                TempData["Error"] = "No books were selected.";
+                return RedirectToAction("Index", new { tab = "Active" });
+            }
+
+            int returnedCount  = 0;
+            int lateCount      = 0;
+            string? studentUserId = null;
+
+            foreach (var id in ids)
+            {
+                var reservation = await _context.BookReservations
+                    .Include(r => r.Book)
+                    .FirstOrDefaultAsync(r => r.Id == id && (r.Status == "PickedUp" || r.Status == "Overdue"));
+
+                if (reservation == null) continue; // already returned/handled since the popup was opened
+
+                studentUserId ??= reservation.UserId;
+
+                bool returnedLate  = reservation.Status == "Overdue";
+                reservation.Status = returnedLate ? "ReturnedLate" : "Returned";
+                reservation.ActualReturnDate = DateTime.UtcNow;
+                if (returnedLate) lateCount++;
+
+                if (reservation.Book != null)
+                {
+                    await BookAvailability.Recalculate(_context, reservation.Book);
+                    reservation.Book.AvailableQuantity =
+                        Math.Min(reservation.Book.TotalQuantity, reservation.Book.AvailableQuantity + 1);
+
+                    await _hub.Clients.Group("students").SendAsync("BookAvailabilityChanged",
+                        new { bookId = reservation.Book.Id, availableQuantity = reservation.Book.AvailableQuantity });
+                }
+
+                returnedCount++;
+            }
+
+            await _context.SaveChangesAsync();
+
+            if (studentUserId != null)
+            {
+                await PushBookEvent("BookTransactionUpdated", new { action = "Returned" }, studentUserId);
+            }
+
+            if (returnedCount == 0)
+                TempData["Error"] = "No books could be processed.";
+            else if (lateCount > 0)
+                TempData["Success"] = $"{returnedCount} book(s) returned ({lateCount} late — will clear after 3 days).";
+            else
+                TempData["Success"] = $"{returnedCount} book(s) returned successfully.";
+
+            return RedirectToAction("Index", new { tab = "Active" });
+        }
     }
 }

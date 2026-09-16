@@ -192,7 +192,14 @@
         </div>
     </div>
     <div class="flex-1 min-h-0 overflow-x-auto overflow-y-scroll">
-        <table class="bh-table" id="returnTable" style="min-height:100%;">
+        <!-- A plain block wrapper, not the table element itself, gets the
+             min-height: a <table> given an explicit/min height distributes the
+             extra space across its own rows (stretching them), while a normal
+             div just leaves the leftover space blank below the table — which is
+             what pins the horizontal scrollbar to the panel's bottom without
+             blowing up row heights when there are only a couple of rows. -->
+        <div style="min-height:100%;">
+        <table class="bh-table" id="returnTable">
             <thead>
                 <tr>
                     <th>Stud ID</th>
@@ -211,13 +218,10 @@
                 @foreach (var r in Model)
                 {
                     var searchKey = $"{r.User?.StudentNumber} {r.User?.FirstName} {r.User?.LastName}".ToLower();
-                    // Escaped for embedding in a single-quoted JS string literal (see
-                    // the Return button below) — a name or title containing an
-                    // apostrophe, e.g. "O'Brien" or "Ocean's Eleven", would otherwise
-                    // break out of the string and throw a JS syntax error.
-                    var returnStudentName = $"{r.User?.FirstName} {r.User?.LastName}".Replace("'", "\\'");
-                    var returnBookTitle   = (r.Book?.Title ?? "this book").Replace("'", "\\'");
-                    <tr class="return-row @(r.Status == "ReturnedLate" ? "bh-selected" : "")" data-search="@searchKey" data-student-no="@r.User?.StudentNumber">
+                    var canReturn = r.Status == "PickedUp" || r.Status == "Overdue";
+                    <tr class="return-row @(r.Status == "ReturnedLate" ? "bh-selected" : "") @(canReturn ? "cursor-pointer hover:bg-blue-50" : "")"
+                        data-search="@searchKey" data-student-no="@r.User?.StudentNumber"
+                        data-user-id="@r.UserId" data-can-return="@canReturn.ToString().ToLower()">
                         <td class="px-4 py-3 text-gray-600 text-xs">@r.User?.StudentNumber</td>
                         <td class="px-4 py-3 font-medium text-gray-800">
                             @r.User?.FirstName @r.User?.LastName
@@ -256,12 +260,7 @@
                         <td class="px-4 py-3">
                             @if (r.Status == "PickedUp" || r.Status == "Overdue")
                             {
-                                <form method="post" action="@Url.Action("ConfirmReturn","Borrow")" class="inline"
-                                      onsubmit="return bhConfirmSubmit(event, 'Confirm that @returnStudentName has returned &quot;@returnBookTitle&quot;?', 'Confirm Return')">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@r.Id" />
-                                    <button type="submit" class="text-xs px-3 py-1.5 border border-gray-300 text-gray-600 rounded hover:bg-gray-50">Return</button>
-                                </form>
+                                <span class="text-xs text-gray-400">Click row to return</span>
                             }
                             else if (r.Status == "ReturnedLate")
                             {
@@ -280,6 +279,7 @@
                 }
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 
@@ -323,6 +323,50 @@
 <form id="approveSelectedForm" method="post" action="@Url.Action("ApproveSelected","Borrow")" class="hidden">
     @Html.AntiForgeryToken()
     <div id="approveSelectedIdsContainer"></div>
+</form>
+
+<!-- Books Borrowed — Return popup, opened by tapping RFID in the Borrowed Books
+     search bar or clicking a returnable row. Mirrors the Reservation Pickup
+     popup above: student info, then a checklist of everything currently out. -->
+<div id="returnPopupModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl w-full max-w-lg mx-4 shadow-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between" style="background-color:#000147;">
+            <h3 class="text-base font-semibold text-white">Return Books</h3>
+            <button onclick="closeReturnPopup()" class="text-white/70 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="px-6 py-5">
+            <div class="flex items-center gap-4 mb-5">
+                <div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xl flex-shrink-0">
+                    <span id="returnPopupInitial"></span>
+                </div>
+                <div class="min-w-0">
+                    <p id="returnPopupName" class="font-semibold text-gray-800 text-base truncate"></p>
+                    <p class="text-xs text-gray-500">Student ID: <span id="returnPopupStudentNo"></span></p>
+                    <p class="text-xs text-gray-500"><span id="returnPopupCourse"></span></p>
+                </div>
+            </div>
+            <div class="border-t border-gray-100 pt-4">
+                <h4 class="text-sm font-semibold text-gray-800 mb-2">Books Borrowed</h4>
+                <div id="returnPopupBookList" class="space-y-2 max-h-64 overflow-y-auto"></div>
+            </div>
+            <p id="returnPopupSelectError" class="text-xs text-red-500 mt-2 hidden">Select at least one book to return.</p>
+            <div class="flex gap-3 mt-5">
+                <button type="button" onclick="closeReturnPopup()" class="btn-secondary flex-1 justify-center">Cancel</button>
+                <button type="button" onclick="submitReturnSelected()" class="btn-primary flex-1 justify-center">Return</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Not user-facing — populated with the checked reservation ids and submitted
+     once the "Are you sure...?" confirmation above is accepted. -->
+<form id="returnSelectedForm" method="post" action="@Url.Action("ReturnSelected","Borrow")" class="hidden">
+    @Html.AntiForgeryToken()
+    <div id="returnSelectedIdsContainer"></div>
 </form>
 
 <!-- Borrow Book Modal — Landscape layout -->
@@ -699,12 +743,89 @@ async function lookupReturnRfid(rfid) {
         document.getElementById('returnSearchInput').value = data.studentNumber || '';
         filterReturnTable(); // setting .value directly doesn't fire oninput
         highlightReturnRow(data.studentNumber); // called after filter — filter clears any stale highlight first
+        openReturnPopup(data.userId);
     } catch {
         deactivateReturnRfidScan();
         const errorEl = document.getElementById('returnRfidError');
         errorEl.textContent = 'Error communicating with server.';
         errorEl.classList.remove('hidden');
     }
+}
+
+// ── "Books Borrowed" return popup ────────────────────────────────────────
+// Opened either by an RFID tap (above) or by clicking a returnable row
+// directly — both resolve to a user id and share this same lookup + popup.
+document.getElementById('returnTable').addEventListener('click', function(e) {
+    const row = e.target.closest('tr.return-row');
+    if (!row || row.dataset.canReturn !== 'true') return;
+    openReturnPopup(row.dataset.userId);
+});
+
+async function openReturnPopup(userId) {
+    if (!userId) return;
+    try {
+        const res = await fetch(`@Url.Action("GetBorrowedBooksForUser","Borrow")?userId=${encodeURIComponent(userId)}`);
+        const data = await res.json();
+
+        if (!data.found) {
+            const errorEl = document.getElementById('returnRfidError');
+            errorEl.textContent = data.message || 'No borrowed books found.';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+
+        const initial = (data.fullName || '?').trim().charAt(0).toUpperCase();
+        document.getElementById('returnPopupInitial').textContent    = initial;
+        document.getElementById('returnPopupStudentNo').textContent  = data.studentNumber || '—';
+        document.getElementById('returnPopupName').textContent       = data.fullName || '—';
+        document.getElementById('returnPopupCourse').textContent     = [data.course, data.level, data.section].filter(Boolean).join(' · ') || '—';
+
+        const list = document.getElementById('returnPopupBookList');
+        list.innerHTML = (data.books || []).map(book => `
+            <label class="flex items-center justify-between gap-3 px-3 py-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                <span class="flex items-center gap-2 min-w-0">
+                    <input type="checkbox" class="return-book-checkbox w-4 h-4 flex-shrink-0" value="${book.id}" checked />
+                    <span class="text-sm text-gray-800 truncate">${escapeHtml(book.bookTitle)}</span>
+                </span>
+                <span class="text-xs ${book.isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400'} flex-shrink-0">
+                    ${book.isOverdue ? 'Overdue — ' : 'Due '}${escapeHtml(book.dueDate)}
+                </span>
+            </label>`).join('');
+        document.getElementById('returnPopupSelectError').classList.add('hidden');
+
+        document.getElementById('returnPopupModal').classList.remove('hidden');
+    } catch {
+        const errorEl = document.getElementById('returnRfidError');
+        errorEl.textContent = 'Error communicating with server.';
+        errorEl.classList.remove('hidden');
+    }
+}
+
+function closeReturnPopup() {
+    document.getElementById('returnPopupModal').classList.add('hidden');
+    clearReturnHighlight();
+}
+
+async function submitReturnSelected() {
+    const checkedIds = Array.from(document.querySelectorAll('.return-book-checkbox:checked')).map(cb => cb.value);
+    if (checkedIds.length === 0) {
+        document.getElementById('returnPopupSelectError').classList.remove('hidden');
+        return;
+    }
+
+    const ok = await bhConfirm('Are you sure you want to confirm the selected books as returned?', 'Confirm Return');
+    if (!ok) return;
+
+    const container = document.getElementById('returnSelectedIdsContainer');
+    container.innerHTML = '';
+    for (const id of checkedIds) {
+        const input = document.createElement('input');
+        input.type  = 'hidden';
+        input.name  = 'ids';
+        input.value = id;
+        container.appendChild(input);
+    }
+    document.getElementById('returnSelectedForm').submit();
 }
 
 // ── Find the person returning a book (Borrowed Books table) ─────────────
