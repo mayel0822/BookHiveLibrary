@@ -836,6 +836,66 @@ namespace BookHiveLibrary.Controllers
             return RedirectToAction("Index");
         }
 
+        // Same idea as ApproveSelected, but the checked books are denied instead
+        // of picked up — the Reservation Pickup popup uses the same checkbox list
+        // for both actions, so whichever button the librarian clicks (Deny or
+        // Picked Up) determines what happens to the checked ones. Anything left
+        // unchecked is untouched either way.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DenySelected(List<int> ids)
+        {
+            if (ids == null || !ids.Any())
+            {
+                TempData["Error"] = "No books were selected.";
+                return RedirectToAction("Index");
+            }
+
+            int deniedCount = 0;
+            var deniedTitles = new List<string>();
+            string? studentUserId = null;
+
+            foreach (var id in ids)
+            {
+                var reservation = await _context.BookReservations
+                    .Include(r => r.Book)
+                    .FirstOrDefaultAsync(r => r.Id == id && r.Status == "Pending");
+
+                if (reservation == null) continue; // already handled since the popup was opened
+
+                studentUserId ??= reservation.UserId;
+                reservation.Status = "Denied";
+
+                deniedCount++;
+                deniedTitles.Add(reservation.Book?.Title ?? "Book");
+            }
+
+            if (deniedTitles.Any() && studentUserId != null)
+            {
+                string message = deniedTitles.Count == 1
+                    ? $"Your reservation for \"{deniedTitles[0]}\" was denied by the librarian."
+                    : "Your reservations for the following books were denied by the librarian: " + string.Join(", ", deniedTitles) + ".";
+
+                _context.StudentNotifications.Add(new StudentNotification
+                {
+                    UserId  = studentUserId,
+                    Type    = "Denied",
+                    Title   = deniedTitles.Count == 1 ? "Reservation Denied" : "Reservations Denied",
+                    Message = message
+                });
+            }
+
+            await _context.SaveChangesAsync();
+
+            if (studentUserId != null)
+            {
+                await PushBookEvent("BookTransactionUpdated", new { action = "Denied" }, studentUserId);
+            }
+
+            TempData["Success"] = deniedCount > 0 ? $"{deniedCount} reservation(s) denied." : "No reservations could be processed.";
+            return RedirectToAction("Index");
+        }
+
         // The student physically collected the book. Records the pickup time and due date.
         // Reduces the available copy count.
         [HttpPost]

@@ -312,9 +312,9 @@
                 <h4 class="text-sm font-semibold text-gray-800 mb-2">Books Reservation</h4>
                 <div id="slipBookList" class="space-y-2 max-h-64 overflow-y-auto"></div>
             </div>
-            <p id="slipSelectError" class="text-xs text-red-500 mt-2 hidden">Select at least one book to mark as picked up.</p>
+            <p id="slipSelectError" class="text-xs text-red-500 mt-2 hidden">Select at least one book first.</p>
             <div class="flex gap-3 mt-5">
-                <button type="button" onclick="closeSlip()" class="btn-secondary flex-1 justify-center">Cancel</button>
+                <button type="button" onclick="submitDenySelected()" class="flex-1 justify-center px-4 py-2.5 text-sm font-semibold border border-red-300 text-red-600 rounded-lg hover:bg-red-50">Deny</button>
                 <button type="button" onclick="submitPickedUp()" class="btn-primary flex-1 justify-center">Picked Up</button>
             </div>
         </div>
@@ -326,6 +326,10 @@
 <form id="approveSelectedForm" method="post" action="@Url.Action("ApproveSelected","Borrow")" class="hidden">
     @Html.AntiForgeryToken()
     <div id="approveSelectedIdsContainer"></div>
+</form>
+<form id="denySelectedForm" method="post" action="@Url.Action("DenySelected","Borrow")" class="hidden">
+    @Html.AntiForgeryToken()
+    <div id="denySelectedIdsContainer"></div>
 </form>
 
 <!-- Books Borrowed — Return popup, opened by tapping RFID in the Borrowed Books
@@ -976,6 +980,32 @@ async function submitPickedUp() {
         container.appendChild(input);
     }
     document.getElementById('approveSelectedForm').submit();
+}
+
+// "Deny" click: same checkbox list, opposite outcome — the checked
+// reservations are denied instead of picked up. Same guard for nothing
+// selected, and its own confirmation wording so it's clear which action is
+// about to happen.
+async function submitDenySelected() {
+    const checkedIds = Array.from(document.querySelectorAll('.slip-book-checkbox:checked')).map(cb => cb.value);
+    if (checkedIds.length === 0) {
+        document.getElementById('slipSelectError').classList.remove('hidden');
+        return;
+    }
+
+    const ok = await bhConfirm('Are you sure you want to deny the selected books?', 'Deny Reservation');
+    if (!ok) return;
+
+    const container = document.getElementById('denySelectedIdsContainer');
+    container.innerHTML = '';
+    for (const id of checkedIds) {
+        const input = document.createElement('input');
+        input.type  = 'hidden';
+        input.name  = 'ids';
+        input.value = id;
+        container.appendChild(input);
+    }
+    document.getElementById('denySelectedForm').submit();
 }
 
 function closeSlip() {
