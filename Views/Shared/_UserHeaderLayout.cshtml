@@ -186,6 +186,26 @@ stuConnection.on('ReceiveMessage', function(msg) {
     if (_miniChatUserId && msg.senderId === _miniChatUserId) loadMiniChatMessages();
 });
 
+// A reservation being denied, or a book running out while this student is
+// still waiting on a Pending reservation for it, both write a new row to
+// StudentNotifications on the server — but that alone doesn't reach an
+// already-open tab. The server already broadcasts these two events (the
+// first straight to this student, the second to the whole "students" group
+// since NotifyOtherReserversIfBookJustRanOut doesn't know which specific
+// students are affected ahead of time); refetching here is what actually
+// makes the bell update live instead of only on next page load or panel
+// reopen.
+stuConnection.on('BookTransactionUpdated', function() {
+    pollStuNotifBadge();
+    const panel = document.getElementById('stuNotifPanel');
+    if (panel && !panel.classList.contains('hidden')) loadStuNotifications();
+});
+stuConnection.on('BookAvailabilityChanged', function() {
+    pollStuNotifBadge();
+    const panel = document.getElementById('stuNotifPanel');
+    if (panel && !panel.classList.contains('hidden')) loadStuNotifications();
+});
+
 // When the other person unsends a message, replace its bubble instantly
 stuConnection.on('MessageUnsent', function(data) {
     // Mini chat popup
@@ -204,6 +224,11 @@ stuConnection.start().then(() => { pollMsgBadge(); pollStuNotifBadge(); }).catch
 
 // Keep the message badge in sync every 10 seconds (catches server-side read changes)
 setInterval(pollMsgBadge, 10000);
+
+// Same idea for the notification bell — the SignalR listeners above should
+// catch new notifications live, but this is a fallback in case a push was
+// missed (e.g. a reconnect gap).
+setInterval(pollStuNotifBadge, 15000);
 
 // ── Student Notification Bell ────────────────────────────────────────────
 async function pollStuNotifBadge() {
