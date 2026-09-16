@@ -5,8 +5,13 @@
     ViewData["Title"] = "Book Catalog";
 }
 
+<!-- Fills the page's available height exactly (no outer page scroll) — the
+     stats row is fixed-height and the card below it takes whatever's left,
+     so only the card's own scrollbar handles overflow, not the page. -->
+<div class="flex flex-col" style="height:100%;">
+
 <!-- Stats Row -->
-<div class="grid grid-cols-4 gap-4 mb-6">
+<div class="grid grid-cols-4 gap-4 mb-6 flex-shrink-0">
     <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
         <p class="text-xs text-blue-200 mb-1">Total Books</p>
         <p class="text-3xl font-bold">@ViewBag.TotalBooks</p>
@@ -25,7 +30,7 @@
     </div>
 </div>
 
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="height:600px;overflow:hidden;">
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col flex-1 min-h-0" style="overflow:hidden;">
     <!-- Search & Filters -->
     <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-3 flex-shrink-0">
         <form method="get" class="flex w-full max-w-xl ml-auto">
@@ -65,7 +70,10 @@
     </div>
 
     <!-- Table -->
-    <div class="flex-1 min-h-0 overflow-auto">
+    <div class="flex-1 min-h-0 overflow-x-auto overflow-y-scroll">
+        <!-- A plain wrapper div (not the table) gets min-height so leftover
+             space stays blank below the rows instead of stretching them. -->
+        <div style="min-height:100%;">
         <table class="bh-table">
             <thead>
                 <tr>
@@ -130,7 +138,9 @@
                 }
             </tbody>
         </table>
+        </div>
     </div>
+</div>
 </div>
 
 <!-- Archive Modal -->
