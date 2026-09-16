@@ -30,7 +30,7 @@
     <div class="col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="height:420px;overflow:hidden;">
         <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
             <h2 class="font-semibold text-gray-900">Pending Reservations</h2>
-            <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">@pending.Count</span>
+            <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">@pending.Select(r => r.UserId).Distinct().Count()</span>
         </div>
 
         <!-- RFID Tap Area -->
@@ -51,56 +51,64 @@
             {
                 <p class="px-5 py-8 text-center text-gray-400 text-sm">No pending reservations</p>
             }
-            @foreach (var r in pending)
+            @{
+                // Grouped by student rather than one row per book — a student can have
+                // up to MaxBooksPerUser reservations pending at once, and the panel
+                // should show their name only once. The per-book breakdown (and Deny,
+                // which stays per-book since only one reservation should be rejected
+                // at a time) is revealed by expanding the row; picking up multiple
+                // books at once happens through the RFID tap popup instead, which
+                // covers the common case of the student actually being at the desk.
+                var groupedPending = pending
+                    .GroupBy(r => r.UserId)
+                    .OrderBy(g => g.Min(r => r.CreatedAt));
+            }
+            @foreach (var group in groupedPending)
             {
-                // Exact deadline (in PH time — PickupDeadline is stored as UTC),
-                // not a countdown: the librarian asked for the actual cutoff time
-                // shown directly, since a reservation not picked up by then is
-                // auto-voided anyway (see the cleanup step at the top of this
-                // action) — the moment that matters is a fixed point in time, not
-                // "how long is left" as of whenever the page happened to load.
-                var timeLeft = r.PickupDeadline - DateTime.UtcNow;
-                var isExpiringSoon = timeLeft.TotalMinutes <= 30 && timeLeft.TotalMinutes > 0;
-                var isExpired = timeLeft.TotalMinutes <= 0;
-                var timeDisplay = isExpired
+                var first = group.First();
+                var user  = first.User;
+                var sect  = user?.Section ?? "";
+                var adv   = (!string.IsNullOrEmpty(sect) && advisers.TryGetValue(sect, out var a) && !string.IsNullOrEmpty(a)) ? a : "";
+                var nearestDeadline = group.Min(r => r.PickupDeadline);
+                var timeLeft        = nearestDeadline - DateTime.UtcNow;
+                var isExpiringSoon  = timeLeft.TotalMinutes <= 30 && timeLeft.TotalMinutes > 0;
+                var isExpired       = timeLeft.TotalMinutes <= 0;
+                var timeDisplay     = isExpired
                     ? "Pickup window passed — will be auto-voided"
-                    : "Pickup by " + PhTime.FromUtc(r.PickupDeadline).ToString("h:mm tt, MMM dd");
+                    : "Pickup by " + PhTime.FromUtc(nearestDeadline).ToString("h:mm tt, MMM dd");
+                var bookCount = group.Count();
+                var rowId     = "pendingGroup-" + user?.Id;
 
-                // Escaped for the single-quoted JS string in the Picked Up button's
-                // confirm dialog below — same reasoning as the Return button's
-                // equivalent variables further down this page.
-                var pendingStudentName = $"{r.User?.FirstName} {r.User?.LastName}".Replace("'", "\\'");
-                var pendingBookTitle   = (r.Book?.Title ?? "this book").Replace("'", "\\'");
-
-                <div class="px-4 py-3 border-b border-gray-50 reservation-row transition-colors duration-300"
-                     data-student-no="@r.User?.StudentNumber">
-                    <div class="flex items-start gap-3">
+                <div class="border-b border-gray-50 reservation-row transition-colors duration-300"
+                     data-student-no="@user?.StudentNumber">
+                    <button type="button" onclick="togglePendingGroup('@rowId')"
+                            class="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-gray-50">
                         <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-sm font-bold flex-shrink-0">
-                            @r.User?.LastName?.FirstOrDefault()
+                            @user?.LastName?.FirstOrDefault()
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-800">@r.User?.LastName, @r.User?.FirstName @(string.IsNullOrEmpty(r.User?.MiddleName) ? "" : r.User!.MiddleName![0] + ".")</p>
-                            @{
-                                var sect = r.User?.Section ?? "";
-                                var adv  = (!string.IsNullOrEmpty(sect) && advisers.TryGetValue(sect, out var a) && !string.IsNullOrEmpty(a)) ? a : "";
-                            }
+                            <div class="flex items-center gap-2">
+                                <p class="text-sm font-medium text-gray-800">@user?.LastName, @user?.FirstName @(string.IsNullOrEmpty(user?.MiddleName) ? "" : user!.MiddleName![0] + ".")</p>
+                                <span class="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded-full text-[10px] font-semibold flex-shrink-0">@bookCount book@(bookCount > 1 ? "s" : "")</span>
+                            </div>
                             <p class="text-xs text-gray-500">@sect@(adv != "" ? " — " + adv : "")</p>
-                            <p class="text-xs text-gray-600 truncate mt-0.5">@r.Book?.Title</p>
                             <span class="text-xs @((isExpired || isExpiringSoon) ? "text-red-500 font-semibold" : "text-gray-400")">@timeDisplay</span>
                         </div>
-                    </div>
-                    <div class="flex gap-2 mt-2 ml-12">
-                        <form method="post" action="@Url.Action("Deny","Borrow")">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="id" value="@r.Id" />
-                            <button type="submit" class="px-3 py-1.5 text-xs border border-red-300 text-red-600 rounded-lg hover:bg-red-50">Deny</button>
-                        </form>
-                        <form method="post" action="@Url.Action("Approve","Borrow")"
-                              onsubmit="return bhConfirmSubmit(event, 'Confirm that @pendingStudentName picked up &quot;@pendingBookTitle&quot;?', 'Confirm Pickup')">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="id" value="@r.Id" />
-                            <button type="submit" class="px-3 py-1.5 text-xs text-white rounded-lg" style="background-color:#000147;">Picked Up</button>
-                        </form>
+                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0 mt-1 transition-transform" id="@(rowId)-chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div id="@rowId" class="hidden px-4 pb-3 pl-16 space-y-2">
+                        @foreach (var r in group)
+                        {
+                            <div class="flex items-center justify-between gap-2 text-xs">
+                                <span class="text-gray-600 truncate">@r.Book?.Title</span>
+                                <form method="post" action="@Url.Action("Deny","Borrow")"
+                                      onsubmit="return bhConfirmSubmit(event, 'Deny the reservation for &quot;@((r.Book?.Title ?? "this book").Replace("'", "\\'"))&quot;?', 'Deny Reservation')">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button type="submit" class="px-2 py-1 text-xs border border-red-300 text-red-600 rounded-lg hover:bg-red-50 flex-shrink-0">Deny</button>
+                                </form>
+                            </div>
+                        }
                     </div>
                 </div>
             }
@@ -279,7 +287,7 @@
 <div id="borrowSlipModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
     <div class="bg-white rounded-xl w-full max-w-lg mx-4 shadow-xl overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between" style="background-color:#000147;">
-            <h3 class="text-base font-semibold text-white">Borrow Slip — Pickup Confirmation</h3>
+            <h3 class="text-base font-semibold text-white">Reservation Pickup</h3>
             <button onclick="closeSlip()" class="text-white/70 hover:text-white">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -287,48 +295,35 @@
             </button>
         </div>
         <div class="px-6 py-5">
-            <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm mb-5">
-                <div>
-                    <p class="text-xs text-gray-400 mb-0.5">Student / Employee No.</p>
-                    <p id="slipStudentNo" class="font-medium text-gray-800"></p>
+            <div class="flex items-center gap-4 mb-5">
+                <div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xl flex-shrink-0">
+                    <span id="slipInitial"></span>
                 </div>
-                <div>
-                    <p class="text-xs text-gray-400 mb-0.5">Name</p>
-                    <p id="slipName" class="font-medium text-gray-800"></p>
-                </div>
-                <div>
-                    <p class="text-xs text-gray-400 mb-0.5">Section</p>
-                    <p id="slipSection" class="font-medium text-gray-800"></p>
-                </div>
-                <div>
-                    <p class="text-xs text-gray-400 mb-0.5">Course / Level</p>
-                    <p id="slipCourse" class="font-medium text-gray-800"></p>
-                </div>
-                <div class="col-span-2 border-t border-gray-100 pt-3">
-                    <p class="text-xs text-gray-400 mb-0.5">Book Title</p>
-                    <p id="slipBook" class="font-semibold text-gray-800"></p>
-                    <p id="slipAuthor" class="text-xs text-gray-500"></p>
-                </div>
-                <div>
-                    <p class="text-xs text-gray-400 mb-0.5">Reserved At</p>
-                    <p id="slipReservedAt" class="text-gray-600"></p>
-                </div>
-                <div>
-                    <p class="text-xs text-gray-400 mb-0.5">Time Remaining</p>
-                    <p id="slipTimeLeft" class="text-gray-600"></p>
+                <div class="min-w-0">
+                    <p id="slipName" class="font-semibold text-gray-800 text-base truncate"></p>
+                    <p class="text-xs text-gray-500">Student ID: <span id="slipStudentNo"></span></p>
+                    <p class="text-xs text-gray-500"><span id="slipCourse"></span></p>
                 </div>
             </div>
-            <form method="post" action="@Url.Action("Approve","Borrow")">
-                @Html.AntiForgeryToken()
-                <input type="hidden" id="slipReservationId" name="id" value="" />
-                <div class="flex gap-3">
-                    <button type="button" onclick="closeSlip()" class="btn-secondary flex-1 justify-center">Cancel</button>
-                    <button type="submit" class="btn-primary flex-1 justify-center">Confirm Pickup</button>
-                </div>
-            </form>
+            <div class="border-t border-gray-100 pt-4">
+                <h4 class="text-sm font-semibold text-gray-800 mb-2">Books Reservation</h4>
+                <div id="slipBookList" class="space-y-2 max-h-64 overflow-y-auto"></div>
+            </div>
+            <p id="slipSelectError" class="text-xs text-red-500 mt-2 hidden">Select at least one book to mark as picked up.</p>
+            <div class="flex gap-3 mt-5">
+                <button type="button" onclick="closeSlip()" class="btn-secondary flex-1 justify-center">Cancel</button>
+                <button type="button" onclick="submitPickedUp()" class="btn-primary flex-1 justify-center">Picked Up</button>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Not user-facing — populated with the checked reservation ids and submitted
+     once the "Are you sure...?" confirmation above is accepted. -->
+<form id="approveSelectedForm" method="post" action="@Url.Action("ApproveSelected","Borrow")" class="hidden">
+    @Html.AntiForgeryToken()
+    <div id="approveSelectedIdsContainer"></div>
+</form>
 
 <!-- Borrow Book Modal — Landscape layout -->
 <div id="borrowModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden px-4">
@@ -744,12 +739,27 @@ function filterReturnTable() {
     }
 }
 
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text ?? '';
+    return div.innerHTML;
+}
+
+// Toggles the Deny-per-book breakdown under a Pending Reservations student row.
+function togglePendingGroup(rowId) {
+    const body    = document.getElementById(rowId);
+    const chevron = document.getElementById(rowId + '-chevron');
+    if (!body) return;
+    body.classList.toggle('hidden');
+    if (chevron) chevron.style.transform = body.classList.contains('hidden') ? '' : 'rotate(180deg)';
+}
+
 async function lookupRfid(rfid) {
     rfidError.classList.add('hidden');
     rfidInput.placeholder = 'Looking up...';
 
     try {
-        const res = await fetch(`@Url.Action("FindByRfid","Borrow")?rfid=${encodeURIComponent(rfid)}`);
+        const res = await fetch(`@Url.Action("FindReservationsByRfid","Borrow")?rfid=${encodeURIComponent(rfid)}`);
         const data = await res.json();
 
         if (!data.found) {
@@ -769,16 +779,23 @@ async function lookupRfid(rfid) {
         // Highlight the matching pending reservation row
         highlightReservationRow(data.studentNumber);
 
-        // Fill and open borrow slip
-        document.getElementById('slipStudentNo').textContent  = data.studentNumber  || '—';
-        document.getElementById('slipName').textContent       = data.fullName        || '—';
-        document.getElementById('slipSection').textContent    = data.section         || '—';
-        document.getElementById('slipCourse').textContent     = [data.course, data.level].filter(Boolean).join(' · ') || '—';
-        document.getElementById('slipBook').textContent       = data.bookTitle       || '—';
-        document.getElementById('slipAuthor').textContent     = data.bookAuthor      || '';
-        document.getElementById('slipReservedAt').textContent = data.reservedAt      || '—';
-        document.getElementById('slipTimeLeft').textContent   = data.timeLeft        || '—';
-        document.getElementById('slipReservationId').value    = data.reservationId;
+        // Fill and open the reservation pickup popup
+        const initial = (data.fullName || '?').trim().charAt(0).toUpperCase();
+        document.getElementById('slipInitial').textContent    = initial;
+        document.getElementById('slipStudentNo').textContent  = data.studentNumber || '—';
+        document.getElementById('slipName').textContent       = data.fullName || '—';
+        document.getElementById('slipCourse').textContent     = [data.course, data.level, data.section].filter(Boolean).join(' · ') || '—';
+
+        const list = document.getElementById('slipBookList');
+        list.innerHTML = (data.reservations || []).map(book => `
+            <label class="flex items-center justify-between gap-3 px-3 py-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                <span class="flex items-center gap-2 min-w-0">
+                    <input type="checkbox" class="slip-book-checkbox w-4 h-4 flex-shrink-0" value="${book.id}" checked />
+                    <span class="text-sm text-gray-800 truncate">${escapeHtml(book.bookTitle)}</span>
+                </span>
+                <span class="text-xs text-gray-400 flex-shrink-0">Pickup by ${escapeHtml(book.pickupBy)}</span>
+            </label>`).join('');
+        document.getElementById('slipSelectError').classList.add('hidden');
 
         document.getElementById('borrowSlipModal').classList.remove('hidden');
     } catch {
@@ -786,6 +803,31 @@ async function lookupRfid(rfid) {
         rfidError.classList.remove('hidden');
         deactivateRfidScan();
     }
+}
+
+// "Picked Up" click: gather the checked reservation ids, confirm, then submit.
+// Only the checked ones are sent — anything left unchecked stays Pending and is
+// never touched by ApproveSelected.
+async function submitPickedUp() {
+    const checkedIds = Array.from(document.querySelectorAll('.slip-book-checkbox:checked')).map(cb => cb.value);
+    if (checkedIds.length === 0) {
+        document.getElementById('slipSelectError').classList.remove('hidden');
+        return;
+    }
+
+    const ok = await bhConfirm('Are you sure you want to confirm the selected books as picked up?', 'Confirm Pickup');
+    if (!ok) return;
+
+    const container = document.getElementById('approveSelectedIdsContainer');
+    container.innerHTML = '';
+    for (const id of checkedIds) {
+        const input = document.createElement('input');
+        input.type  = 'hidden';
+        input.name  = 'ids';
+        input.value = id;
+        container.appendChild(input);
+    }
+    document.getElementById('approveSelectedForm').submit();
 }
 
 function closeSlip() {

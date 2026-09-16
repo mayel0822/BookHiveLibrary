@@ -482,6 +482,52 @@ namespace BookHiveLibrary.Controllers
             });
         }
 
+        // Like FindByRfid above, but returns EVERY active pending reservation for the
+        // tapped student instead of just the oldest one — a student can have up to
+        // MaxBooksPerUser reservations waiting at once, and the pickup popup needs to
+        // list all of them as a checklist so the librarian can pick which ones the
+        // student is actually collecting today.
+        [HttpGet]
+        public async Task<IActionResult> FindReservationsByRfid(string rfid)
+        {
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.RFIDNumber == rfid);
+
+            if (user == null)
+                return Json(new { found = false, message = "RFID card not registered." });
+
+            if (!user.IsActive)
+                return Json(new { found = false, message = "This account has been deactivated. Please contact MIS." });
+
+            var reservations = await _context.BookReservations
+                .Include(r => r.Book)
+                .Where(r => r.UserId == user.Id && r.Status == "Pending" && r.PickupDeadline >= DateTime.UtcNow)
+                .OrderBy(r => r.CreatedAt)
+                .ToListAsync();
+
+            if (!reservations.Any())
+                return Json(new { found = false, message = $"No active reservation found for {user.FirstName} {user.LastName}." });
+
+            string middleInitial = string.IsNullOrEmpty(user.MiddleName) ? "" : user.MiddleName[0] + ".";
+            string fullName      = $"{user.LastName}, {user.FirstName} {middleInitial}".Trim();
+
+            return Json(new
+            {
+                found         = true,
+                studentNumber = user.StudentNumber ?? user.EmployeeNumber,
+                fullName,
+                section       = user.Section,
+                course        = user.Course,
+                level         = user.Level,
+                reservations  = reservations.Select(r => new
+                {
+                    id         = r.Id,
+                    bookTitle  = r.Book?.Title ?? "Untitled",
+                    bookAuthor = r.Book?.Author ?? "",
+                    pickupBy   = PhTime.FromUtc(r.PickupDeadline).ToString("h:mm tt, MMM dd")
+                })
+            });
+        }
+
         // Lets a student place an online reservation (also accessible from the student side).
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -599,6 +645,97 @@ namespace BookHiveLibrary.Controllers
             }
 
             TempData["Success"] = $"Book granted. Due date: {reservation.DueDate:MMM dd, yyyy}.";
+            return RedirectToAction("Index");
+        }
+
+        // Same logic as Approve above, but for the "Books Reservation" pickup popup:
+        // a student can have several Pending reservations at once, and the librarian
+        // checks off only the ones actually being handed over today. Everything not
+        // in the list stays untouched (still Pending) — this only ever advances the
+        // reservations it's given, never the student's other ones.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveSelected(List<int> ids)
+        {
+            if (ids == null || !ids.Any())
+            {
+                TempData["Error"] = "No books were selected.";
+                return RedirectToAction("Index");
+            }
+
+            int approvedCount = 0;
+            var skipped = new List<string>();
+            string? studentUserId = null;
+
+            foreach (var id in ids)
+            {
+                var reservation = await _context.BookReservations
+                    .Include(r => r.Book)
+                    .FirstOrDefaultAsync(r => r.Id == id && r.Status == "Pending");
+
+                if (reservation == null) continue; // already handled (denied/expired/etc.) since the popup was opened
+
+                studentUserId ??= reservation.UserId;
+
+                bool pickupWindowExpired = reservation.PickupDeadline < DateTime.UtcNow;
+                if (pickupWindowExpired)
+                {
+                    reservation.Status           = "Void";
+                    reservation.LibrarianRemarks = "Auto-voided: not picked up within 3 hours.";
+                    skipped.Add($"{reservation.Book?.Title} (expired)");
+                    continue;
+                }
+
+                // + approvedCount: books approved earlier in THIS same loop are still
+                // Pending as far as the database is concerned (not saved yet), so the
+                // DB count alone would under-count how many this batch has already
+                // committed to PickedUp.
+                int otherBorrowedBooks = await _context.BookReservations.CountAsync(r =>
+                    r.UserId == reservation.UserId
+                    && (r.Status == "PickedUp" || r.Status == "Overdue")
+                    && r.Id != id) + approvedCount;
+
+                if (otherBorrowedBooks >= MaxBooksPerUser)
+                {
+                    skipped.Add($"{reservation.Book?.Title} (borrow limit reached)");
+                    continue;
+                }
+
+                reservation.Status           = "PickedUp";
+                reservation.ActualPickupTime = DateTime.UtcNow;
+                reservation.DueDate          = CalculateDueDate();
+                reservation.ReminderSent     = false;
+
+                if (reservation.Book != null)
+                {
+                    await BookAvailability.Recalculate(_context, reservation.Book);
+                    reservation.Book.AvailableQuantity = Math.Max(0, reservation.Book.AvailableQuantity - 1);
+                    await NotifyOtherReserversIfBookJustRanOut(reservation.Book, reservation.UserId);
+
+                    await _hub.Clients.Group("students").SendAsync("BookAvailabilityChanged",
+                        new { bookId = reservation.Book.Id, availableQuantity = reservation.Book.AvailableQuantity });
+                }
+
+                approvedCount++;
+            }
+
+            await _context.SaveChangesAsync();
+
+            if (studentUserId != null)
+            {
+                await PushBookEvent("BookTransactionUpdated",
+                    new { action = "PickedUp", user = studentUserId }, studentUserId);
+            }
+
+            if (approvedCount == 0)
+                TempData["Error"] = skipped.Any()
+                    ? $"No books could be processed. {string.Join(", ", skipped)}."
+                    : "No books could be processed.";
+            else if (skipped.Any())
+                TempData["Success"] = $"{approvedCount} book(s) marked as picked up. Skipped: {string.Join(", ", skipped)}.";
+            else
+                TempData["Success"] = $"{approvedCount} book(s) marked as picked up.";
+
             return RedirectToAction("Index");
         }
 
