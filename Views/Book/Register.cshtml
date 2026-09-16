@@ -77,7 +77,7 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
             <!-- Cover Image Preview -->
-            <div class="flex flex-col items-center gap-4">
+            <div id="formLeftCol" class="flex flex-col items-center gap-4">
                 <!-- Clickable preview area — opens file picker -->
                 <div id="coverPreview"
                      onclick="document.getElementById('coverImageFile').click()"
@@ -108,10 +108,23 @@
                     </div>
                 </div>
                 <input type="hidden" asp-for="AvailableQuantity" id="availableQtyInput" />
+
+                <!-- Book Synopsis — grows to fill the leftover space in this
+                     column so its bottom edge lines up with the bottom of the
+                     Book Fields column on the right (grid stretches both
+                     columns to the same height by default). -->
+                <div class="w-full flex-1 flex flex-col min-h-[160px]">
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Book Synopsis</label>
+                    <textarea asp-for="Description"
+                              oninput="checkLettersRequired(this, 'descriptionWarning', 'Book Synopsis', true)"
+                              class="w-full flex-1 min-h-0 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"></textarea>
+                    <span asp-validation-for="Description" class="text-red-500 text-xs"></span>
+                    <p id="descriptionWarning" class="text-amber-600 text-xs mt-1 hidden"></p>
+                </div>
             </div>
 
             <!-- Book Fields -->
-            <div class="space-y-4">
+            <div id="formRightCol" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Book Title</label>
                     <input type="text" asp-for="Title" required
@@ -226,14 +239,6 @@
                     </div>
                 </div>
                 <input type="hidden" asp-for="AisleLocation" id="aisleLocationHidden" />
-                <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-1">Book Synopsis</label>
-                    <textarea asp-for="Description" rows="4"
-                              oninput="checkLettersRequired(this, 'descriptionWarning', 'Book Synopsis', true)"
-                              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"></textarea>
-                    <span asp-validation-for="Description" class="text-red-500 text-xs"></span>
-                    <p id="descriptionWarning" class="text-amber-600 text-xs mt-1 hidden"></p>
-                </div>
                 <div class="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <input type="checkbox" id="professorOnly" class="w-4 h-4 accent-blue-700"
                            onchange="document.getElementById('bookForHidden').value = this.checked ? 'Professor' : 'Student'" />
@@ -290,6 +295,33 @@ function checkNumbersOnly(input, warningId, fieldLabel, stripPattern, allowedDes
         el.classList.add('hidden');
     }
 }
+
+// Match the left column's height to the right column's so the Book Synopsis
+// box (which grows via flex-1) always ends at the same bottom edge as the
+// Book Fields column — plain CSS grid stretch doesn't reliably reach this
+// height across a nested flex item with flex-basis:0, so it's computed here
+// instead. Re-runs whenever the right column's rendered height changes
+// (e.g. a validation warning appears/disappears) or the layout switches
+// between the stacked (mobile) and side-by-side (sm+) breakpoint.
+function syncFormColumnHeights() {
+    const leftCol = document.getElementById('formLeftCol');
+    const rightCol = document.getElementById('formRightCol');
+    if (!leftCol || !rightCol) return;
+    if (window.matchMedia('(min-width: 640px)').matches) {
+        leftCol.style.height = rightCol.offsetHeight + 'px';
+    } else {
+        leftCol.style.height = '';
+    }
+}
+window.addEventListener('resize', syncFormColumnHeights);
+window.addEventListener('load', syncFormColumnHeights);
+(function() {
+    const rightCol = document.getElementById('formRightCol');
+    if (rightCol && window.ResizeObserver) {
+        new ResizeObserver(syncFormColumnHeights).observe(rightCol);
+    }
+    syncFormColumnHeights();
+})();
 
 // Hide native number-input spinner arrows
 (function() {
