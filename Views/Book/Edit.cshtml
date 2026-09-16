@@ -12,7 +12,12 @@
         <input type="hidden" asp-for="Id" />
         <!-- Keep existing cover URL so the controller can preserve it if no new file is uploaded -->
         <input type="hidden" asp-for="CoverImageUrl" />
-        <div asp-validation-summary="ModelOnly" class="mb-4 text-red-600 text-sm"></div>
+        <!-- "All" (not "ModelOnly") — property-specific errors like the duplicate-
+             title check and the Call No./ISBN/Published Year/Title/Author/Description
+             format rules were being silently swallowed here: ModelOnly only shows
+             errors NOT tied to a specific field, and this page didn't have a
+             asp-validation-for span for every field that can now fail. -->
+        <div asp-validation-summary="All" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm"></div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <!-- Cover Image -->
@@ -60,11 +65,13 @@
                     <label class="block text-sm font-medium text-gray-600 mb-1">Book Title</label>
                     <input type="text" asp-for="Title" required
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                    <span asp-validation-for="Title" class="text-red-500 text-xs"></span>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">Author</label>
                     <input type="text" asp-for="Author" required
                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                    <span asp-validation-for="Author" class="text-red-500 text-xs"></span>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
@@ -165,6 +172,7 @@
                     <label class="block text-sm font-medium text-gray-600 mb-1">Book Synopsis</label>
                     <textarea asp-for="Description" rows="4"
                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"></textarea>
+                    <span asp-validation-for="Description" class="text-red-500 text-xs"></span>
                 </div>
                 <div class="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <input type="checkbox" id="professorOnly" class="w-4 h-4 accent-blue-700"

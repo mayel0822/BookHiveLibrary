@@ -6,10 +6,18 @@ namespace BookHiveLibrary.ViewModels
     {
         public int Id { get; set; }
 
+        // Must contain at least one letter (blocks pure-digit garbage like "212" or
+        // "12312"), but digits are still allowed alongside letters — a strict
+        // "no digits at all" rule would also reject real titles like "Catch-22",
+        // "Fahrenheit 451", and "2001: A Space Odyssey". The one real title this
+        // still blocks: a book titled with bare digits and nothing else (1984, by
+        // George Orwell, being the famous example) — a narrow, deliberate tradeoff.
         [Required]
+        [RegularExpression(@"^(?=.*[A-Za-z])[A-Za-z0-9\s.,'"":;!?()&\-]+$", ErrorMessage = "Title must include actual letters, not just numbers/symbols.")]
         public string Title { get; set; } = "";
 
         [Required]
+        [RegularExpression(@"^(?=.*[A-Za-z])[A-Za-z0-9\s.,'"":;!?()&\-]+$", ErrorMessage = "Author must include actual letters, not just numbers/symbols.")]
         public string Author { get; set; } = "";
 
         [Required]
@@ -38,6 +46,9 @@ namespace BookHiveLibrary.ViewModels
         [Required]
         public string AisleLocation { get; set; } = "";
 
+        // Same rule as Title/Author (must contain a letter, digits still allowed
+        // alongside them), but optional — empty is allowed.
+        [RegularExpression(@"^$|^(?=.*[A-Za-z])[A-Za-z0-9\s.,'"":;!?()&\-]+$", ErrorMessage = "Synopsis must include actual letters, not just numbers/symbols.")]
         public string Description { get; set; } = "";
 
         [Display(Name = "Cover Image URL")]
