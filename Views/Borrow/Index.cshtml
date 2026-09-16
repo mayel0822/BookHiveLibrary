@@ -46,7 +46,7 @@
             </div>
             <p id="rfidError" class="text-xs text-red-500 mt-1 hidden"></p>
         </div>
-        <div class="flex-1 min-h-0 overflow-y-auto divide-y divide-gray-100">
+        <div class="flex-1 min-h-0 overflow-y-scroll divide-y divide-gray-100">
             @if (!pending.Any())
             {
                 <p class="px-5 py-8 text-center text-gray-400 text-sm">No pending reservations</p>
@@ -123,7 +123,7 @@
         <div class="px-5 py-4 border-b border-gray-100 flex-shrink-0">
             <h2 class="font-semibold text-gray-900">Books Due</h2>
         </div>
-        <div class="flex-1 min-h-0 overflow-y-auto divide-y divide-gray-100">
+        <div class="flex-1 min-h-0 overflow-y-scroll divide-y divide-gray-100">
             @if (!allDue.Any())
             {
                 <p class="px-5 py-8 text-center text-gray-400 text-sm">No active borrows</p>
