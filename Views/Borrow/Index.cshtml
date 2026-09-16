@@ -53,11 +53,18 @@
             }
             @foreach (var r in pending)
             {
+                // Exact deadline (in PH time — PickupDeadline is stored as UTC),
+                // not a countdown: the librarian asked for the actual cutoff time
+                // shown directly, since a reservation not picked up by then is
+                // auto-voided anyway (see the cleanup step at the top of this
+                // action) — the moment that matters is a fixed point in time, not
+                // "how long is left" as of whenever the page happened to load.
                 var timeLeft = r.PickupDeadline - DateTime.UtcNow;
                 var isExpiringSoon = timeLeft.TotalMinutes <= 30 && timeLeft.TotalMinutes > 0;
-                var timeDisplay = timeLeft.TotalMinutes > 0
-                    ? $"{(int)timeLeft.TotalHours}h {timeLeft.Minutes:D2}m left"
-                    : "Expiring...";
+                var isExpired = timeLeft.TotalMinutes <= 0;
+                var timeDisplay = isExpired
+                    ? "Pickup window passed — will be auto-voided"
+                    : "Pickup by " + PhTime.FromUtc(r.PickupDeadline).ToString("h:mm tt, MMM dd");
 
                 <div class="px-4 py-3 border-b border-gray-50 reservation-row transition-colors duration-300"
                      data-student-no="@r.User?.StudentNumber">
@@ -73,7 +80,7 @@
                             }
                             <p class="text-xs text-gray-500">@sect@(adv != "" ? " — " + adv : "")</p>
                             <p class="text-xs text-gray-600 truncate mt-0.5">@r.Book?.Title</p>
-                            <span class="text-xs @(isExpiringSoon ? "text-red-500 font-semibold" : "text-gray-400")">@timeDisplay</span>
+                            <span class="text-xs @((isExpired || isExpiringSoon) ? "text-red-500 font-semibold" : "text-gray-400")">@timeDisplay</span>
                         </div>
                     </div>
                     <div class="flex gap-2 mt-2 ml-12">
