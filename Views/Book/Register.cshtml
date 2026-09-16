@@ -239,17 +239,17 @@
                     </div>
                 </div>
                 <input type="hidden" asp-for="AisleLocation" id="aisleLocationHidden" />
-                <div class="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="flex items-center gap-3 p-3 border border-gray-300 rounded-lg">
                     <input type="checkbox" id="professorOnly" class="w-4 h-4 accent-blue-700"
                            onchange="document.getElementById('bookForHidden').value = this.checked ? 'Professor' : 'Student'" />
-                    <label for="professorOnly" class="text-sm font-medium text-blue-800 cursor-pointer">
-                        Professor Only <span class="text-blue-600 font-normal">(students cannot reserve this book)</span>
+                    <label for="professorOnly" class="text-sm font-medium text-gray-700 cursor-pointer">
+                        Professor Only <span class="text-gray-500 font-normal">(students cannot reserve this book)</span>
                     </label>
                 </div>
-                <div class="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div class="flex items-center gap-3 p-3 border border-gray-300 rounded-lg">
                     <input type="checkbox" asp-for="IsRoomUseOnly" id="roomUseOnly" class="w-4 h-4 accent-amber-600" />
-                    <label for="roomUseOnly" class="text-sm font-medium text-amber-800 cursor-pointer">
-                        Room Use Only <span class="text-amber-600 font-normal">(cannot be borrowed outside the library)</span>
+                    <label for="roomUseOnly" class="text-sm font-medium text-gray-700 cursor-pointer">
+                        Room Use Only <span class="text-gray-500 font-normal">(cannot be borrowed outside the library)</span>
                     </label>
                 </div>
             </div>
