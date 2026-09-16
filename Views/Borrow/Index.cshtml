@@ -787,7 +787,7 @@ async function openReturnPopup(userId) {
         document.getElementById('returnPopupInitial').textContent    = initial;
         document.getElementById('returnPopupStudentNo').textContent  = data.studentNumber || '—';
         document.getElementById('returnPopupName').textContent       = data.fullName || '—';
-        document.getElementById('returnPopupLevel').textContent      = data.level || '—';
+        document.getElementById('returnPopupLevel').textContent      = [data.year, data.level].filter(Boolean).join(' - ') || '—';
         document.getElementById('returnPopupSection').textContent    = data.section || '—';
 
         const list = document.getElementById('returnPopupBookList');
@@ -939,7 +939,7 @@ async function openPendingPopup(userId) {
         document.getElementById('slipInitial').textContent    = initial;
         document.getElementById('slipStudentNo').textContent  = data.studentNumber || '—';
         document.getElementById('slipName').textContent       = data.fullName || '—';
-        document.getElementById('slipLevel').textContent      = data.level || '—';
+        document.getElementById('slipLevel').textContent      = [data.year, data.level].filter(Boolean).join(' - ') || '—';
         document.getElementById('slipSection').textContent    = data.section || '—';
 
         const list = document.getElementById('slipBookList');

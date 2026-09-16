@@ -541,6 +541,13 @@ namespace BookHiveLibrary.Controllers
             string middleInitial = string.IsNullOrEmpty(user.MiddleName) ? "" : user.MiddleName[0] + ".";
             string fullName      = $"{user.LastName}, {user.FirstName} {middleInitial}".Trim();
 
+            // user.Level only holds the education category ("Tertiary", "Senior High
+            // School", ...) copied from Section.Level — the numeric year ("4th Year")
+            // lives on Section.Year and was never copied onto the user record, so it
+            // has to be looked up here.
+            var sectionRecord = await _context.Sections
+                .FirstOrDefaultAsync(s => s.SectionName == user.Section);
+
             return new
             {
                 found         = true,
@@ -549,6 +556,7 @@ namespace BookHiveLibrary.Controllers
                 section       = user.Section,
                 course        = user.Course,
                 level         = user.Level,
+                year          = sectionRecord?.Year ?? "",
                 reservations  = reservations.Select(r => new
                 {
                     id         = r.Id,
@@ -1023,6 +1031,11 @@ namespace BookHiveLibrary.Controllers
             string middleInitial = string.IsNullOrEmpty(user.MiddleName) ? "" : user.MiddleName[0] + ".";
             string fullName      = $"{user.LastName}, {user.FirstName} {middleInitial}".Trim();
 
+            // See BuildPendingReservationsPayload for why this needs a separate lookup —
+            // the numeric year lives on Section.Year, not on the user record.
+            var sectionRecord = await _context.Sections
+                .FirstOrDefaultAsync(s => s.SectionName == user.Section);
+
             return Json(new
             {
                 found         = true,
@@ -1031,6 +1044,7 @@ namespace BookHiveLibrary.Controllers
                 section       = user.Section,
                 course        = user.Course,
                 level         = user.Level,
+                year          = sectionRecord?.Year ?? "",
                 books = borrowed.Select(r => new
                 {
                     id        = r.Id,
