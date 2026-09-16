@@ -5,7 +5,13 @@
     ViewData["Title"] = "User Management";
 }
 
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="height:600px;overflow:hidden;">
+<!-- height:100% (not a fixed px value) so this card exactly fills the page's
+     main content area — the layout's <main> is itself overflow-y-auto, and if
+     this card were taller than the visible area it would create a second,
+     redundant scrollbar around the whole page on top of the table's own.
+     Filling the area exactly means main never needs to scroll; only the
+     table body (below) does. -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="height:100%;overflow:hidden;">
     <!-- Header with search and filter -->
     <div class="px-5 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between flex-shrink-0">
         <h2 class="text-3xl font-bold text-gray-900">Users</h2>
