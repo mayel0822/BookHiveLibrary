@@ -286,6 +286,7 @@ async function loadStuNotifications() {
             'Overdue':     'bg-red-100 text-red-700',
             'Denied':      'bg-red-100 text-red-700',
             'Unavailable': 'bg-gray-200 text-gray-700',
+            'PickedUp':    'bg-green-100 text-green-700',
         };
         list.innerHTML = data.items.map(n => `
             <div class="px-4 py-3 hover:bg-gray-50 cursor-default">

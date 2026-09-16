@@ -634,6 +634,15 @@ namespace BookHiveLibrary.Controllers
                 await NotifyOtherReserversIfBookJustRanOut(reservation.Book, reservation.UserId);
             }
 
+            _context.StudentNotifications.Add(new StudentNotification
+            {
+                UserId  = reservation.UserId,
+                Type    = "PickedUp",
+                Title   = "Reservation Picked Up",
+                Message = $"Your reserved book \"{reservation.Book?.Title ?? "Book"}\" has been successfully picked up " +
+                          $"and is now recorded as borrowed. Due: {reservation.DueDate:MMM dd, yyyy}."
+            });
+
             await _context.SaveChangesAsync();
             await PushBookEvent("BookTransactionUpdated",
                 new { action = "PickedUp", book = reservation.Book?.Title, user = reservation.UserId }, reservation.UserId);
@@ -665,7 +674,9 @@ namespace BookHiveLibrary.Controllers
 
             int approvedCount = 0;
             var skipped = new List<string>();
+            var approvedTitles = new List<string>();
             string? studentUserId = null;
+            DateTime? approvedDueDate = null;
 
             foreach (var id in ids)
             {
@@ -717,6 +728,25 @@ namespace BookHiveLibrary.Controllers
                 }
 
                 approvedCount++;
+                approvedTitles.Add(reservation.Book?.Title ?? "Book");
+                approvedDueDate = reservation.DueDate;
+            }
+
+            if (approvedTitles.Any() && studentUserId != null)
+            {
+                string message = approvedTitles.Count == 1
+                    ? $"Your reserved book \"{approvedTitles[0]}\" has been successfully picked up and is now recorded as borrowed. " +
+                      $"Due: {approvedDueDate:MMM dd, yyyy}."
+                    : "Your reserved books have been successfully picked up and recorded as borrowed: " +
+                      string.Join(", ", approvedTitles) + $". Due: {approvedDueDate:MMM dd, yyyy}.";
+
+                _context.StudentNotifications.Add(new StudentNotification
+                {
+                    UserId  = studentUserId,
+                    Type    = "PickedUp",
+                    Title   = approvedTitles.Count == 1 ? "Reservation Picked Up" : "Reservations Picked Up",
+                    Message = message
+                });
             }
 
             await _context.SaveChangesAsync();
