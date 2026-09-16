@@ -5,9 +5,12 @@
     var sections = ViewBag.Sections as List<Section> ?? new List<Section>();
 }
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Left: Create Section Form -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6" style="height:100%;">
+    <!-- Left: Create Section Form — matched in height to the Sections list next
+         to it, but not made scrollable itself: this form has a fixed set of
+         fields that never grows, and forcing a scrollbar here would clip the
+         Course/Adviser dropdowns that pop open below their fields. -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6" style="height:100%;overflow:hidden;">
         <h2 class="text-2xl font-bold pb-3 mb-5 border-b border-gray-200" class="text-gray-900">Add Section</h2>
         <form method="post" action="@Url.Action("CreateSection","Librarian")" id="sectionForm">
             @Html.AntiForgeryToken()
@@ -87,8 +90,8 @@
     </div>
 
     <!-- Right: Sections List -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="height:100%;overflow:hidden;">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
             <h2 class="text-2xl font-bold" class="text-gray-900">Sections (@sections.Count)</h2>
             <button type="button"
                     onclick="@(sections.Any() ? "document.getElementById('resetModal').classList.remove('hidden')" : "document.getElementById('noSectionToast').classList.remove('hidden'); setTimeout(()=>document.getElementById('noSectionToast').classList.add('hidden'),2500)")"
@@ -96,7 +99,7 @@
                 Reset Section
             </button>
         </div>
-        <div class="px-5 py-3 border-b border-gray-100">
+        <div class="px-5 py-3 border-b border-gray-100 flex-shrink-0">
             <div class="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-blue-300 bg-white">
                 <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/></svg>
                 <input type="text" id="sectionSearch" placeholder="Search sections..."
@@ -104,7 +107,7 @@
                        class="flex-1 text-sm outline-none bg-transparent text-gray-700 placeholder-gray-400" />
             </div>
         </div>
-        <div id="sectionList" class="max-h-[calc(100vh-20rem)] overflow-y-auto">
+        <div id="sectionList" class="flex-1 min-h-0 overflow-y-scroll">
             @if (!sections.Any())
             {
                 <p class="px-5 py-8 text-center text-gray-400 text-sm">No sections created yet</p>
