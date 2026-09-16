@@ -95,6 +95,9 @@ namespace BookHiveLibrary.Models
         /// <summary>URL or path to the user's profile picture (from Microsoft account photo)</summary>
         public string? ProfilePicture { get; set; }
 
+        /// <summary>Per-account dark mode preference, set from the user's own Profile page. Follows them to any device.</summary>
+        public bool DarkMode { get; set; } = false;
+
         // ── Registration ──────────────────────────────────────────────────────
 
         /// <summary>

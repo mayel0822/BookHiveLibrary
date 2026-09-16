@@ -140,3 +140,75 @@
   }
 
 }
+
+/* ──────────────────────────────────────────────
+   Dark mode — per-account preference (ApplicationUser.DarkMode), applied as
+   a "dark" class on <html> from each layout. Not Tailwind's dark: variant
+   (that tracks OS/browser preference); this is a user-chosen toggle, so
+   plain CSS overrides keyed off the class are simpler than adding dark:
+   to every element across every view.
+
+   Scope, per the brief: the existing #000147 navy panels (stat cards,
+   sidebars, table headers styled inline or via bg-[#000147]) stay exactly
+   as they are — they're inline styles or bare hex classes, untouched by
+   these selectors. Everything else (white cards, borders, body text,
+   inputs, buttons, tables) gets a dark background with "dirty white"
+   (off-white, not stark #fff) borders and text.
+   ────────────────────────────────────────────── */
+:root {
+  --dark-bg:        #15161c; /* page background */
+  --dark-surface:   #1e2028; /* cards, modals, dropdowns */
+  --dark-surface-2: #262832; /* subtle nested surfaces (bg-gray-50/100) */
+  --dark-outline:   #d8d5c8; /* "dirty white" borders */
+  --dark-text:      #e6e3d8; /* "dirty white" primary text */
+  --dark-text-dim:  #a8a598; /* secondary/muted text */
+}
+
+.dark body { background-color: var(--dark-bg) !important; }
+
+.dark .bg-white { background-color: var(--dark-surface) !important; }
+.dark .bg-gray-50, .dark .bg-gray-100 { background-color: var(--dark-surface-2) !important; }
+.dark .bg-\[\#dce6f5\] { background-color: var(--dark-bg) !important; }
+
+.dark .border,
+.dark .border-t, .dark .border-b, .dark .border-l, .dark .border-r,
+.dark .border-gray-100, .dark .border-gray-200, .dark .border-gray-300,
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--dark-outline) !important;
+}
+
+.dark .text-gray-900, .dark .text-gray-800, .dark .text-gray-700 { color: var(--dark-text) !important; }
+.dark .text-gray-600, .dark .text-gray-500, .dark .text-gray-400 { color: var(--dark-text-dim) !important; }
+
+/* Inputs, selects, textareas */
+.dark input, .dark select, .dark textarea {
+  background-color: var(--dark-surface) !important;
+  border-color: var(--dark-outline) !important;
+  color: var(--dark-text) !important;
+}
+.dark input::placeholder, .dark textarea::placeholder { color: var(--dark-text-dim) !important; }
+
+/* Buttons */
+.dark .btn-secondary {
+  background-color: var(--dark-surface) !important;
+  border-color: var(--dark-outline) !important;
+  color: var(--dark-text) !important;
+}
+.dark .btn-secondary:hover { background-color: var(--dark-surface-2) !important; }
+
+/* Tables */
+.dark .bh-table thead tr, .dark .bh-table thead th {
+  background-color: var(--dark-surface) !important;
+  color: var(--dark-text) !important;
+  border-color: var(--dark-outline) !important;
+}
+.dark .bh-table tbody tr {
+  background-color: var(--dark-surface) !important;
+  border-color: var(--dark-outline) !important;
+}
+.dark .bh-table tbody tr:hover { background-color: var(--dark-surface-2) !important; }
+.dark .bh-table tbody td { color: var(--dark-text) !important; }
+
+/* Scrollbars stay legible against the dark surfaces */
+.dark ::-webkit-scrollbar-track { background: var(--dark-surface); }
+.dark ::-webkit-scrollbar-thumb { background: var(--dark-outline); }

@@ -3,6 +3,7 @@ using BookHiveLibrary.Models;
 using BookHiveLibrary.Services;
 using BookHiveLibrary.ViewModels;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -631,6 +632,22 @@ namespace BookHiveLibrary.Controllers
         {
             await _signInManager.SignOutAsync();
             return RedirectToAction("Index", "Home");
+        }
+
+        // ── Theme preference ─────────────────────────────────────────────────
+        // Shared across every role's Profile page — dark mode is a per-account
+        // setting, not a per-module one, so one endpoint handles all of them.
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SetDarkMode(bool enabled)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            user.DarkMode = enabled;
+            await _userManager.UpdateAsync(user);
+            return Json(new { success = true });
         }
 
         // ── Private helpers ───────────────────────────────────────────────────

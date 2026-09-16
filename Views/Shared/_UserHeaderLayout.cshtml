@@ -8,7 +8,7 @@
     var stuInitial = stuName.Length > 0 ? stuName[0].ToString().ToUpper() : "S";
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="@(stuCurrentUser?.DarkMode == true ? "dark" : "")">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

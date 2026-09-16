@@ -1,5 +1,9 @@
+@inject Microsoft.AspNetCore.Identity.UserManager<BookHiveLibrary.Models.ApplicationUser> _misLayoutUserManager
+@{
+    var misCurrentUser = await _misLayoutUserManager.GetUserAsync(User);
+}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="@(misCurrentUser?.DarkMode == true ? "dark" : "")">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

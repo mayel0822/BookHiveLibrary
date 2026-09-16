@@ -24,8 +24,16 @@
 
 <div class="w-full">
 
-    <div class="mb-6">
+    <div class="mb-6 flex items-center justify-between">
         <h1 class="text-3xl font-bold text-gray-800">My Profile</h1>
+        <label class="flex items-center gap-3 cursor-pointer select-none">
+            <span class="text-sm font-medium text-gray-600">Dark Mode</span>
+            <span class="relative inline-block w-11 h-6">
+                <input type="checkbox" id="darkModeToggle" class="peer sr-only" onchange="toggleDarkMode(this.checked)" checked="@(Model.DarkMode ? "checked" : null)" />
+                <span class="absolute inset-0 rounded-full bg-gray-300 peer-checked:bg-[#000147] transition-colors"></span>
+                <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></span>
+            </span>
+        </label>
     </div>
 
     <!-- Two-panel landscape layout -->
@@ -138,6 +146,20 @@ function cancelPhoto() {
 function submitPhoto() {
     document.getElementById('photoModal').classList.add('hidden');
     document.getElementById('photoForm').submit();
+}
+
+// Applies instantly for this tab, then persists to the account so it
+// follows the user to any device — see Controllers/AccountController.cs'
+// shared SetDarkMode action.
+async function toggleDarkMode(enabled) {
+    document.documentElement.classList.toggle('dark', enabled);
+    try {
+        const fd = new FormData();
+        fd.append('enabled', enabled);
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+        if (token) fd.append('__RequestVerificationToken', token);
+        await fetch('/Account/SetDarkMode', { method: 'POST', body: fd });
+    } catch {}
 }
 </script>
 }
