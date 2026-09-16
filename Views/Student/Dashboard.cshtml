@@ -174,7 +174,7 @@
         <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm flex flex-col flex-1 min-h-0" style="overflow:hidden;" id="catalogCard">
                 <h2 class="text-lg font-bold text-gray-900 px-6 pt-6 pb-4 flex-shrink-0">Library Book Catalog</h2>
                 <div class="flex-1 min-h-0 overflow-y-scroll px-6 pb-6">
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     @foreach (var book in recentBooks.Take(6))
                     {
                         var isAvail = book.AvailableQuantity > 0;
