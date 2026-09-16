@@ -98,9 +98,10 @@
 
         <!-- Library Catalog -->
         <div class="lg:col-span-2">
-            <div class="bg-white rounded-2xl p-6 shadow-sm">
-                <h2 class="text-lg font-bold text-gray-900 mb-6">Library Book Catalog</h2>
-                <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="bg-white rounded-2xl shadow-sm flex flex-col" style="height:600px;overflow:hidden;" id="catalogCard">
+                <h2 class="text-lg font-bold text-gray-900 px-6 pt-6 pb-4 flex-shrink-0">Library Book Catalog</h2>
+                <div class="flex-1 min-h-0 overflow-y-scroll px-6 pb-6">
+                <div class="grid grid-cols-2 gap-4">
                     @foreach (var book in recentBooks.Take(6))
                     {
                         var isAvail = book.AvailableQuantity > 0;
@@ -127,15 +128,18 @@
                         <p class="col-span-2 text-sm text-gray-400 text-center py-8">No books registered yet.</p>
                     }
                 </div>
+                </div>
             </div>
         </div>
 
-        <!-- Right panel -->
-        <div class="space-y-6">
+        <!-- Right panel — height matched to the Book Catalog card via JS
+             (syncStudentDashboardHeights), split evenly between the two cards. -->
+        <div class="flex flex-col gap-6" id="rightPanelsCol">
 
             <!-- My Reservation -->
-            <div class="bg-white rounded-2xl p-6 shadow-sm">
-                <h2 class="text-lg font-bold text-gray-900 mb-4">My Reservation</h2>
+            <div class="bg-white rounded-2xl shadow-sm flex flex-col flex-1 min-h-0" style="overflow:hidden;">
+                <h2 class="text-lg font-bold text-gray-900 px-6 pt-6 pb-4 flex-shrink-0">My Reservation</h2>
+                <div class="flex-1 min-h-0 overflow-y-scroll px-6 pb-6">
                 @if (myReservations.Any())
                 {
                     var first = myReservations.First();
@@ -172,12 +176,13 @@
                 <a href="@Url.Action("BookViewing","Student")" class="block w-full mt-4 bg-gray-100 hover:bg-gray-200 text-gray-900 py-2 rounded-xl transition font-medium text-sm text-center">
                     Browse Books
                 </a>
+                </div>
             </div>
 
             <!-- Books To Return -->
-            <div class="bg-white rounded-2xl p-6 shadow-sm">
-                <h2 class="text-lg font-bold text-gray-900 mb-4">Books To Return</h2>
-                <div class="space-y-4">
+            <div class="bg-white rounded-2xl shadow-sm flex flex-col flex-1 min-h-0" style="overflow:hidden;">
+                <h2 class="text-lg font-bold text-gray-900 px-6 pt-6 pb-4 flex-shrink-0">Books To Return</h2>
+                <div class="flex-1 min-h-0 overflow-y-scroll px-6 pb-6 space-y-4">
                     @if (booksToReturn.Any())
                     {
                         @foreach (var item in booksToReturn)
@@ -212,6 +217,30 @@
 
 @section Scripts {
 <script>
+// Match the right column's (My Reservation + Books To Return) height to the
+// Book Catalog card so it holds a fixed, non-empty size instead of shrinking
+// to fit its own shorter content and leaving a large blank gap below it —
+// same pattern used on the Librarian Dashboard.
+function syncStudentDashboardHeights() {
+    const leftCard = document.getElementById('catalogCard');
+    const rightCol = document.getElementById('rightPanelsCol');
+    if (!leftCard || !rightCol) return;
+    if (window.matchMedia('(min-width: 1024px)').matches) {
+        rightCol.style.height = leftCard.offsetHeight + 'px';
+    } else {
+        rightCol.style.height = '';
+    }
+}
+window.addEventListener('resize', syncStudentDashboardHeights);
+window.addEventListener('load', syncStudentDashboardHeights);
+(function() {
+    const leftCard = document.getElementById('catalogCard');
+    if (leftCard && window.ResizeObserver) {
+        new ResizeObserver(syncStudentDashboardHeights).observe(leftCard);
+    }
+    syncStudentDashboardHeights();
+})();
+
 function openBorrowedPanel() {
     const panel = document.getElementById('borrowedPanel');
     const inner = document.getElementById('borrowedPanelInner');
