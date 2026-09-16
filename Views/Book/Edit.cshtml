@@ -188,14 +188,14 @@
                         <option value="Tertiary">Tertiary / College</option>
                     </select>
                 </div>
-                <div class="flex items-center gap-3 p-3 border border-gray-300 rounded-lg">
+                <div class="flex items-center gap-3">
                     <input type="checkbox" id="professorOnly" class="w-4 h-4 accent-blue-700"
                            onchange="document.getElementById('bookForHidden').value = this.checked ? 'Professor' : 'Student'" />
                     <label for="professorOnly" class="text-sm font-medium text-gray-700 cursor-pointer">
                         Professor Only <span class="text-gray-500 font-normal">(students cannot reserve this book)</span>
                     </label>
                 </div>
-                <div class="flex items-center gap-3 p-3 border border-gray-300 rounded-lg">
+                <div class="flex items-center gap-3">
                     <input type="checkbox" asp-for="IsRoomUseOnly" id="roomUseOnly" class="w-4 h-4 accent-amber-600" />
                     <label for="roomUseOnly" class="text-sm font-medium text-gray-700 cursor-pointer">
                         Room Use Only <span class="text-gray-500 font-normal">(cannot be borrowed outside the library)</span>
