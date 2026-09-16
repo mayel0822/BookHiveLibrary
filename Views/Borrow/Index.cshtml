@@ -305,7 +305,8 @@
                 <div class="min-w-0">
                     <p id="slipName" class="font-semibold text-gray-800 text-base truncate"></p>
                     <p class="text-xs text-gray-500">Student ID: <span id="slipStudentNo"></span></p>
-                    <p class="text-xs text-gray-500"><span id="slipCourse"></span></p>
+                    <p class="text-xs text-gray-500">Year Level: <span id="slipLevel"></span></p>
+                    <p class="text-xs text-gray-500">Section: <span id="slipSection"></span></p>
                 </div>
             </div>
             <div class="border-t border-gray-100 pt-4">
@@ -353,7 +354,8 @@
                 <div class="min-w-0">
                     <p id="returnPopupName" class="font-semibold text-gray-800 text-base truncate"></p>
                     <p class="text-xs text-gray-500">Student ID: <span id="returnPopupStudentNo"></span></p>
-                    <p class="text-xs text-gray-500"><span id="returnPopupCourse"></span></p>
+                    <p class="text-xs text-gray-500">Year Level: <span id="returnPopupLevel"></span></p>
+                    <p class="text-xs text-gray-500">Section: <span id="returnPopupSection"></span></p>
                 </div>
             </div>
             <div class="border-t border-gray-100 pt-4">
@@ -785,7 +787,8 @@ async function openReturnPopup(userId) {
         document.getElementById('returnPopupInitial').textContent    = initial;
         document.getElementById('returnPopupStudentNo').textContent  = data.studentNumber || '—';
         document.getElementById('returnPopupName').textContent       = data.fullName || '—';
-        document.getElementById('returnPopupCourse').textContent     = [data.course, data.level, data.section].filter(Boolean).join(' · ') || '—';
+        document.getElementById('returnPopupLevel').textContent      = data.level || '—';
+        document.getElementById('returnPopupSection').textContent    = data.section || '—';
 
         const list = document.getElementById('returnPopupBookList');
         list.innerHTML = (data.books || []).map(book => `
@@ -936,7 +939,8 @@ async function openPendingPopup(userId) {
         document.getElementById('slipInitial').textContent    = initial;
         document.getElementById('slipStudentNo').textContent  = data.studentNumber || '—';
         document.getElementById('slipName').textContent       = data.fullName || '—';
-        document.getElementById('slipCourse').textContent     = [data.course, data.level, data.section].filter(Boolean).join(' · ') || '—';
+        document.getElementById('slipLevel').textContent      = data.level || '—';
+        document.getElementById('slipSection').textContent    = data.section || '—';
 
         const list = document.getElementById('slipBookList');
         list.innerHTML = (data.reservations || []).map(book => `
