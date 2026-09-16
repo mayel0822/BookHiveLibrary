@@ -30,10 +30,6 @@
     <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-3 flex-shrink-0">
         <form method="get" class="flex flex-1">
             <div class="flex flex-1 border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-300">
-                <input type="text" name="search" value="@ViewBag.Search"
-                       placeholder="Search by title, author, call number..."
-                       class="flex-1 px-3 py-2 text-sm outline-none bg-white" />
-                <div class="w-px bg-gray-200 self-stretch"></div>
                 <select name="category" class="px-3 py-2 text-sm outline-none bg-white text-gray-600 cursor-pointer">
                     <option value="">All Categories</option>
                     @if (ViewBag.Categories != null)
@@ -44,6 +40,10 @@
                         }
                     }
                 </select>
+                <div class="w-px bg-gray-200 self-stretch"></div>
+                <input type="text" name="search" value="@ViewBag.Search"
+                       placeholder="Search by title, author, call number, or ISBN..."
+                       class="flex-1 px-3 py-2 text-sm outline-none bg-white" />
                 <button type="submit" class="btn-primary rounded-none">Search</button>
             </div>
             @if (!string.IsNullOrEmpty(ViewBag.Search as string) || !string.IsNullOrEmpty(ViewBag.Category as string))

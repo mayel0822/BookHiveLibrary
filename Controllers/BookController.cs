@@ -37,7 +37,8 @@ namespace BookHiveLibrary.Controllers
                 query = query.Where(book =>
                     book.Title.Contains(search!)      ||
                     book.Author.Contains(search!)     ||
-                    book.CallNumber.Contains(search!));
+                    book.CallNumber.Contains(search!) ||
+                    book.ISBN.Contains(search!));
 
             if (hasCategory)
                 query = query.Where(book => book.Category == category);
