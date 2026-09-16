@@ -148,12 +148,24 @@
     <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap flex-shrink-0">
         <h2 class="font-semibold" class="text-gray-900">Borrowed Books</h2>
         <div class="flex items-center gap-3 flex-1 justify-end min-w-[200px]">
-            <!-- Find the person returning a book by name or student number.
-                 Filters the table below instantly as you type — no round trip,
-                 since the full list is already rendered on the page. -->
-            <input id="returnSearchInput" type="text" placeholder="Find by name or student number..."
-                   oninput="filterReturnTable()" autocomplete="off"
-                   class="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+            <!-- Find the person returning a book, either by typing a name/student
+                 number (filters the table instantly, no round trip — the full list
+                 is already rendered on the page) or by tapping their RFID card,
+                 same "input + Tap RFID Card button" pattern as the Pending
+                 Reservations panel above. -->
+            <div class="max-w-sm w-full">
+                <div id="returnRfidWrap" class="flex rounded-lg overflow-hidden border border-gray-300 transition-all duration-200">
+                    <input id="returnSearchInput" type="text" placeholder="Find by name or student number..."
+                           oninput="filterReturnTable()" autocomplete="off"
+                           class="flex-1 min-w-0 px-3 py-1.5 text-sm text-gray-700 bg-white focus:outline-none" />
+                    <button id="returnRfidBtn" type="button" onclick="activateReturnRfidScan()"
+                            class="px-3 py-1.5 text-sm font-semibold text-white flex-shrink-0 transition-colors duration-200"
+                            style="background-color:#000147;">
+                        Tap RFID Card
+                    </button>
+                </div>
+                <p id="returnRfidError" class="text-xs text-red-500 mt-1 hidden"></p>
+            </div>
             <button onclick="openBorrowModal()" class="btn-primary flex-shrink-0">+ Borrow Book</button>
         </div>
     </div>
@@ -479,6 +491,11 @@ let rfidBuffer    = '';
 let rfidTimer     = null;
 let rfidListening = false;
 
+// RFID scan state for the Borrowed Books search (separate from the Pending
+// Reservations one above — that one opens the pickup slip, this one just
+// fills in and filters the return-lookup search box).
+let returnRfidListening = false;
+
 // ── Activate scan mode ───────────────────────────────────────────────────
 function activateRfidScan() {
     rfidListening = true;
@@ -523,6 +540,15 @@ if (typeof libraryConnection !== 'undefined') {
     libraryConnection.onreconnected(() => _joinTransactionBorrow());
 
     libraryConnection.on("DeskRfidTap", function(data) {
+        // Checked first, and only when the librarian explicitly armed it by
+        // clicking "Tap RFID Card" next to the Borrowed Books search — so a tap
+        // meant for finding someone returning a book doesn't get swallowed by the
+        // pending-reservation/pickup-slip flow below, which has no equivalent
+        // explicit "arm" step of its own.
+        if (returnRfidListening) {
+            lookupReturnRfid(data.rfidNumber);
+            return;
+        }
         const borrowModal  = document.getElementById('borrowModal');
         const isBorrowOpen = borrowModal && !borrowModal.classList.contains('hidden');
         if (isBorrowOpen && currentBorrowType === 'Student') {
@@ -579,6 +605,54 @@ function clearHighlight() {
         r.style.backgroundColor = '';
         r.style.borderLeft = '';
     });
+}
+
+// ── RFID tap for the Borrowed Books search ───────────────────────────────
+// Resolves the tapped card to a student, then fills in and runs the same
+// client-side filter typing would trigger. Uses FindUserByRfid (identity
+// only) rather than FindByRfid (requires an existing Pending reservation) —
+// someone returning a book has an active PickedUp/Overdue one, not a
+// Pending one, so FindByRfid would always report "not found" here.
+function activateReturnRfidScan() {
+    returnRfidListening = true;
+    document.getElementById('returnRfidWrap').style.borderColor = '#3b82f6';
+    document.getElementById('returnRfidWrap').style.boxShadow = '0 0 0 2px rgba(59,130,246,.25)';
+    document.getElementById('returnRfidBtn').style.backgroundColor = '#1d4ed8';
+    document.getElementById('returnRfidBtn').textContent = 'Scanning...';
+    document.getElementById('returnSearchInput').placeholder = 'Waiting for RFID tap...';
+    document.getElementById('returnRfidError').classList.add('hidden');
+}
+
+function deactivateReturnRfidScan() {
+    returnRfidListening = false;
+    document.getElementById('returnRfidWrap').style.borderColor = '';
+    document.getElementById('returnRfidWrap').style.boxShadow = '';
+    document.getElementById('returnRfidBtn').style.backgroundColor = '#000147';
+    document.getElementById('returnRfidBtn').textContent = 'Tap RFID Card';
+    document.getElementById('returnSearchInput').placeholder = 'Find by name or student number...';
+}
+
+async function lookupReturnRfid(rfid) {
+    try {
+        const res = await fetch(`@Url.Action("FindUserByRfid","Borrow")?rfid=${encodeURIComponent(rfid)}`);
+        const data = await res.json();
+        deactivateReturnRfidScan();
+
+        const errorEl = document.getElementById('returnRfidError');
+        if (!data.found) {
+            errorEl.textContent = data.message || 'Card not recognized.';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+
+        document.getElementById('returnSearchInput').value = data.studentNumber || '';
+        filterReturnTable(); // setting .value directly doesn't fire oninput
+    } catch {
+        deactivateReturnRfidScan();
+        const errorEl = document.getElementById('returnRfidError');
+        errorEl.textContent = 'Error communicating with server.';
+        errorEl.classList.remove('hidden');
+    }
 }
 
 // ── Find the person returning a book (Borrowed Books table) ─────────────
