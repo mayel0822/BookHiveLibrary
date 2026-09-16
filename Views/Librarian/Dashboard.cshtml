@@ -4,8 +4,13 @@
     ViewData["Title"] = "Dashboard";
 }
 
+<!-- Fills the page's available height exactly (no outer page scroll) — the
+     stat cards are fixed-height and the panel grid below takes whatever's
+     left, so only each panel's own scrollbar handles overflow, not the page. -->
+<div class="flex flex-col" style="height:100%;">
+
 <!-- Stat Cards -->
-<div class="grid grid-cols-5 gap-4 mb-6">
+<div class="grid grid-cols-5 gap-4 mb-6 flex-shrink-0">
     <a href="#" onclick="openActiveUsersModal(); return false;"
        class="rounded-xl p-5 text-white shadow-sm hover:opacity-90 transition block text-center" style="background-color:#000147;">
         <p class="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-2">Active Users</p>
@@ -33,9 +38,9 @@
     </a>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0">
     <!-- Current Borrowers Table -->
-    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm flex flex-col" style="height:600px;overflow:hidden;" id="currentBorrowersCard">
+    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm flex flex-col flex-1 min-h-0" style="overflow:hidden;" id="currentBorrowersCard">
         <div class="px-5 py-4 text-white flex-shrink-0" style="background-color:#000147;">
             <h2 class="font-semibold text-sm">Current Borrowers</h2>
         </div>
@@ -171,6 +176,7 @@
             </div>
         </div>
     </div>
+</div>
 </div>
 
 @section Scripts {
