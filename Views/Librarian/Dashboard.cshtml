@@ -35,11 +35,14 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
     <!-- Current Borrowers Table -->
-    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
-        <div class="px-5 py-4 text-white" style="background-color:#000147;">
+    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm flex flex-col" style="height:600px;overflow:hidden;" id="currentBorrowersCard">
+        <div class="px-5 py-4 text-white flex-shrink-0" style="background-color:#000147;">
             <h2 class="font-semibold text-sm">Current Borrowers</h2>
         </div>
-        <div class="overflow-x-auto max-h-[32rem] overflow-y-auto">
+        <div class="flex-1 min-h-0 overflow-x-auto overflow-y-scroll">
+            <!-- A plain wrapper div (not the table) gets min-height so leftover
+                 space stays blank below the rows instead of stretching them. -->
+            <div style="min-height:100%;">
             <table class="bh-table">
                 <thead>
                     <tr>
@@ -79,6 +82,7 @@
                     }
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 
@@ -97,42 +101,56 @@
         </div>
     </div>
 
-    <!-- Right panels -->
-    <div class="space-y-4">
-        <!-- Reservation List -->
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div class="px-5 py-4 text-white" style="background-color:#000147;">
+    <!-- Right panels — height matched to Current Borrowers via JS
+         (syncDashboardColumnHeights), split evenly between the two cards. -->
+    <div class="flex flex-col gap-4" id="rightPanelsCol">
+        <!-- Reservation List — grouped by student like the Pending
+             Reservations panel (one row per student, not one per book), but
+             kept to just what's needed for an at-a-glance widget: the
+             student's name, how many books they have reserved, and those
+             book titles. -->
+        <div class="bg-white rounded-xl shadow-sm flex flex-col flex-1 min-h-0" style="overflow:hidden;">
+            <div class="px-5 py-4 text-white flex-shrink-0" style="background-color:#000147;">
                 <h2 class="font-semibold text-sm">Reservation List</h2>
             </div>
-            <div class="px-5 py-3 space-y-3 max-h-52 overflow-y-auto">
-                @if (ViewBag.ReservationList != null)
-                {
-                    foreach (var r in (List<BookReservation>)ViewBag.ReservationList)
-                    {
-                        <a href="@Url.Action("Index","Borrow")" class="flex items-start gap-3 hover:bg-gray-50 rounded-lg px-2 py-1 -mx-2 transition cursor-pointer">
-                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background-color:#000147;">
-                                @r.User?.FirstName?.FirstOrDefault()
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-gray-800">@r.User?.FirstName @r.User?.LastName</p>
-                                <p class="text-xs text-gray-500">@r.Book?.Title</p>
-                            </div>
-                        </a>
-                    }
+            <div class="flex-1 min-h-0 overflow-y-scroll px-5 py-3">
+                @{
+                    var reservationList = ViewBag.ReservationList as List<BookReservation> ?? new List<BookReservation>();
+                    var groupedReservations = reservationList.GroupBy(r => r.UserId);
                 }
-                @if (ViewBag.ReservationList == null || ((List<BookReservation>)ViewBag.ReservationList).Count == 0)
+                @if (!groupedReservations.Any())
                 {
                     <p class="text-sm text-gray-400 text-center py-4">No pending reservations</p>
                 }
+                <div class="space-y-3">
+                    @foreach (var group in groupedReservations)
+                    {
+                        var groupUser  = group.First().User;
+                        var bookCount  = group.Count();
+                        var bookTitles = string.Join(", ", group.Select(r => r.Book?.Title ?? "Untitled"));
+                        <a href="@Url.Action("Index","Borrow")" class="flex items-start gap-3 hover:bg-gray-50 rounded-lg px-2 py-1 -mx-2 transition cursor-pointer">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background-color:#000147;">
+                                @groupUser?.FirstName?.FirstOrDefault()
+                            </div>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <p class="text-sm font-medium text-gray-800">@groupUser?.FirstName @groupUser?.LastName</p>
+                                    <span class="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded-full text-[10px] font-semibold flex-shrink-0">@bookCount book@(bookCount > 1 ? "s" : "")</span>
+                                </div>
+                                <p class="text-xs text-gray-500 truncate">@bookTitles</p>
+                            </div>
+                        </a>
+                    }
+                </div>
             </div>
         </div>
 
         <!-- Book Dues -->
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div class="px-5 py-4 text-white" style="background-color:#000147;">
+        <div class="bg-white rounded-xl shadow-sm flex flex-col flex-1 min-h-0" style="overflow:hidden;">
+            <div class="px-5 py-4 text-white flex-shrink-0" style="background-color:#000147;">
                 <h2 class="font-semibold text-sm">Book Dues</h2>
             </div>
-            <div class="px-5 py-3 space-y-3 max-h-52 overflow-y-auto">
+            <div class="flex-1 min-h-0 overflow-y-scroll px-5 py-3 space-y-3">
                 @if (ViewBag.BookDues != null)
                 {
                     foreach (var r in (List<BookReservation>)ViewBag.BookDues)
@@ -157,6 +175,29 @@
 
 @section Scripts {
 <script>
+// Match the right column's (Reservation List + Book Dues) height to Current
+// Borrowers so it holds a fixed, non-empty size instead of shrinking to fit
+// its own shorter content and leaving a large blank gap below it.
+function syncDashboardColumnHeights() {
+    const leftCard  = document.getElementById('currentBorrowersCard');
+    const rightCol  = document.getElementById('rightPanelsCol');
+    if (!leftCard || !rightCol) return;
+    if (window.matchMedia('(min-width: 1024px)').matches) {
+        rightCol.style.height = leftCard.offsetHeight + 'px';
+    } else {
+        rightCol.style.height = '';
+    }
+}
+window.addEventListener('resize', syncDashboardColumnHeights);
+window.addEventListener('load', syncDashboardColumnHeights);
+(function() {
+    const leftCard = document.getElementById('currentBorrowersCard');
+    if (leftCard && window.ResizeObserver) {
+        new ResizeObserver(syncDashboardColumnHeights).observe(leftCard);
+    }
+    syncDashboardColumnHeights();
+})();
+
 async function openActiveUsersModal() {
     document.getElementById('activeUsersModal').classList.remove('hidden');
     const list = document.getElementById('activeUsersList');
