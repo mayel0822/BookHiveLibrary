@@ -196,6 +196,12 @@
                 @foreach (var r in Model)
                 {
                     var searchKey = $"{r.User?.StudentNumber} {r.User?.FirstName} {r.User?.LastName}".ToLower();
+                    // Escaped for embedding in a single-quoted JS string literal (see
+                    // the Return button below) — a name or title containing an
+                    // apostrophe, e.g. "O'Brien" or "Ocean's Eleven", would otherwise
+                    // break out of the string and throw a JS syntax error.
+                    var returnStudentName = $"{r.User?.FirstName} {r.User?.LastName}".Replace("'", "\\'");
+                    var returnBookTitle   = (r.Book?.Title ?? "this book").Replace("'", "\\'");
                     <tr class="return-row @(r.Status == "ReturnedLate" ? "bh-selected" : "")" data-search="@searchKey" data-student-no="@r.User?.StudentNumber">
                         <td class="px-4 py-3 text-gray-600 text-xs">@r.User?.StudentNumber</td>
                         <td class="px-4 py-3 font-medium text-gray-800">
@@ -235,7 +241,8 @@
                         <td class="px-4 py-3">
                             @if (r.Status == "PickedUp" || r.Status == "Overdue")
                             {
-                                <form method="post" action="@Url.Action("ConfirmReturn","Borrow")" class="inline">
+                                <form method="post" action="@Url.Action("ConfirmReturn","Borrow")" class="inline"
+                                      onsubmit="return bhConfirmSubmit(event, 'Confirm that @returnStudentName has returned &quot;@returnBookTitle&quot;?', 'Confirm Return')">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@r.Id" />
                                     <button type="submit" class="text-xs px-3 py-1.5 border border-gray-300 text-gray-600 rounded hover:bg-gray-50">Return</button>
