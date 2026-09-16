@@ -66,6 +66,12 @@
                     ? "Pickup window passed — will be auto-voided"
                     : "Pickup by " + PhTime.FromUtc(r.PickupDeadline).ToString("h:mm tt, MMM dd");
 
+                // Escaped for the single-quoted JS string in the Picked Up button's
+                // confirm dialog below — same reasoning as the Return button's
+                // equivalent variables further down this page.
+                var pendingStudentName = $"{r.User?.FirstName} {r.User?.LastName}".Replace("'", "\\'");
+                var pendingBookTitle   = (r.Book?.Title ?? "this book").Replace("'", "\\'");
+
                 <div class="px-4 py-3 border-b border-gray-50 reservation-row transition-colors duration-300"
                      data-student-no="@r.User?.StudentNumber">
                     <div class="flex items-start gap-3">
@@ -89,7 +95,8 @@
                             <input type="hidden" name="id" value="@r.Id" />
                             <button type="submit" class="px-3 py-1.5 text-xs border border-red-300 text-red-600 rounded-lg hover:bg-red-50">Deny</button>
                         </form>
-                        <form method="post" action="@Url.Action("Approve","Borrow")">
+                        <form method="post" action="@Url.Action("Approve","Borrow")"
+                              onsubmit="return bhConfirmSubmit(event, 'Confirm that @pendingStudentName picked up &quot;@pendingBookTitle&quot;?', 'Confirm Pickup')">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@r.Id" />
                             <button type="submit" class="px-3 py-1.5 text-xs text-white rounded-lg" style="background-color:#000147;">Picked Up</button>
