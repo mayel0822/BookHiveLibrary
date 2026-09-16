@@ -7,8 +7,8 @@
     var isTransaction = (bool)(ViewData["IsTransaction"] ?? false);
 }
 
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden @(isTransaction ? "flex flex-col h-full" : "")">
-    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between @(isTransaction ? "flex-shrink-0" : "")">
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
         <div class="flex items-center gap-2">
             <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
@@ -22,14 +22,18 @@
         }
     </div>
 
-    @* When embedded in Transaction page the grid fills the remaining height of
-       its column and scrolls internally (the column's total height is capped
-       by the page layout, not by this partial); Management shows everything. *@
+    @* Fills the remaining height of whatever contains it and scrolls
+       internally — on the Transaction page that's the left column (capped by
+       the page layout), on the Management page it's the card's own fixed
+       height set by the parent view. Same treatment either way now, just a
+       different column count. *@
     @{
-        var scrollClass = isTransaction ? "flex-1 min-h-0 overflow-y-scroll" : "";
-        var gridCols    = isTransaction ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4";
+        var gridCols = isTransaction ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4";
     }
-    <div class="@scrollClass">
+    <div class="flex-1 min-h-0 overflow-y-scroll">
+    <!-- A plain wrapper div (not the grid) gets min-height so leftover space
+         stays blank instead of the cards' own row stretching. -->
+    <div style="min-height:100%;">
     <div class="grid @gridCols gap-3 p-4">
         @foreach (var pc in Model)
         {
@@ -127,6 +131,7 @@
         {
             <div class="col-span-4 py-12 text-center text-gray-400">No computers registered</div>
         }
+    </div>
     </div>
     </div>
 </div>
