@@ -5,8 +5,13 @@
     ViewData["Title"] = "Book Management";
 }
 
+<!-- Fills the page's available height exactly (no outer page scroll) — the
+     stats row is fixed-height and the card below it takes whatever's left,
+     so only the card's own scrollbar handles overflow, not the page. -->
+<div class="flex flex-col" style="height:100%;">
+
 <!-- Stats Row -->
-<div class="grid grid-cols-4 gap-4 mb-6">
+<div class="grid grid-cols-4 gap-4 mb-6 flex-shrink-0">
     <div class="rounded-xl p-4 text-white text-center" style="background-color:#000147;">
         <p class="text-xs text-blue-200 mb-1">Total Books</p>
         <p class="text-3xl font-bold">@ViewBag.TotalBooks</p>
@@ -25,7 +30,7 @@
     </div>
 </div>
 
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="height:600px;overflow:hidden;">
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col flex-1 min-h-0" style="overflow:hidden;">
     <div class="px-5 py-4 border-b border-gray-200 flex items-center gap-2 flex-shrink-0">
         <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
         <h2 class="text-2xl font-bold text-gray-900">Book Archive</h2>
@@ -73,5 +78,6 @@
         </table>
         </div>
     </div>
+</div>
 </div>
 
