@@ -18,7 +18,7 @@
         <div class="flex gap-3 items-center">
             <form method="get" class="flex items-center border border-gray-300 rounded-full overflow-hidden shadow-sm bg-white">
                 <!-- Dropdown filter -->
-                <select name="userType"
+                <select name="userType" onchange="this.form.submit()"
                         class="text-sm text-gray-600 px-3 py-2 bg-gray-50 border-r border-gray-300 focus:outline-none">
                     <option value="">All Users</option>
                     <option value="Student" selected="@(ViewBag.UserType == "Student" ? "selected" : null)">Students</option>
