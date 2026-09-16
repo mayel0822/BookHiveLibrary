@@ -5,9 +5,9 @@
     ViewData["Title"] = "User Management";
 }
 
-<div class="bg-white rounded-xl shadow-sm border border-gray-100">
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col" style="height:600px;overflow:hidden;">
     <!-- Header with search and filter -->
-    <div class="px-5 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
+    <div class="px-5 py-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between flex-shrink-0">
         <h2 class="text-3xl font-bold text-gray-900">Users</h2>
         <div class="flex gap-3 items-center">
             <form method="get" class="flex items-center border border-gray-300 rounded-full overflow-hidden shadow-sm bg-white">
@@ -32,7 +32,14 @@
         </div>
     </div>
 
-    <div class="overflow-x-auto max-h-[32rem] overflow-y-auto">
+    <div class="flex-1 min-h-0 overflow-x-auto overflow-y-scroll">
+        <!-- A plain block wrapper, not the table element itself, gets the
+             min-height — a <table> given an explicit/min height distributes
+             the extra space across its own rows (stretching them), while a
+             normal div just leaves the leftover space blank below the table,
+             which is what pins the horizontal scrollbar to the panel's
+             bottom without blowing up row heights. -->
+        <div style="min-height:100%;">
         <table class="bh-table">
             <thead>
                 <tr>
@@ -92,6 +99,7 @@
                 }
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 
