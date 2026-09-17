@@ -49,18 +49,17 @@
             {
                 bool pcInUse       = pc.Sessions.Any(s => s.IsActive);
                 bool pcUnavailable = !pc.IsAvailable && !pcInUse;
-                var cardBg   = pcInUse ? "bg-[#c8d8f0]" : (pcUnavailable ? "bg-[#e8e0d0]" : "bg-[#b0c4d8]");
-                var dotColor = pcInUse ? "bg-blue-500"   : (pcUnavailable ? "bg-orange-400"  : "bg-emerald-400");
+                var dotColor = pcInUse ? "bg-blue-400"   : (pcUnavailable ? "bg-orange-400"  : "bg-emerald-400");
                 var pulseCls = pcInUse ? "pulse"         : "";
                 var badge    = pcInUse ? "bg-blue-500 text-white" : (pcUnavailable ? "bg-orange-400 text-white" : "bg-emerald-500 text-white");
                 var label    = pcInUse ? "In Use"        : (pcUnavailable ? "Unavailable"    : "Available");
-                <div class="@cardBg rounded-2xl p-5 relative hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-default">
+                <div class="bg-[#000147] rounded-2xl p-5 relative hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-default flex items-center gap-4">
                     <span class="absolute top-4 right-4 w-3 h-3 rounded-full @dotColor @pulseCls block"></span>
-                    <div class="mb-3 text-gray-400">
-                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M21 2H3a2 2 0 00-2 2v12a2 2 0 002 2h7l-2 3v1h8v-1l-2-3h7a2 2 0 002-2V4a2 2 0 00-2-2zm0 14H3V4h18v12z"/></svg>
+                    <svg class="w-16 h-16 text-white/90 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M21 2H3a2 2 0 00-2 2v12a2 2 0 002 2h7l-2 3v1h8v-1l-2-3h7a2 2 0 002-2V4a2 2 0 00-2-2zm0 14H3V4h18v12z"/></svg>
+                    <div class="min-w-0">
+                        <p class="text-2xl font-extrabold text-white mb-2 tracking-tight truncate">@pc.ComputerNumber</p>
+                        <span class="inline-block @badge text-xs font-semibold px-3 py-1 rounded-full">@label</span>
                     </div>
-                    <p class="text-2xl font-extrabold text-gray-900 mb-3 tracking-tight">@pc.ComputerNumber</p>
-                    <span class="inline-block @badge text-xs font-semibold px-3 py-1 rounded-full">@label</span>
                 </div>
             }
         </div>
