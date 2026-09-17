@@ -235,32 +235,34 @@
                 <div class="flex-1 min-h-0 overflow-y-scroll px-6 pb-6">
                 @if (myReservations.Any())
                 {
-                    var first = myReservations.First();
-                    <div class="space-y-3">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-gray-900 font-semibold">@first.Book?.Title</p>
-                                <p class="text-sm text-gray-500">@first.Book?.Author</p>
-                            </div>
-                            <span class="@(first.Status == "Approved" ? "bg-green-500" : "bg-yellow-500") text-white text-xs px-3 py-1 rounded-full whitespace-nowrap">@first.Status</span>
-                        </div>
-                        <div class="border-t border-gray-100 pt-3">
-                            <p class="text-sm text-gray-500 mb-1">Pickup before <span class="text-gray-700 font-medium">@PhTime.FromUtc(first.PickupDeadline).ToString("MMM dd, yyyy h:mm tt")</span></p>
-                            <div class="flex items-center gap-2">
-                                <svg class="w-4 h-4 text-yellow-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                @* DateTimeKind.Utc is forced explicitly so the "o" format ends in "Z" —
-                                   EF Core reads DateTime columns back as Kind=Unspecified, and without
-                                   the "Z", the browser's `new Date(...)` below would treat this as the
-                                   viewer's OWN local time instead of UTC, throwing the countdown off by
-                                   a full 8 hours for anyone in the Philippines. *@
-                                <p id="reservationCountdown" data-deadline="@DateTime.SpecifyKind(first.PickupDeadline, DateTimeKind.Utc).ToString("o")" class="text-sm font-semibold text-yellow-600"></p>
-                            </div>
-                        </div>
-                    </div>
-                    @if (myReservations.Count > 1)
+                    <div class="space-y-4">
+                    @for (int i = 0; i < myReservations.Count; i++)
                     {
-                        <p class="text-xs text-gray-400 mt-2">+@(myReservations.Count - 1) more reservation(s)</p>
+                        var res = myReservations[i];
+                        bool isLast = i == myReservations.Count - 1;
+                        <div class="@(isLast ? "" : "pb-4 border-b border-gray-100")">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-900 font-semibold">@res.Book?.Title</p>
+                                    <p class="text-sm text-gray-500">@res.Book?.Author</p>
+                                </div>
+                                <span class="@(res.Status == "Approved" ? "bg-green-500" : "bg-yellow-500") text-white text-xs px-3 py-1 rounded-full whitespace-nowrap">@res.Status</span>
+                            </div>
+                            <div class="border-t border-gray-100 pt-3 mt-3">
+                                <p class="text-sm text-gray-500 mb-1">Pickup before <span class="text-gray-700 font-medium">@PhTime.FromUtc(res.PickupDeadline).ToString("MMM dd, yyyy h:mm tt")</span></p>
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-yellow-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    @* DateTimeKind.Utc is forced explicitly so the "o" format ends in "Z" —
+                                       EF Core reads DateTime columns back as Kind=Unspecified, and without
+                                       the "Z", the browser's `new Date(...)` below would treat this as the
+                                       viewer's OWN local time instead of UTC, throwing the countdown off by
+                                       a full 8 hours for anyone in the Philippines. *@
+                                    <p class="reservation-countdown text-sm font-semibold text-yellow-600" data-deadline="@DateTime.SpecifyKind(res.PickupDeadline, DateTimeKind.Utc).ToString("o")"></p>
+                                </div>
+                            </div>
+                        </div>
                     }
+                    </div>
                 }
                 else
                 {
@@ -403,18 +405,21 @@ function closeBorrowedPanel(e) {
     document.getElementById('borrowedPanel').classList.add('hidden');
 }
 
-// Reservation countdown
+// Reservation countdowns — one per reservation now that all of them are
+// listed (not just the first, with a "+N more" hint for the rest).
 (function() {
-    const el = document.getElementById('reservationCountdown');
-    if (!el) return;
-    const deadline = new Date(el.dataset.deadline);
+    const els = document.querySelectorAll('.reservation-countdown');
+    if (!els.length) return;
     function tick() {
-        const diff = deadline - new Date();
-        if (diff <= 0) { el.textContent = 'Pickup window expired'; return; }
-        const h = Math.floor(diff / 3600000);
-        const m = Math.floor((diff % 3600000) / 60000);
-        const s = Math.floor((diff % 60000) / 1000);
-        el.textContent = h > 0 ? `${h}h ${m}m ${s}s remaining` : `${m}m ${s}s remaining`;
+        els.forEach(el => {
+            const deadline = new Date(el.dataset.deadline);
+            const diff = deadline - new Date();
+            if (diff <= 0) { el.textContent = 'Pickup window expired'; return; }
+            const h = Math.floor(diff / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            el.textContent = h > 0 ? `${h}h ${m}m ${s}s remaining` : `${m}m ${s}s remaining`;
+        });
     }
     tick(); setInterval(tick, 1000);
 })();
