@@ -151,17 +151,11 @@ namespace BookHiveLibrary.Controllers
         // books due for reminders, all currently borrowed books, and the walk-in form.
         public async Task<IActionResult> Index()
         {
-            // Step 1: Auto-cancel reservations where the student didn't pick up in time
-            var expiredReservations = await _context.BookReservations
-                .Where(reservation => reservation.Status == "Pending" && reservation.PickupDeadline < DateTime.UtcNow)
-                .ToListAsync();
-
-            foreach (var expired in expiredReservations)
-            {
-                expired.Status           = "Void";
-                expired.LibrarianRemarks = "Auto-voided: not picked up within 3 hours.";
-            }
-            if (expiredReservations.Any()) await _context.SaveChangesAsync();
+            // Step 1: Auto-cancel reservations where the student didn't pick up in time.
+            // Shared with ReminderBackgroundService, which runs this same check hourly
+            // regardless of whether a librarian ever opens this page — see
+            // ReservationExpiryService for why the logic lives there instead of here.
+            await BookHiveLibrary.Services.ReservationExpiryService.VoidExpiredPendingReservationsAsync(_context, _hub);
 
             // Step 2: Mark books as overdue if the due date has already passed
             var overdueBooks = await _context.BookReservations

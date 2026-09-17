@@ -287,6 +287,7 @@ async function loadStuNotifications() {
             'Denied':      'bg-red-100 text-red-700',
             'Unavailable': 'bg-gray-200 text-gray-700',
             'PickedUp':    'bg-green-100 text-green-700',
+            'Void':        'bg-orange-100 text-orange-700',
         };
         list.innerHTML = data.items.map(n => `
             <div class="px-4 py-3 hover:bg-gray-50 cursor-default">

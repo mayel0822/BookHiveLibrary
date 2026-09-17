@@ -1,15 +1,18 @@
 using BookHiveLibrary.Data;
 using BookHiveLibrary.Helpers;
+using BookHiveLibrary.Hubs;
 using BookHiveLibrary.Services;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookHiveLibrary.Services
 {
     // This background service runs automatically while the app is running.
-    // It wakes up every hour and checks two things:
+    // It wakes up every hour and checks three things:
     //
-    //   1. Books due in less than 12 hours → send a reminder to the student
-    //   2. Books that are now past their due date → mark as Overdue and notify the adviser
+    //   1. Pending reservations past their pickup deadline → void them and notify the student
+    //   2. Books due in less than 12 hours → send a reminder to the student
+    //   3. Books that are now past their due date → mark as Overdue and notify the adviser
     //
     // Because it runs in the background, it uses a fresh database scope each time
     // (background services don't share the normal HTTP request scope).
@@ -17,6 +20,7 @@ namespace BookHiveLibrary.Services
     {
         private readonly IServiceProvider _services;
         private readonly ILogger<ReminderBackgroundService> _logger;
+        private readonly IHubContext<LibraryHub> _hub;
 
         // How often the reminder check should run
         private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(1);
@@ -24,10 +28,11 @@ namespace BookHiveLibrary.Services
         // How many hours before the due date we send the "almost due" reminder
         private const int ReminderHoursAhead = 12;
 
-        public ReminderBackgroundService(IServiceProvider services, ILogger<ReminderBackgroundService> logger)
+        public ReminderBackgroundService(IServiceProvider services, ILogger<ReminderBackgroundService> logger, IHubContext<LibraryHub> hub)
         {
             _services = services;
             _logger   = logger;
+            _hub      = hub;
         }
 
         // This method runs in a loop until the app shuts down.
@@ -70,6 +75,24 @@ namespace BookHiveLibrary.Services
             // wrong on a server set to any other timezone.
             DateTime now                  = DateTime.UtcNow;
             DateTime reminderCutoff       = now.AddHours(ReminderHoursAhead); // 12 hours from now
+
+            // ── Step 0: Void expired Pending reservations ─────────────────────
+            //
+            // A reservation that isn't picked up within its window used to only get
+            // voided when a librarian happened to open the Borrow/Index page — a
+            // student could sit on "Pending" indefinitely otherwise. Running it here
+            // too means it reliably clears (and the student gets notified) within an
+            // hour of expiring, not whenever someone next opens that page.
+            try
+            {
+                int voidedCount = await ReservationExpiryService.VoidExpiredPendingReservationsAsync(context, _hub);
+                if (voidedCount > 0)
+                    _logger.LogInformation("Auto-voided {Count} expired reservation(s).", voidedCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to auto-void expired reservations.");
+            }
 
             // ── Step 1: Send "almost due" reminders ───────────────────────────
             //

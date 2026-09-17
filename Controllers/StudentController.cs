@@ -422,11 +422,11 @@ namespace BookHiveLibrary.Controllers
 
             var persistedItems = persistedNotifications.Select(n => (object)new
             {
-                type    = n.Type == "Denied" ? "denied" : "unavailable",
+                type    = n.Type.ToLowerInvariant(),
                 title   = n.Title,
                 message = n.Message,
                 time    = PhTime.FromUtc(n.CreatedAt).ToString("MMM d, h:mm tt"),
-                label   = n.Type // "Denied" or "Unavailable"
+                label   = n.Type // "Denied", "Unavailable", or "Void"
             });
 
             var allNotifications = persistedItems.Concat(reservationItems).Concat(dueItems).ToList();
