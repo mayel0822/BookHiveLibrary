@@ -173,6 +173,7 @@
 .dark .border,
 .dark .border-t, .dark .border-b, .dark .border-l, .dark .border-r,
 .dark .border-gray-100, .dark .border-gray-200, .dark .border-gray-300,
+.dark .border-black,
 .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
   border-color: var(--dark-outline) !important;
 }
