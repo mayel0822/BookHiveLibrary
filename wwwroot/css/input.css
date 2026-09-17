@@ -159,7 +159,7 @@
   --dark-bg:        #15161c; /* page background */
   --dark-surface:   #1e2028; /* cards, modals, dropdowns */
   --dark-surface-2: #262832; /* subtle nested surfaces (bg-gray-50/100) */
-  --dark-outline:   #d8d5c8; /* "dirty white" borders */
+  --dark-outline:   #c5c5c5; /* border/divider lines */
   --dark-text:      #e6e3d8; /* "dirty white" primary text */
   --dark-text-dim:  #a8a598; /* secondary/muted text */
 }
