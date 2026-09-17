@@ -119,19 +119,21 @@
     </div>
 
     <!-- Borrowed Books Slide Panel -->
-    <div id="borrowedPanel" class="fixed inset-0 z-50 hidden" onclick="closeBorrowedPanel(event)">
-        <div class="absolute inset-0 bg-black/40"></div>
-        <div id="borrowedPanelInner" class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col translate-x-full transition-transform duration-300">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100" style="background:#000147;">
+    <div id="borrowedPanel" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/40" onclick="closeBorrowedPanel(event)">
+        <div id="borrowedPanelInner" class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 flex flex-col overflow-hidden" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between px-6 py-4 flex-shrink-0" style="background:#000147;">
                 <h2 class="text-base font-semibold text-white">Borrowed Books</h2>
                 <button onclick="closeBorrowedPanel(null)" class="text-white/70 hover:text-white">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            <!-- Sized to comfortably show 3 books before scrolling — each row is
+                 roughly h-20 (80px) cover + p-4 padding + gap-4, so 3 rows land
+                 around 28rem. -->
+            <div class="overflow-y-auto px-6 py-4 space-y-4" style="max-height:28rem;">
                 @if (!borrowedBooksList.Any())
                 {
-                    <div class="flex items-center justify-center h-full">
+                    <div class="flex items-center justify-center py-8">
                         <p class="text-sm text-gray-400">No borrowed books at the moment.</p>
                     </div>
                 }
@@ -394,16 +396,11 @@ window.addEventListener('load', syncStudentDashboardHeights);
 })();
 
 function openBorrowedPanel() {
-    const panel = document.getElementById('borrowedPanel');
-    const inner = document.getElementById('borrowedPanelInner');
-    panel.classList.remove('hidden');
-    requestAnimationFrame(() => inner.classList.remove('translate-x-full'));
+    document.getElementById('borrowedPanel').classList.remove('hidden');
 }
 function closeBorrowedPanel(e) {
-    if (e && e.target !== document.getElementById('borrowedPanel') && !e.target.closest('#borrowedPanel > .absolute.inset-0')) return;
-    const inner = document.getElementById('borrowedPanelInner');
-    inner.classList.add('translate-x-full');
-    setTimeout(() => document.getElementById('borrowedPanel').classList.add('hidden'), 300);
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('borrowedPanel').classList.add('hidden');
 }
 
 // Reservation countdown
