@@ -1,6 +1,8 @@
-// BookHive — Reader 1 (Library Entrance / Kiosk)
-// Tap in / tap out. Writes to RFIDLogs, updates the kiosk screen + librarian dashboard.
-// Requires the correct X-Device-Key header — the server rejects taps without it.
+// BookHive — Reader 2 (Librarian Desk / Transaction)
+// Does NOT write to the database. Broadcasts the UID over SignalR so whichever
+// staff page is open (Borrow, Computer Transaction, Sectioning, MIS Registration)
+// auto-fills itself. The server does not check X-Device-Key for this endpoint yet,
+// so it's sent here only so the header is already in place if that changes later.
 
 #include <SPI.h>
 #include <MFRC522.h>
@@ -18,7 +20,7 @@
 // SERVER HOST FOR AZURE PUBLISH
 const char* SERVER_HOST = "bookhivelibrary-efdkf2fue4hmhwfq.southeastasia-01.azurewebsites.net";
 
-const char* TAP_ENDPOINT = "/Librarian/RfidTap";   // door tap-in/tap-out endpoint
+const char* TAP_ENDPOINT = "/Librarian/RFIDTap";   // desk broadcast-only endpoint
 
 const unsigned long WIFI_CONNECT_TIMEOUT_MS = 15000;
 const unsigned long TAP_COOLDOWN_MS = 3000;
