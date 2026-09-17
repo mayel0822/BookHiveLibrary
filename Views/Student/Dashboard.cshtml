@@ -248,7 +248,7 @@
                                 </div>
                                 <span class="@(res.Status == "Approved" ? "bg-green-500" : "bg-yellow-500") text-white text-xs px-3 py-1 rounded-full whitespace-nowrap">@res.Status</span>
                             </div>
-                            <div class="border-t border-gray-100 pt-3 mt-3">
+                            <div class="pt-3 mt-3">
                                 <p class="text-sm text-gray-500 mb-1">Pickup before <span class="text-gray-700 font-medium">@PhTime.FromUtc(res.PickupDeadline).ToString("MMM dd, yyyy h:mm tt")</span></p>
                                 <div class="flex items-center gap-2">
                                     <svg class="w-4 h-4 text-yellow-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
