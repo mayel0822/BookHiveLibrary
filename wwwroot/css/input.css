@@ -191,6 +191,14 @@
    almost no contrast against it. */
 .dark .bg-\[\#b0c4d8\] { background-color: var(--dark-surface-2) !important; }
 
+/* The selected conversation row on the Messages page uses bg-blue-50 for
+   its highlight — scoped to its own class (not a blanket .dark override on
+   bg-blue-50 itself, since that utility is used all over the app for
+   badges/hovers that should stay blue-tinted). A subtly darker shade reads
+   as "selected" without the bright light-mode block clashing against the
+   dark surface around it. */
+.dark .msg-convo-active { background-color: var(--dark-bg) !important; }
+
 /* Inputs, selects, textareas */
 .dark input, .dark select, .dark textarea {
   background-color: var(--dark-surface) !important;

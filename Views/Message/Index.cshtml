@@ -109,7 +109,7 @@ const token = () => document.querySelector('input[name="__RequestVerificationTok
 // â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function convoRow(c) {
     const isActive = activeUserId === c.userId;
-    return `<div class="flex items-center gap-3 px-4 py-3 cursor-pointer transition ${isActive ? 'bg-blue-50' : 'hover:bg-gray-50'}"
+    return `<div class="flex items-center gap-3 px-4 py-3 cursor-pointer transition ${isActive ? 'bg-blue-50 msg-convo-active' : 'hover:bg-gray-50'}"
                  id="convo-${c.userId}"
                  onclick="openConversation('${c.userId}')">
         <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style="background:#000147;">
@@ -120,7 +120,7 @@ function convoRow(c) {
                 <p class="text-sm font-semibold text-gray-800 truncate" id="convoname-${c.userId}">${c.name}</p>
                 <span class="text-[10px] text-gray-400 ml-2 flex-shrink-0">${c.sentAt}</span>
             </div>
-            <p class="text-xs text-gray-500 truncate">${c.lastMsgUnsent ? '<em class="not-italic text-gray-400">Message unsent</em>' : (c.lastMsg || 'â€¦')}</p>
+            <p class="text-xs text-gray-500 truncate">${c.lastMsgUnsent ? '<em class="not-italic text-gray-400">Message unsent</em>' : (c.lastMsg || '…')}</p>
         </div>
         <div class="flex items-center gap-1 flex-shrink-0">
             ${c.unread > 0 ? `<span class="w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0" style="background:#e53e3e;">${c.unread}</span>` : ''}
