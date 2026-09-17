@@ -185,6 +185,12 @@
    card background — the Book Catalog's field labels. */
 .dark .text-\[\#2c3e6b\] { color: var(--dark-text) !important; }
 
+/* The Dashboard's book cover cards use a light custom background color, not
+   a Tailwind gray-* utility, so it stayed light in dark mode — leaving the
+   title/author text (which DOES get remapped to a light color above) with
+   almost no contrast against it. */
+.dark .bg-\[\#b0c4d8\] { background-color: var(--dark-surface-2) !important; }
+
 /* Inputs, selects, textareas */
 .dark input, .dark select, .dark textarea {
   background-color: var(--dark-surface) !important;
