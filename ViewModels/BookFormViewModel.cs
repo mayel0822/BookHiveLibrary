@@ -1,8 +1,10 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace BookHiveLibrary.ViewModels
 {
-    public class BookFormViewModel
+    public class BookFormViewModel : IValidatableObject
     {
         public int Id { get; set; }
 
@@ -25,22 +27,23 @@ namespace BookHiveLibrary.ViewModels
 
         public string GradeLevel { get; set; } = "";
 
-        // Digits only. Note: this is a deliberate change from the free-form call
-        // numbers the Book model's own doc comment used as an example
-        // ("REF 620 B12") — if the library actually uses a classification scheme
-        // like Dewey/LC rather than plain sequential numbering, this needs
-        // loosening. Only affects new registrations; existing non-numeric call
-        // numbers already in the database aren't touched by this.
+        // Exactly 5 digits (#####). Note: this is a deliberate change from the
+        // free-form call numbers the Book model's own doc comment used as an
+        // example ("REF 620 B12") — if the library actually uses a
+        // classification scheme like Dewey/LC rather than plain sequential
+        // numbering, this needs loosening. Only affects new registrations;
+        // existing call numbers already in the database aren't touched by this.
         [Required(ErrorMessage = "Call No. is required.")]
-        [RegularExpression(@"^[0-9]+$", ErrorMessage = "Call No. must contain digits only.")]
+        [RegularExpression(@"^[0-9]{5}$", ErrorMessage = "Call No. must be exactly 5 digits.")]
         public string CallNumber { get; set; } = "";
 
         // Optional — no [Required], and the field's own "e.g. ..." placeholder
         // signals it's a hint, not a requirement — so empty is allowed, but if
-        // something is entered it must look like an ISBN: digits and hyphens only,
-        // matching the "978-3-16-148410-0" format shown in that placeholder.
+        // something is entered it must be a full 13-digit ISBN-13 in the
+        // 3-1-2-6-1 hyphenated grouping shown in that placeholder
+        // (978-3-16-148410-0), not just any digits-and-hyphens string.
         [Display(Name = "ISBN")]
-        [RegularExpression(@"^[0-9\-]*$", ErrorMessage = "ISBN must contain only digits and hyphens (e.g. 978-3-16-148410-0).")]
+        [RegularExpression(@"^$|^\d{3}-\d{1}-\d{2}-\d{6}-\d{1}$", ErrorMessage = "ISBN must be 13 digits in the format 978-3-16-148410-0.")]
         public string ISBN { get; set; } = "";
 
         [Required]
@@ -68,5 +71,20 @@ namespace BookHiveLibrary.ViewModels
 
         public string BookFor { get; set; } = "Student";
         public bool IsRoomUseOnly { get; set; } = false;
+
+        // Beyond the 4-digit format above, a published year still can't be in
+        // the future — [RegularExpression] alone can't compare against
+        // "the current year" since that's not a fixed pattern.
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (!string.IsNullOrEmpty(PublishedYear)
+                && int.TryParse(PublishedYear, out int year)
+                && year > DateTime.Now.Year)
+            {
+                yield return new ValidationResult(
+                    $"Published Year cannot be later than {DateTime.Now.Year}.",
+                    new[] { nameof(PublishedYear) });
+            }
+        }
     }
 }
