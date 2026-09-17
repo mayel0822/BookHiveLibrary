@@ -503,6 +503,7 @@ async function loadMiniChatMessages() {
             const threeDotBtn = `
                 <button onclick="showMiniMsgMenu(event,'minimenu-${m.id}')"
                         id="minidots-${m.id}"
+                        class="mini-dots-btn"
                         style="display:none;flex-shrink:0;width:22px;height:22px;align-items:center;justify-content:center;border-radius:50%;border:none;background:none;cursor:pointer;color:#9ca3af;"
                         onmouseover="this.style.background='#f3f4f6';this.style.color='#6b7280'"
                         onmouseout="this.style.background='none';this.style.color='#9ca3af'"
