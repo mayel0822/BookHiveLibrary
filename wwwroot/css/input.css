@@ -209,6 +209,19 @@
 .dark .bh-table tbody tr:hover { background-color: var(--dark-surface-2) !important; }
 .dark .bh-table tbody td { color: var(--dark-text) !important; }
 
-/* Scrollbars stay legible against the dark surfaces */
+/* Scrollbars — explicitly styled (not just recolored) because Chrome only
+   reliably honors custom scrollbar colors once ::-webkit-scrollbar itself
+   declares a width; without it, some Windows/Chrome combinations fall back
+   to the native beveled scrollbar with arrow buttons regardless of any
+   track/thumb color rules, which is why the dark-mode-only override below
+   used to have no visible effect. */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 9999px; border: 3px solid #f1f1f1; }
+::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+:root { scrollbar-width: thin; scrollbar-color: #c1c1c1 #f1f1f1; }
+
 .dark ::-webkit-scrollbar-track { background: var(--dark-surface); }
-.dark ::-webkit-scrollbar-thumb { background: var(--dark-outline); }
+.dark ::-webkit-scrollbar-thumb { background: var(--dark-outline); border-color: var(--dark-surface); }
+.dark ::-webkit-scrollbar-thumb:hover { background: var(--dark-text-dim); }
+.dark { scrollbar-color: var(--dark-outline) var(--dark-surface); }
