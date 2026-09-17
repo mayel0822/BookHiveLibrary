@@ -636,8 +636,13 @@ document.addEventListener('click', function(e) {
         const _p = document.getElementById('msgPanel'); if (_p) _p.style.display = 'none';
         msgPanelOpen = false;
     }
-    // Close mini chat bubble menus
-    if (!e.target.closest('.mini-chat-bubble') && !e.target.closest('.mini-msg-menu') && !e.target.closest('.mini-dots-btn'))
+    // Close mini chat bubble menus. Checks the dots button by its id prefix
+    // rather than the .mini-dots-btn class — that class already carries an
+    // opacity:0 hover-reveal rule above meant for a .group-hover pattern that
+    // was never actually wired to a "group" ancestor, so adding the class
+    // here just to satisfy this check would make the button permanently
+    // invisible instead of only hidden until row-hover.
+    if (!e.target.closest('.mini-chat-bubble') && !e.target.closest('.mini-msg-menu') && !e.target.closest('[id^="minidots-"]'))
         document.querySelectorAll('.mini-msg-menu').forEach(m => m.style.display = 'none');
     // Close message bubble menus
     if (!e.target.closest('.chat-msg-bubble') && !e.target.closest('.chat-msg-menu'))
