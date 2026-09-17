@@ -14,13 +14,13 @@
      instead of navigating to a separate page. Filled from the data-book JSON
      attribute Razor renders on each card, so no extra request is needed. -->
 <div id="bookInfoModal" class="fixed inset-0 z-[10030] hidden flex items-center justify-center bg-black/50" onclick="closeBookModal(event)">
-    <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-3xl mx-4 relative" onclick="event.stopPropagation()">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-5xl mx-4 relative" onclick="event.stopPropagation()">
         <button onclick="closeBookModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
         <div class="flex flex-col md:flex-row gap-6">
             <!-- Cover -->
-            <div class="w-full md:w-56 flex-shrink-0 bg-[#000147]/10 rounded-xl flex items-center justify-center overflow-hidden" style="aspect-ratio:3/4;">
+            <div class="w-full md:w-64 flex-shrink-0 bg-[#000147]/10 rounded-xl flex items-center justify-center overflow-hidden" style="aspect-ratio:3/4;">
                 <img id="bookModalCover" src="" alt="cover" class="w-full h-full object-cover hidden" />
                 <span id="bookModalNoCover" class="text-gray-400 text-sm">Book Photo</span>
             </div>
