@@ -8,6 +8,77 @@
     var catFilter  = (string)(ViewBag.Category ?? "");
 }
 
+<!-- Book Info Modal — opened by clicking a card in the catalog grid instead
+     of navigating to a separate page. Filled from the data-book JSON
+     attribute Razor renders on each card, so no extra request is needed.
+     Same shell as the one on the Student Dashboard. -->
+<div id="bookInfoModal" class="fixed inset-0 z-[10030] hidden flex items-center justify-center bg-black/50" onclick="closeBookModal(event)">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-5xl mx-4 relative" onclick="event.stopPropagation()">
+        <button onclick="closeBookModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <div class="flex flex-col md:flex-row gap-6">
+            <!-- Cover -->
+            <div class="w-full md:w-64 flex-shrink-0 bg-[#000147]/10 rounded-xl flex items-center justify-center overflow-hidden" style="aspect-ratio:3/4;">
+                <img id="bookModalCover" src="" alt="cover" class="w-full h-full object-cover hidden" />
+                <span id="bookModalNoCover" class="text-gray-400 text-sm">Book Photo</span>
+            </div>
+            <!-- Info -->
+            <div class="flex-1 min-w-0 border border-gray-200 rounded-xl p-5 overflow-y-scroll" style="max-height:22rem;">
+                <div class="flex items-start justify-between gap-3 mb-1">
+                    <h2 id="bookModalTitle" class="text-xl font-bold text-gray-900"></h2>
+                    <span id="bookModalBadge" class="flex-shrink-0 text-xs px-3 py-1 rounded-full font-semibold"></span>
+                </div>
+                <p class="text-sm text-gray-500 mb-4">by <span id="bookModalAuthor"></span></p>
+                <div class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                    <div id="bookModalCategoryWrap">
+                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Category</p>
+                        <p id="bookModalCategory" class="text-gray-800 font-medium"></p>
+                    </div>
+                    <div id="bookModalCallNumberWrap">
+                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Call Number</p>
+                        <p id="bookModalCallNumber" class="text-gray-800 font-medium"></p>
+                    </div>
+                    <div id="bookModalYearWrap">
+                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Published Year</p>
+                        <p id="bookModalYear" class="text-gray-800 font-medium"></p>
+                    </div>
+                    <div id="bookModalGradeWrap">
+                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Grade Level</p>
+                        <p id="bookModalGrade" class="text-gray-800 font-medium"></p>
+                    </div>
+                    <div id="bookModalAisleWrap">
+                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Aisle Location</p>
+                        <p id="bookModalAisle" class="text-gray-800 font-medium"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Copies Available</p>
+                        <p id="bookModalCopies" class="text-gray-800 font-medium"></p>
+                    </div>
+                    <div id="bookModalIsbnWrap" class="col-span-2">
+                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">ISBN</p>
+                        <p id="bookModalIsbn" class="text-gray-800 font-medium"></p>
+                    </div>
+                </div>
+                <div id="bookModalDescWrap" class="mt-4">
+                    <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Description</p>
+                    <p id="bookModalDesc" class="text-sm text-gray-700 leading-relaxed"></p>
+                </div>
+            </div>
+        </div>
+        <div class="mt-5 flex justify-end">
+            <form id="bookModalReserveForm" method="post" asp-action="Reserve" asp-controller="Student">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="bookId" id="bookModalReserveId" value="" />
+                <input type="hidden" name="returnToDetail" value="false" />
+                <button id="bookModalReserveBtn" type="submit" class="bg-[#000147] hover:bg-[#000147]/80 text-white px-8 py-3 rounded-xl font-medium text-sm transition">
+                    Reserve
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Fills the page's available height exactly (no outer page scroll) — the
      banners are fixed-height and the catalog card below takes whatever's
      left, so only the card's own scrollbar handles overflow, not the page. -->
@@ -56,7 +127,24 @@
             {
                 var isAvail  = book.AvailableQuantity > 0;
                 var badgeCls = isAvail ? "bg-emerald-500" : "bg-red-400";
-                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col">
+                var bookJson = System.Text.Json.JsonSerializer.Serialize(new {
+                    id = book.Id,
+                    title = book.Title,
+                    author = book.Author,
+                    cover = book.CoverImageUrl,
+                    category = book.Category,
+                    callNumber = book.CallNumber,
+                    publishedYear = book.PublishedYear,
+                    gradeLevel = book.GradeLevel,
+                    aisleLocation = book.AisleLocation,
+                    isbn = book.ISBN,
+                    description = book.Description,
+                    available = book.AvailableQuantity,
+                    total = book.TotalQuantity,
+                    isAvail = isAvail
+                });
+                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col cursor-pointer"
+                     data-book="@bookJson" onclick="openBookModal(this)">
                     <div class="flex gap-3 p-4">
                         @if (!string.IsNullOrEmpty(book.CoverImageUrl))
                         {
@@ -85,7 +173,7 @@
                     <div class="px-4 py-3 flex-1 flex flex-col">
                         <p class="text-[11px] font-semibold text-[#2c3e6b] mb-1">Book Synopsis:</p>
                         <p class="text-[11px] text-gray-400 flex-1 mb-4 leading-relaxed min-h-[2rem]">@(string.IsNullOrEmpty(book.Description) ? "No synopsis available." : book.Description)</p>
-                        <div class="flex justify-end">
+                        <div class="flex justify-end" onclick="event.stopPropagation()">
                             @if (isAvail)
                             {
                                 <form method="post" asp-action="Reserve" asp-controller="Student">
@@ -129,6 +217,63 @@
 
 @section Scripts {
 <script>
+function openBookModal(el) {
+    const b = JSON.parse(el.dataset.book);
+
+    document.getElementById('bookModalTitle').textContent = b.title;
+    document.getElementById('bookModalAuthor').textContent = b.author;
+
+    const badge = document.getElementById('bookModalBadge');
+    badge.textContent = b.isAvail ? 'Available' : 'Not Available';
+    badge.className = 'flex-shrink-0 text-xs px-3 py-1 rounded-full font-semibold ' +
+        (b.isAvail ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600');
+
+    const cover = document.getElementById('bookModalCover');
+    const noCover = document.getElementById('bookModalNoCover');
+    if (b.cover) {
+        cover.src = b.cover;
+        cover.classList.remove('hidden');
+        noCover.classList.add('hidden');
+    } else {
+        cover.classList.add('hidden');
+        noCover.classList.remove('hidden');
+    }
+
+    setBookModalField('bookModalCategoryWrap', 'bookModalCategory', b.category);
+    setBookModalField('bookModalCallNumberWrap', 'bookModalCallNumber', b.callNumber);
+    setBookModalField('bookModalYearWrap', 'bookModalYear', b.publishedYear);
+    setBookModalField('bookModalGradeWrap', 'bookModalGrade', b.gradeLevel);
+    setBookModalField('bookModalAisleWrap', 'bookModalAisle', b.aisleLocation);
+    document.getElementById('bookModalCopies').textContent = b.available + ' / ' + b.total;
+    setBookModalField('bookModalIsbnWrap', 'bookModalIsbn', b.isbn);
+    setBookModalField('bookModalDescWrap', 'bookModalDesc', b.description);
+
+    document.getElementById('bookModalReserveId').value = b.id;
+    const reserveBtn = document.getElementById('bookModalReserveBtn');
+    reserveBtn.disabled = !b.isAvail;
+    reserveBtn.textContent = b.isAvail ? 'Reserve' : 'Not Available';
+    reserveBtn.className = b.isAvail
+        ? 'bg-[#000147] hover:bg-[#000147]/80 text-white px-8 py-3 rounded-xl font-medium text-sm transition'
+        : 'bg-gray-300 text-gray-500 px-8 py-3 rounded-xl font-medium text-sm cursor-not-allowed';
+
+    document.getElementById('bookInfoModal').classList.remove('hidden');
+}
+
+function setBookModalField(wrapId, fieldId, value) {
+    const wrap = document.getElementById(wrapId);
+    if (value) {
+        document.getElementById(fieldId).textContent = value;
+        wrap.classList.remove('hidden');
+    } else {
+        wrap.classList.add('hidden');
+    }
+}
+
+function closeBookModal(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('bookInfoModal').classList.add('hidden');
+}
+
 // A book's availability (quantity, borrowed/returned) can change while ANY
 // student has this page open — broadcast to everyone browsing, not just the
 // one whose own reservation changed. Otherwise a book that just ran out keeps
