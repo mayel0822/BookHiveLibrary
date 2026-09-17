@@ -180,6 +180,11 @@
 .dark .text-gray-900, .dark .text-gray-800, .dark .text-gray-700 { color: var(--dark-text) !important; }
 .dark .text-gray-600, .dark .text-gray-500, .dark .text-gray-400 { color: var(--dark-text-dim) !important; }
 
+/* One-off custom text colors (not a Tailwind gray-* utility, so the rules
+   above don't catch them) that are dark enough to disappear against a dark
+   card background — the Book Catalog's field labels. */
+.dark .text-\[\#2c3e6b\] { color: var(--dark-text) !important; }
+
 /* Inputs, selects, textareas */
 .dark input, .dark select, .dark textarea {
   background-color: var(--dark-surface) !important;
